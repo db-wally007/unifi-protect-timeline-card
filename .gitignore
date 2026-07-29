@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.DS_Store
+
+# Home Assistant imports custom_components/protect_cache through a symlink into
+# this checkout, so Python writes its bytecode cache here.
+__pycache__/
+*.pyc
+
+# dist/ is committed on purpose so the repo is installable as a HACS custom
+# (Dashboard) repository without a build step. Rebuild with `npm run build`.

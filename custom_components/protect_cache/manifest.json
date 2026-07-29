@@ -1,0 +1,10 @@
+{
+  "domain": "protect_cache",
+  "name": "Protect Cache",
+  "documentation": "https://github.com/db-wally007/unifi-protect-timeline-card",
+  "dependencies": ["http"],
+  "codeowners": [],
+  "iot_class": "local_push",
+  "integration_type": "system",
+  "version": "1.0.0"
+}
