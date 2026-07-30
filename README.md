@@ -9,9 +9,8 @@ Three optional server-side helpers (included in this repo) make it fast: they mi
 list and thumbnails locally, cache low-res footage so scrubbing shows real frames instead of a black
 stage, and stream historical clips with proper HTTP range support.
 
-![Timeline view](docs/timeline.jpg)
-
-![Events view](docs/events.jpg)
+📸 **[Screenshots](screenshots/)** — tablet and phone, single- and multi-camera, timeline, events,
+scrubbing and fullscreen.
 
 ## Install
 
