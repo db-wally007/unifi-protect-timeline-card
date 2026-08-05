@@ -1,6 +1,6 @@
 {
   "name": "unifi-protect-timeline-card",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Home Assistant Lovelace card: a UniFi Protect-style, touch-friendly timeline scrubber for cameras integrated via the unifiprotect integration",
   "type": "module",
   "main": "dist/unifi-protect-timeline-card.js",

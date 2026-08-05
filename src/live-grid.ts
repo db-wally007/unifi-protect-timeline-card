@@ -57,10 +57,12 @@ export class LiveGrid extends LitElement {
 
   // True once HA's <ha-camera-stream> element is defined (lazy-loaded).
   @state() private _streamReady = false;
+  @state() private _visible = true;
   // Own measured box — drives the fit-to-box tile size.
   @state() private _boxW = 0;
   @state() private _boxH = 0;
   private _ro?: ResizeObserver;
+  private _visibilityObserver?: IntersectionObserver;
 
   static styles = css`
     :host {
@@ -257,11 +259,23 @@ export class LiveGrid extends LitElement {
       }
     });
     this._ro.observe(this);
+    // Bubble popups and cached dashboard views can hide the grid with
+    // display:none without disconnecting it. Stop all decoders in that state;
+    // simply removing them during the following render is not enough.
+    this._visibilityObserver = new IntersectionObserver((entries) => {
+      const visible = entries[entries.length - 1].isIntersecting;
+      if (visible === this._visible) return;
+      if (!visible) releaseVideosIn(this.renderRoot as unknown as DocumentFragment);
+      this._visible = visible;
+    });
+    this._visibilityObserver.observe(this);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._ro?.disconnect();
+    this._visibilityObserver?.disconnect();
+    this._visibilityObserver = undefined;
     // Unmounting the tiles does NOT stop them decoding: a detached <video>
     // holds its MediaSource and stays at NETWORK_LOADING, and HA caches the
     // view so it is never collected. On iOS those retained pipelines starve
@@ -323,7 +337,7 @@ export class LiveGrid extends LitElement {
     const newest = this.newest[entry.camera];
     return html`
       <div class="tile" role="button" @click=${() => this._open(entry)}>
-        ${this._streamReady && stateObj
+        ${this._visible && this._streamReady && stateObj
           ? html`<ha-camera-stream
               .hass=${this.hass}
               .stateObj=${stateObj}

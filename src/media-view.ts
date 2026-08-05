@@ -36,6 +36,7 @@ import { buildVideoUrl, signPath, startClipSession, endClipSession } from './dat
 import { inGap } from './data/gaps';
 import { ScrubPreviewLoader, type PreviewBlock } from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
+import { visibleLiveVideo } from './data/live-video';
 
 // Cut playback chunks at recording-tier boundaries. Only needed under ADAPTIVE
 // recording, where one export could straddle the high-res event tier and the low-res
@@ -90,13 +91,10 @@ const SLOW_SEEK_MS = 40;
 const SEEK_SAMPLE_MIN = 5; // don't judge a device on the first seek of a session
 const SEEK_SAMPLE_MAX = 15;
 
-// Longest a held frame may stay up. Generous — an NVR export can genuinely take
-// a couple of seconds — but finite, so a load that never completes can't pin a
-// stale picture over the player for good.
-// Backstop only. Shortened from 12 s: a hold is meant to cover a gap of a few
-// hundred ms, so if the release logic ever fails, 12 s of a stale still pinned
-// over a working player is far worse than a brief black frame.
-const FREEZE_MAX_MS = 15_000;
+// Live must never be hidden longer than one UniFi keyframe interval. Historical
+// NVR exports may genuinely need longer, but both paths remain finite.
+const LIVE_FREEZE_MAX_MS = 5_000;
+const HISTORICAL_FREEZE_MAX_MS = 15_000;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
@@ -217,7 +215,7 @@ export class MediaView extends LitElement {
   @state() private _followRate = 1; // playback speed (1, 2 or 4)
   @state() private _nearLive = false; // within ~16s of live (disables speed)
   @state() private _livePausedState = false; // live inner <video> paused (for the icon)
-  @state() private _liveMuted = false; // user muted the live stream
+  @state() private _liveMuted = true; // muted start permits reliable autoplay
   @state() private _clipPaused = false; // bounded event clip paused
   @state() private _clipMuted = false; // bounded event clip muted
   @state() private _clipRate = 1; // bounded event clip speed (1, 2 or 4)
@@ -925,6 +923,13 @@ export class MediaView extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    // Set this before render mounts HA's player. Starting unmuted makes async
+    // WebRTC negotiation lose the opening gesture and leaves a decoded video
+    // paused by autoplay policy; the user can enable audio once live is moving.
+    if (this.live && (changed.has('live') || changed.has('_streamReady'))) {
+      this._livePausedState = false;
+      this._liveMuted = true;
+    }
     // HOLDFRAME-2026-08-05c: CAPTURE THE HELD FRAME FIRST — before anything
     // below tears the outgoing player down. `releaseVideosIn` sets srcObject to
     // null and calls load(), which drops the element to readyState 0 /
@@ -1070,12 +1075,10 @@ export class MediaView extends LitElement {
    */
   private _hideLiveTimeline(attempt = 0): void {
     clearTimeout(this._hideTimer);
-    const stream = this.renderRoot.querySelector('ha-camera-stream');
-    const video = stream ? this._deepVideo(stream) : null;
+    const video = this._liveVideo();
     if (video) {
-      // The freshly-mounted live stream autoplays MUTED (and can re-mute itself
-      // during startup), so re-assert unmuted+playing across the retry window —
-      // UNLESS the user has explicitly muted/paused via the custom controls.
+      // Apply the selected mute state to whichever HA transport is visible and
+      // keep autoplay asserted unless the user explicitly paused it.
       if (this._liveMuted !== video.muted) video.muted = this._liveMuted;
       if (!this._livePausedState && video.paused) {
         video.play?.().catch(() => {
@@ -1125,8 +1128,7 @@ export class MediaView extends LitElement {
   }
 
   private _pollLive(): void {
-    const stream = this.renderRoot.querySelector('ha-camera-stream');
-    const video = stream ? this._deepVideo(stream) : null;
+    const video = this._liveVideo();
     if (!video) return; // not ready yet — keep last known state, try again next tick
     this._reportLivePlaying(!video.paused);
   }
@@ -1142,18 +1144,6 @@ export class MediaView extends LitElement {
         composed: true,
       }),
     );
-  }
-
-  private _deepVideo(el: Element): HTMLVideoElement | null {
-    const sr = (el as HTMLElement).shadowRoot;
-    if (!sr) return null;
-    const direct = sr.querySelector('video');
-    if (direct) return direct;
-    for (const child of Array.from(sr.querySelectorAll('*'))) {
-      const found = this._deepVideo(child);
-      if (found) return found;
-    }
-    return null;
   }
 
   private get _liveStream(): boolean {
@@ -1298,8 +1288,6 @@ export class MediaView extends LitElement {
       if (changed.has('live') || changed.has('_streamReady')) {
         this._cancelLoad(); // back to live: stop any historical export in flight
         this._stopFollow();
-        this._livePausedState = false; // fresh live plays, unmuted
-        this._liveMuted = false;
         this._hideLiveTimeline();
         this._startLivePoll();
         this._flashFollowCtrl(); // flash the custom controls so they're discoverable
@@ -2444,7 +2432,9 @@ export class MediaView extends LitElement {
   // the follow slot lingers while ha-camera-stream connects).
   private _frozenFrom?: { el: HTMLVideoElement; src: string };
   private _framePresented = false;
-  private _rvfcKey?: string;
+  private _frameWatchGeneration = 0;
+  private _rvfcVideo?: HTMLVideoElement;
+  private _rvfcSource = '';
   @state() private _holdPoster = '';
   // HOLDFRAME-2026-08-05d: a BOUNDED preload of the camera snapshot, kept only
   // while live is on screen and refreshed every POSTER_REFRESH_MS. The poster
@@ -2518,26 +2508,6 @@ export class MediaView extends LitElement {
 
   /** Copy the current frame onto the overlay canvas and hold it. No-op when
    *  nothing is showing yet — a black hold is worse than the honest black. */
-  // HOLDFRAME-DISABLED-2026-08-05 — the whole held-frame feature is switched off
-  // here at the user's direction, because live playback started stuttering
-  // (video freezing for seconds while AUDIO kept playing) around when this
-  // landed, on every device and both browsers.
-  //
-  // Why this is a credible cause: _holdFrame runs on `changed.has('targetTime')
-  // && !this.scrubbing`, and the live tick moves targetTime every second — so
-  // while LIVE is on screen this executes once a second, and before it decides
-  // whether to show anything it already does the expensive part: drawImage() of
-  // the full 2688x1512 live frame into a canvas, then getImageData() — a GPU
-  // readback that forces a pipeline sync, and on Apple platforms can knock a
-  // hardware-decoded video off its zero-copy path. A receive pipeline stalled
-  // like that overflows its buffers, which reports as packetsLost and reads as
-  // "network loss" even though nothing is wrong with the network.
-  //
-  // NOTE my earlier test was invalid: it sampled `_frozen` (whether the
-  // overlay was VISIBLE) and saw 0%, but the cost above is paid on every call
-  // regardless of whether a hold is ultimately shown.
-  //
-  // TO RESTORE: delete this early return. Everything below is untouched.
   private _holdFrame(preferSprite = false, posterOk = false): void {
     if (!HOLD_FRAME_ENABLED) return;
     // HOLDFRAME-2026-08-05b: capture EVEN IF the outgoing player is still
@@ -2673,9 +2643,12 @@ export class MediaView extends LitElement {
   private _watchForFirstFrame(): void {
     cancelAnimationFrame(this._freezeRaf);
     clearTimeout(this._freezeTimer);
+    const generation = ++this._frameWatchGeneration;
     this._framePresented = false;
-    this._rvfcKey = undefined;
+    this._rvfcVideo = undefined;
+    this._rvfcSource = '';
     const started = performance.now();
+    const maxHoldMs = this.live ? LIVE_FREEZE_MAX_MS : HISTORICAL_FREEZE_MAX_MS;
     const tick = (): void => {
       if (this._framePresented) {
         this._releaseFrame();
@@ -2712,18 +2685,25 @@ export class MediaView extends LitElement {
             requestVideoFrameCallback?: (cb: () => void) => number;
           }
         ).requestVideoFrameCallback;
-        const key = `${(v.currentSrc || v.src) ?? ''}`;
-        if (rvfc && this._rvfcKey !== key) {
-          this._rvfcKey = key;
+        const source = v.currentSrc || v.src || '';
+        if (rvfc && (this._rvfcVideo !== v || this._rvfcSource !== source)) {
+          this._rvfcVideo = v;
+          this._rvfcSource = source;
           rvfc.call(v, () => {
-            this._framePresented = true;
+            if (
+              generation === this._frameWatchGeneration &&
+              this._rvfcVideo === v &&
+              this._rvfcSource === source
+            ) {
+              this._framePresented = true;
+            }
           });
         } else if (!rvfc && v.readyState >= 3 && v.currentTime > 0 && !v.seeking) {
           this._releaseFrame(); // engine without rVFC — best available signal
           return;
         }
       }
-      if (performance.now() - started > FREEZE_MAX_MS) {
+      if (performance.now() - started > maxHoldMs) {
         this._releaseFrame();
         return;
       }
@@ -2738,8 +2718,10 @@ export class MediaView extends LitElement {
     clearTimeout(this._freezeTimer);
     this._freezeTimer = undefined;
     this._frozenFrom = undefined;
+    this._frameWatchGeneration++;
     this._framePresented = false;
-    this._rvfcKey = undefined;
+    this._rvfcVideo = undefined;
+    this._rvfcSource = '';
     this._holdPoster = '';
     this._frozen = false;
     this._freezeCanvas?.setAttribute('hidden', '');
@@ -2911,7 +2893,7 @@ export class MediaView extends LitElement {
 
   private _liveVideo(): HTMLVideoElement | null {
     const stream = this.renderRoot.querySelector('ha-camera-stream');
-    return stream ? this._deepVideo(stream) : null;
+    return stream ? visibleLiveVideo(stream) : null;
   }
 
   /** Rewind 15s off live -> the card drops out of live into delayed-follow. */
@@ -2947,10 +2929,13 @@ export class MediaView extends LitElement {
 
   private _toggleLiveMute = (e: Event): void => {
     e.stopPropagation();
+    this._liveMuted = !this._liveMuted;
+    const stream = this.renderRoot.querySelector('ha-camera-stream') as
+      | (HTMLElement & { muted: boolean })
+      | null;
+    if (stream) stream.muted = this._liveMuted;
     const v = this._liveVideo();
-    if (!v) return;
-    this._liveMuted = !v.muted;
-    v.muted = this._liveMuted;
+    if (v) v.muted = this._liveMuted;
     this._showFollowCtrl();
   };
 
@@ -3237,7 +3222,7 @@ export class MediaView extends LitElement {
     // black box that re-asserts its own autoplay, so the only reliable way to
     // stop its decode + audio when you leave live is to UNMOUNT it (pausing it
     // doesn't hold — it resumes itself on its next render). On return it's
-    // remounted and re-unmuted (see _hideLiveTimeline).
+    // remounted muted for reliable autoplay (see _hideLiveTimeline).
     if (this._liveStream) {
       const stateObj = this.hass.states[this.cameraId];
       return html`
@@ -3253,6 +3238,7 @@ export class MediaView extends LitElement {
                   .hass=${this.hass}
                   .stateObj=${stateObj}
                   .controls=${false}
+                    .muted=${this._liveMuted}
                   allow-exoplayer
                 ></ha-camera-stream>
                 ${this._renderCtrlBar('live')}`
