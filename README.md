@@ -162,6 +162,29 @@ Single mode unless noted.
 | `chunk_seconds` | number | `300` | Length of each exported clip segment. Longer = slower to start, fewer joins. Minimum 2. Both modes |
 | `delay_seconds` | number | `15` | How far behind live delayed-follow playback holds. Minimum 12 |
 
+#### Reliable live startup
+
+Live uses Home Assistant's `<ha-camera-stream>` negotiation rather than a card-owned transport.
+Each fresh live session starts muted so HLS/WebRTC can autoplay reliably; the mute button enables
+audio after video starts. When WebRTC has no audio, Home Assistant switches to its already-running
+HLS player on unmute.
+
+For consistently fast high-resolution startup, enable **Preload stream** in Home Assistant's camera
+preferences for each entity used by a timeline, and align LL-HLS with UniFi Protect's five-second
+keyframes:
+
+```yaml
+stream:
+  ll_hls: true
+  segment_duration: 5
+  part_duration: 1
+```
+
+Preloading continuously pulls each selected camera stream into Home Assistant, so account for its
+network and decode cost. On the measured 2688x1512 cameras, ten standalone starts improved from a
+724-6199 ms range without preload to 756-1388 ms with preload; ten jumps back to LIVE completed in
+428-1858 ms. Enabling audio switched from muted WebRTC to audio-capable HLS in 1436 ms.
+
 ### Fullscreen overlay
 
 The scrubber drawn on the right edge of the fullscreen player. Single mode only; the second value in

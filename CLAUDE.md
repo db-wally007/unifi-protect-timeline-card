@@ -44,13 +44,13 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
   near the top (`PLAYHEAD_FRAC`). Dragging pans the domain; tap/drag/wheel emit `scrub`/`scrub-end`
   with a time; the card loads footage for that time. Zoom is stepped (`SPAN_STEPS`) with an eased
   animation (`_animDomain`).
-- **Live.** Live is HA's `<ha-camera-stream>` (full-quality HLS — *not* WebRTC/go2rtc, which can't
-  carry it without transcoding — NOTE: measured 2026-08-04 the stream is H.264 2688x1512
-  @30fps 6.9 Mbps, which WebRTC *can* carry natively, so this rationale is stale). It is a **black box that re-asserts its own autoplay**, so:
-  it is **unmounted** when you leave live (the only reliable way to stop its decode + audio), and
-  remounted + re-unmuted on return. Its play/pause is detected by **polling** the inner `<video>`
-  `.paused` (events get missed on remount/slow init) so the card can freeze the playhead when live
-  is paused.
+- **Live.** Live is HA's `<ha-camera-stream>`, which negotiates both LL-HLS and go2rtc WebRTC for
+  these H.264 2688x1512 cameras. A fresh session starts MUTED so asynchronous player setup cannot
+  lose autoplay permission. HA normally settles on WebRTC while muted; unmuting the OUTER
+  `ha-camera-stream` lets HA switch to HLS when WebRTC has no audio. The card must always target
+  HA's NON-HIDDEN player (`data/live-video.ts`), never the first nested `<video>`: during startup
+  HLS is visible while WebRTC is hidden, then HA can reverse them. Live is unmounted when leaving
+  it, and remounted muted on return. Polling the visible video drives play/pause state.
 - **Historical (bounded event clips).** The export proxy IGNORES `Range:` and the NVR writes the
   MP4 index (`moov`) LAST, so the export can be neither started nor seeked as a stream. It used to
   be downloaded whole into a Blob; at the measured ~52 MB/min of high-res footage that peaked near 740 MB for a
@@ -137,6 +137,20 @@ of each and editing either path edits this repo. Two consequences:
   1280x720 @ gap 40/40 after. The custom property inherits through the shadow boundary — that is
   the only lever. **Not reproducible outside fullscreen** (the stage is then shorter than the cap),
   so always verify this one with the player actually fullscreen. Same override in `live-grid.ts`.
+- **Reliable high-resolution startup needs the HA worker warm and segment cadence aligned.**
+  Measured 2026-08-05: with HA's default six-second segment target, UniFi's five-second keyframes
+  produced 10-second HLS segments. `stream.segment_duration: 5`, `part_duration: 1`, and LL-HLS
+  produce ~4.994-second segments with ~1-second parts. `preload_stream: true` on the three high-res
+  camera preferences removed cold-start outliers: standalone starts were 756-1388 ms (10 trials),
+  return-to-LIVE was 428-1858 ms (10 trials), and audio handoff was 1436 ms. Preload has continuous
+  network cost; document that tradeoff rather than silently enabling it in a reusable component.
+- **A hidden HA transport is not a presented frame.** Both HA candidates can have an empty
+  `currentSrc`, so requestVideoFrameCallback deduplication keys by VIDEO IDENTITY + source and a
+  transition generation. A stale callback cannot release a newer hold. LIVE holds have a hard
+  five-second backstop; historical exports retain a 15-second backstop.
+- **`upc-live-grid` can be hidden without disconnecting.** Bubble popups and cached views use
+  `display:none`; removing a video later does not stop its pipeline. The grid's IntersectionObserver
+  calls `releaseVideosIn()` BEFORE rendering streams out, then remounts fresh players when visible.
 - **Anything cached off `cameraId` must be reset when `cameraId` changes.** The held-frame
   poster fallback (`_posterWarm`) is latched — `if (this.live && !this._posterWarm)` — because
   `entity_picture` carries a token that changes on every state update, so refreshing it freely
@@ -311,7 +325,7 @@ exactly those; positions are still recomputed every render. Verified in-browser:
 ```bash
 npm install
 npm run typecheck     # tsc --noEmit
-npm test              # vitest — pure logic only (time-scale, detections)
+npm test              # vitest — pure logic + live transport selection
 npm run build         # -> dist/unifi-protect-timeline-card.js (single ESM file)
 ```
 
