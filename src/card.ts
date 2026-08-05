@@ -41,6 +41,7 @@ import { groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
+import { dateFmt } from './data/fmt'; // PERF-SCRUB-2026-08-03
 import { swallowNextTap, type ScrubberTimeline } from './scrubber-timeline';
 import type { EventsList } from './events-list';
 import './events-list';
@@ -814,6 +815,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       scrub_preview: true,
       scrub_preview_dir: '',
       scrub_tip: true,
+      scrub_preview_mode: 'sprites', // SPRITE-PREVIEW-2026-08-04 (temp; 'auto' long-term)
       fs_timeline: true,
       fs_timeline_width: 165,
       fs_timeline_grab_width: 0,
@@ -1570,13 +1572,15 @@ export class UnifiProtectTimelineCard extends LitElement {
     const ph = new Date(this._domain ? playheadTimeOf(this._domain, this._phFrac()) : Date.now());
     const isSel = (d: number) =>
       ph.getFullYear() === y && ph.getMonth() === m && ph.getDate() === d;
-    const monthLabel = new Intl.DateTimeFormat(undefined, {
+    // PERF-SCRUB-2026-08-03: memoised formatters (the weekday row built seven
+    // of them per calendar render). Revert: plain `new Intl.DateTimeFormat`.
+    const monthLabel = dateFmt({
       month: 'long',
       year: 'numeric',
     }).format(first);
     // Localized SUN..SAT header row (2023-01-01 was a Sunday).
     const wk = Array.from({ length: 7 }, (_, i) =>
-      new Intl.DateTimeFormat(undefined, { weekday: 'narrow' }).format(new Date(2023, 0, i + 1)),
+      dateFmt({ weekday: 'narrow' }).format(new Date(2023, 0, i + 1)),
     );
     // Events view: only days with events are selectable (empty set — manifest
     // not loaded yet — falls back to the timeline window rather than a dead UI).
@@ -1739,7 +1743,10 @@ export class UnifiProtectTimelineCard extends LitElement {
     const fsTimelineScrim = this._config.fs_timeline_scrim ?? 0.88;
     const fsTimelineScrimExtend = this._config.fs_timeline_scrim_extend ?? (fsPhone ? 130 : 170);
     // Date pill (bottom-left) follows the playhead — short form, e.g. "Jul 6".
-    const dateStr = new Intl.DateTimeFormat(undefined, {
+    // PERF-SCRUB-2026-08-03: memoised formatter — this sits in render(), which
+    // runs on EVERY pointermove of a scrub (~350 times per gesture).
+    // Revert: `new Intl.DateTimeFormat(undefined, {...})` instead of dateFmt({...}).
+    const dateStr = dateFmt({
       month: 'short',
       day: 'numeric',
     }).format(new Date(playheadTimeOf(this._domain, this._phFrac())));
@@ -1924,6 +1931,7 @@ export class UnifiProtectTimelineCard extends LitElement {
               .chunkSeconds=${this._config.chunk_seconds ?? 300}
               .previewDir=${this._scrubDir()}
               .tipEnabled=${this._config.scrub_tip !== false}
+              .previewMode=${this._config.scrub_preview_mode ?? 'sprites'}
               .footageSpans=${this._footageSpans}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}

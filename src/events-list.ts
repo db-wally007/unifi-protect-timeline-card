@@ -14,6 +14,7 @@ import { customElement, property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { DetectionBand } from './data/types';
 import type { ThumbnailLoader } from './data/thumbnail-loader';
+import { fmtTime } from './data/fmt'; // PERF-SCRUB-2026-08-03
 
 @customElement('upc-events-list')
 export class EventsList extends LitElement {
@@ -241,20 +242,22 @@ export class EventsList extends LitElement {
     });
   }
 
+  // PERF-SCRUB-2026-08-03: memoised formatters — one per rendered row before.
+  // Revert: inline `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
   private _fmtTime(t: number): string {
-    return new Intl.DateTimeFormat(undefined, {
+    return fmtTime(t, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-    }).format(new Date(t));
+    });
   }
 
   private _fmtDay(t: number): string {
-    return new Intl.DateTimeFormat(undefined, {
+    return fmtTime(t, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-    }).format(new Date(t));
+    });
   }
 
   private _sameDay(a: number, b: number): boolean {

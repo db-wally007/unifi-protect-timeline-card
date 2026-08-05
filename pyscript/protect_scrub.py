@@ -244,6 +244,70 @@ OVERVIEW_PREFIX = "o"      # o<start_ms>.mp4, alongside the fine <start_ms>.mp4
 MAX_OVERVIEW_PER_RUN = 3   # own small budget so a fine-block backfill can't
                            # starve it (168 files/camera -> covered in ~1 hour)
 
+# ---- sprite tier (SPRITE-PREVIEW-2026-08-04) --------------------------------
+# A decoder-free copy of every playable unit: the same frames, laid out as JPEG
+# mosaics instead of an MP4, so a client can show a scrub frame with one canvas
+# drawImage and never touch the video decoder.
+#
+# WHY this exists (measured on the Lenovo Idea Tab, Mali-G57, 2026-08-04):
+#   * seeking an MP4 costs 99 ms there (p90 122) vs 10 ms on a MacBook-class
+#     device, capping the scrub preview at ~10 updates/sec no matter how fast
+#     the JavaScript around it is — that ceiling IS the "preview won't follow my
+#     finger" bug, and no client-side optimisation can move it;
+#   * every fresh <video> costs another ~198 ms of decoder start-up, paid twice
+#     per gesture and again at each block boundary;
+#   * drawing one sprite tile on the SAME device costs 0.53 ms — ~190x cheaper
+#     than a seek, i.e. comfortably inside a 60 Hz frame.
+# The client decides which tier to use by MEASURING ITSELF; this job just
+# publishes both, so fast devices keep the sharper video preview untouched.
+#
+# The format choices are measurements from that device too, not preferences:
+#   * JPEG over WebP — decode 55 ms vs 108 ms and draw 0.53 vs 0.86 ms, for only
+#     ~9% more bytes. Mobile decoders are far better at JPEG.
+#   * sheets must stay at/under ~2560x1440. The same tiles packed into 5120x2880
+#     sheets drew at 1.30 ms instead of 0.53 ms even on a device whose
+#     MAX_TEXTURE_SIZE is 8192 — and 4096 is a common mobile cap, past which the
+#     texture upload can fail outright. Keep SPRITE_COLS * SPRITE_TILE_W and
+#     SPRITE_ROWS * SPRITE_TILE_H under 2560.
+SPRITES_ENABLED = True
+# FULL SOURCE RESOLUTION as of 2026-08-04. 480x270 was visibly softer than the
+# near-live video tier (which is the 640x360 mp4), and the seam was obvious the
+# moment scrubbing crossed out of the head region into sprite territory. Since
+# sprites are generated FROM that mp4 they can never beat it — matching it is
+# the whole target. Measured against the exact source frame, single 640x360
+# frame, SSIM: jpg q=8 -> 0.930 (28 KB), q=6 -> 0.949 (37 KB), q=4 -> 0.970
+# (54 KB), q=2 -> 0.989 (88 KB). WebP is equivalent in this range (q=60 ->
+# 0.937 / 32 KB) and the tablet decodes it TWICE as slowly, so JPEG stays.
+SPRITE_TILE_W = 640
+SPRITE_TILE_H = 360
+SPRITE_COLS = 4            # 4x4 = 16 frames per sheet -> 2560x1440, the largest
+SPRITE_ROWS = 4            # geometry measured as fast on the tablet (0.53 ms)
+SPRITE_QUALITY = 4         # ~54 KB/frame, SSIM 0.97 vs source. ~35 GB for 3
+                           # cameras over the 7-day window; 6 -> ~24 GB (0.95),
+                           # 8 -> ~18 GB (0.93), 2 -> ~55 GB (0.99).
+SPRITE_VERSION = 1
+# Changing ANY of the four settings above invalidates every sheet on disk. The
+# signature below is stored in state.json and compared each run; a mismatch
+# wipes that camera's sheets so they rebuild at the new setting, which means
+# retuning quality is a one-line edit and never a manual cleanup.
+SPRITE_SIG = "%sx%s:%sx%s:q%s" % (
+    SPRITE_TILE_W, SPRITE_TILE_H, SPRITE_COLS, SPRITE_ROWS, SPRITE_QUALITY)
+# Built from the ALREADY CACHED mp4 — no NVR call, no network, ~0.28 s per block
+# — so this budget is only about not hogging the executor on a busy HA. At 60 a
+# run costs ~17 s of ONE executor thread per minute and a full 7-day backfill
+# (~3500 units across 3 cameras) completes in about an hour; drop it back toward
+# 20 if HA ever feels sluggish while the cache is filling.
+MAX_SPRITE_PER_RUN = 60
+SPRITE_SUFFIX = ".sprite.json"  # sidecar; its presence means "sheets complete"
+# PURGING: sheets are "<stem>.s<i>.jpg" and the sidecar "<stem>.sprite.json", so
+# for FINE blocks the existing expired-block sweep (which deletes every name
+# whose leading dot-segment is an expired block start) already removes them. The
+# overview sweep matches "o<start>.mp4" explicitly and is extended below.
+# NOT generated for the head/tip tiers: the head is re-exported every minute, so
+# sheets for it would cost ~11 files a minute per camera to cover a few minutes
+# of footage. Near-live scrubbing stays on the video path (i.e. exactly today's
+# behaviour) until that proves worth solving separately.
+
 # ---- tip tier (EXPERIMENTAL) ------------------------------------------------
 # On-demand real-time clip of the newest TIP_S seconds, exported when the user
 # STARTS SCRUBBING rather than on a schedule. Measured on this NVR (2026-07-27):
@@ -386,6 +450,111 @@ def _store_block(path, data, force_encode=False):
                 os.remove(t)
     os.remove(tmp_raw)
     return ok
+
+
+def _probe_frame_count(path):
+    """Number of video frames; 0 if unreadable.
+
+    SPRITE-PREVIEW-2026-08-04. The container header is tried first (the NVR's
+    exports carry nb_frames and it costs nothing); counting is the fallback for
+    re-encoded files that don't. The count is what maps a time onto a tile, so a
+    wrong one skews every frame in the block — never guess it from duration.
+    """
+    for args in (
+        ["-show_entries", "stream=nb_frames"],
+        ["-count_frames", "-show_entries", "stream=nb_read_frames"],
+    ):
+        try:
+            res = task.executor(
+                subprocess.run,
+                ["ffprobe", "-v", "error", "-select_streams", "v:0"] + args
+                + ["-of", "csv=p=0", path],
+                capture_output=True, timeout=60,
+            )
+            n = int(res.stdout.decode().strip().rstrip(",") or 0)
+            if n > 0:
+                return n
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    return 0
+
+
+def _sprite_sheets(cam_dir, stem):
+    """Render <stem>.mp4 into JPEG mosaics + a sidecar. True if it ended up
+    complete. SPRITE-PREVIEW-2026-08-04.
+
+    The sidecar is written LAST and is the only completeness marker: a client
+    reads it before touching a sheet, so an interrupted run just leaves orphan
+    .jpg files that the next run overwrites (the render is deterministic for the
+    same source, so a half-written sheet can never become permanently wrong).
+    """
+    src = os.path.join(cam_dir, stem + ".mp4")
+    if not os.path.exists(src):
+        return False
+    count = _probe_frame_count(src)
+    if count <= 0:
+        return False
+    per = SPRITE_COLS * SPRITE_ROWS
+    n_sheets = (count + per - 1) // per
+    # ffmpeg's image2 muxer numbers its output from 1.
+    pattern = os.path.join(cam_dir, stem + ".s%d.jpg")
+    try:
+        res = task.executor(
+            subprocess.run,
+            ["ffmpeg", "-y", "-v", "error", "-i", src,
+             "-vf", "scale=%s:%s,tile=%sx%s" % (
+                 SPRITE_TILE_W, SPRITE_TILE_H, SPRITE_COLS, SPRITE_ROWS),
+             "-q:v", str(SPRITE_QUALITY), pattern],
+            capture_output=True, timeout=180,
+        )
+        ok = res.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    if not ok:
+        log.warning("protect_scrub: sprite render failed for %s", stem)
+        return False
+    sheets = []
+    for i in range(1, n_sheets + 1):
+        nm = "%s.s%s.jpg" % (stem, i)
+        if not os.path.exists(os.path.join(cam_dir, nm)):
+            log.warning("protect_scrub: sprite sheet %s missing after render", nm)
+            return False
+        sheets.append(nm)
+    # `count` is the ground truth for time -> tile: tile = floor(frac * count),
+    # sheet = tile // per, position = tile % per. The trailing tiles of the last
+    # sheet are padding and must never be shown, which is exactly what `count`
+    # prevents.
+    _write_json(os.path.join(cam_dir, stem + SPRITE_SUFFIX), {
+        "version": SPRITE_VERSION,
+        "tile_w": SPRITE_TILE_W,
+        "tile_h": SPRITE_TILE_H,
+        "cols": SPRITE_COLS,
+        "rows": SPRITE_ROWS,
+        "count": count,
+        "sheets": sheets,
+    })
+    return True
+
+
+def _purge_sprites(cam_dir, names, stems):
+    """Delete sheets + sidecars belonging to `stems` (used for the overview
+    tier, whose names the digit-led block sweep never matches).
+    SPRITE-PREVIEW-2026-08-04."""
+    if not stems:
+        return
+    for nm in names:
+        hit = False
+        for stem in stems:
+            if nm == stem + SPRITE_SUFFIX:
+                hit = True
+            elif nm.startswith(stem + ".s") and nm.endswith(".jpg"):
+                hit = True
+        if not hit:
+            continue
+        try:
+            os.remove(os.path.join(cam_dir, nm))
+        except OSError:
+            pass
 
 
 def _read_events_meta(slug):
@@ -625,7 +794,8 @@ def _get_api():
     return getattr(data, "api", None)
 
 
-def _write_index(cam_dir, blocks, maps, head, now_ms, overview):
+def _write_index(cam_dir, blocks, maps, head, now_ms, overview,
+                 sprites=None, o_sprites=None):
     _write_json(os.path.join(cam_dir, "index.json"), {
         "version": INDEX_VERSION,
         "generated": now_ms,
@@ -645,6 +815,22 @@ def _write_index(cam_dir, blocks, maps, head, now_ms, overview):
         # (h<start>-<end>.mp4) covering exactly [start, end]; the card must map
         # THAT file, never a fixed name, or a stale index skews the frame.
         "head": head,
+        # SPRITE-PREVIEW-2026-08-04: units that also have decoder-free JPEG
+        # mosaics. Additive — a card that doesn't know these keys ignores them
+        # and keeps using the mp4 tiers exactly as before. Per-unit geometry
+        # lives in "<stem>.sprite.json" (immutable, cache-forever) because the
+        # frame COUNT varies per unit and listing it here would bloat a file
+        # that is re-read every minute.
+        "sprite_meta": {
+            "version": SPRITE_VERSION,
+            "tile_w": SPRITE_TILE_W,
+            "tile_h": SPRITE_TILE_H,
+            "cols": SPRITE_COLS,
+            "rows": SPRITE_ROWS,
+            "suffix": SPRITE_SUFFIX,
+        } if SPRITES_ENABLED else None,
+        "sprites": sorted(sprites or []),
+        "osprites": sorted(o_sprites or []),
     })
 
 
@@ -771,8 +957,32 @@ def protect_scrub_sync():
         plain = set()
         map_starts = set()
         overview = set()
+        # SPRITE-PREVIEW-2026-08-04: units whose sheets are complete (the
+        # sidecar is written last, so its presence is the marker). A change to
+        # the tile geometry or quality invalidates all of them — detected by
+        # comparing SPRITE_SIG against what state.json recorded.
+        sprites = set()
+        o_sprites = set()
+        sprite_stale = SPRITES_ENABLED and state.get("sprite_sig") != SPRITE_SIG
         for nm in names:
-            if nm.endswith(".mp4") and nm[:-4].isdigit():
+            if nm.endswith(SPRITE_SUFFIX) or (".s" in nm and nm.endswith(".jpg")):
+                if sprite_stale:
+                    # Built at a different geometry/quality — drop it so this
+                    # unit is re-rendered at the current setting.
+                    try:
+                        os.remove(os.path.join(cam_dir, nm))
+                    except OSError:
+                        pass
+                    continue
+                if not nm.endswith(SPRITE_SUFFIX):
+                    continue
+                stem = nm[: -len(SPRITE_SUFFIX)]
+                if stem.isdigit():
+                    sprites.add(int(stem))
+                elif (stem.startswith(OVERVIEW_PREFIX)
+                        and stem[len(OVERVIEW_PREFIX):].isdigit()):
+                    o_sprites.add(int(stem[len(OVERVIEW_PREFIX):]))
+            elif nm.endswith(".mp4") and nm[:-4].isdigit():
                 plain.add(int(nm[:-4]))
             elif (nm.startswith(OVERVIEW_PREFIX) and nm.endswith(".mp4")
                     and nm[len(OVERVIEW_PREFIX):-4].isdigit()):
@@ -810,7 +1020,13 @@ def protect_scrub_sync():
                 os.remove(os.path.join(cam_dir, f"{OVERVIEW_PREFIX}{b}.mp4"))
             except OSError:
                 pass
+        # SPRITE-PREVIEW-2026-08-04: their sheets/sidecars go with them (the
+        # digit-led sweep above only matches the FINE tier's names).
+        _purge_sprites(cam_dir, names,
+                       [f"{OVERVIEW_PREFIX}{b}" for b in o_expired])
         overview -= o_expired
+        o_sprites -= o_expired
+        sprites -= expired
 
         head = state.get("head")
         if head and head.get("start", 0) < first_start:
@@ -828,6 +1044,9 @@ def protect_scrub_sync():
             "blocks": on_disk,
             "maps": map_starts,
             "overview": overview,
+            "sprites": sprites,          # SPRITE-PREVIEW-2026-08-04
+            "o_sprites": o_sprites,
+            "s_attempts": {int(k): v for k, v in (state.get("s_attempts") or {}).items()},
             "o_attempts": {int(k): v for k, v in (state.get("o_attempts") or {}).items()},
             "attempts": attempts,
             "head": head,
@@ -934,14 +1153,55 @@ def protect_scrub_sync():
         else:
             c["o_attempts"][o_start] = c["o_attempts"].get(o_start, 0) + 1
 
+    # SPRITE TIER (SPRITE-PREVIEW-2026-08-04). Runs LAST and reads only files
+    # already on disk — no NVR call, no network — so it can never delay or
+    # compete with the exports above; if the budget runs out the units simply
+    # get their sheets on a later run and the card keeps using the video tier
+    # for them meanwhile. Newest first, and the OVERVIEW tier is done before the
+    # fine blocks: it is what a fast drag shows, so it is the tier a slow device
+    # needs first. Split blocks are skipped — their playable units are the part
+    # files, not <start>.mp4 (SPLIT_AT_EVENTS is off, so this is dormant).
+    if SPRITES_ENABLED:
+        s_budget = MAX_SPRITE_PER_RUN
+        pending = []
+        for cam_id, c in cams.items():
+            for b in sorted(c["overview"] - c["o_sprites"], reverse=True):
+                pending.append((1, b, cam_id, f"{OVERVIEW_PREFIX}{b}", "o_sprites"))
+            for b in sorted(c["blocks"] - c["sprites"] - c["maps"], reverse=True):
+                pending.append((0, b, cam_id, str(b), "sprites"))
+        # overview (tier 1) first, then newest blocks
+        pending.sort(key=lambda p: (p[0], p[1]), reverse=True)
+        made = 0
+        for tier, b, cam_id, stem, key in pending:
+            if s_budget <= 0:
+                break
+            c = cams[cam_id]
+            if c["s_attempts"].get(b, 0) >= EXPORT_MAX_ATTEMPTS:
+                continue
+            s_budget -= 1
+            if _sprite_sheets(c["dir"], stem):
+                c[key].add(b)
+                c["s_attempts"].pop(b, None)
+                made += 1
+            else:
+                c["s_attempts"][b] = c["s_attempts"].get(b, 0) + 1
+        if made:
+            log.info("protect_scrub: sprites +%s (pending %s)",
+                     made, max(0, len(pending) - MAX_SPRITE_PER_RUN))
+
     # Publish per-camera index + state. The index is rewritten every run (cheap,
     # single small file) so `generated` doubles as the job's heartbeat.
     for cam_id, c in cams.items():
         _write_index(c["dir"], c["blocks"], c["maps"] & c["blocks"], c["head"], now_ms,
-                     c["overview"])
+                     c["overview"], c["sprites"] & c["blocks"],
+                     c["o_sprites"] & c["overview"])
         _write_json(os.path.join(c["dir"], "state.json"), {
             "attempts": {str(k): v for k, v in c["attempts"].items() if k >= first_start},
             "o_attempts": {str(k): v for k, v in c["o_attempts"].items() if k >= first_start},
+            "s_attempts": {str(k): v for k, v in c["s_attempts"].items() if k >= first_start},
+            # SPRITE-PREVIEW-2026-08-04: recorded so the next run can tell that
+            # the tile geometry/quality changed and rebuild the sheets.
+            "sprite_sig": SPRITE_SIG if SPRITES_ENABLED else None,
             "head": c["head"],
         })
         if c["added"] or c["purged"]:

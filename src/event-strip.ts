@@ -21,6 +21,7 @@ import { customElement, property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { MultiBand } from './data/multi-events';
 import type { ThumbnailLoader } from './data/thumbnail-loader';
+import { fmtTime } from './data/fmt'; // PERF-SCRUB-2026-08-03
 
 @customElement('upc-event-strip')
 export class EventStrip extends LitElement {
@@ -381,21 +382,24 @@ export class EventStrip extends LitElement {
     });
   }
 
+  // PERF-SCRUB-2026-08-03: memoised formatters — these run once per rendered
+  // ROW, so a strip re-render used to build dozens. Revert: inline
+  // `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
   private _fmtTime(t: number): string {
     // Short form like the app's strip labels ("8:11 PM" / "20:11" by locale).
-    return new Intl.DateTimeFormat(undefined, {
+    return fmtTime(t, {
       hour: 'numeric',
       minute: '2-digit',
-    }).format(new Date(t));
+    });
   }
 
   /* Day-divider helpers — same formats as the timeline view's events list. */
   private _fmtDay(t: number): string {
-    return new Intl.DateTimeFormat(undefined, {
+    return fmtTime(t, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-    }).format(new Date(t));
+    });
   }
 
   private _sameDay(a: number, b: number): boolean {
@@ -410,11 +414,12 @@ export class EventStrip extends LitElement {
 
   /* Expanded-grid item texts: long time (matches the collapsed list) + duration. */
   private _fmtTimeLong(t: number): string {
-    return new Intl.DateTimeFormat(undefined, {
+    // PERF-SCRUB-2026-08-03: memoised (see _fmtTime above).
+    return fmtTime(t, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-    }).format(new Date(t));
+    });
   }
 
   private _fmtDur(ms: number): string {

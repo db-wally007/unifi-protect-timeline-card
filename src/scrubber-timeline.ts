@@ -27,6 +27,7 @@ import {
   tickTimes,
 } from './data/time-scale';
 import type { ThumbnailLoader } from './data/thumbnail-loader';
+import { fmtTime } from './data/fmt'; // PERF-SCRUB-2026-08-03
 
 // Canvas layout (CSS px). The column is ~200px wide; stacked (phone) mode
 // shifts everything right via `indent` (the bottom-left area stays clear for
@@ -1782,8 +1783,13 @@ export class ScrubberTimeline extends LitElement {
     ctx.closePath();
   }
 
+  // PERF-SCRUB-2026-08-03: was `new Intl.DateTimeFormat(undefined, opts)` on
+  // every call — i.e. once per major tick label per canvas frame, once per frame
+  // for the mirror layout's measureText, and once per Lit render for the
+  // playhead pill. See data/fmt.ts for the measurements.
+  // Revert: `return new Intl.DateTimeFormat(undefined, opts).format(new Date(t));`
   private _fmt(t: number, opts: Intl.DateTimeFormatOptions): string {
-    return new Intl.DateTimeFormat(undefined, opts).format(new Date(t));
+    return fmtTime(t, opts);
   }
 
   render() {
@@ -1940,6 +1946,16 @@ export class ScrubberTimeline extends LitElement {
   // from this same set so it can never reveal a hidden one.
   private _kept: KeptThumb[] = [];
 
+  // PERF-SCRUB-2026-08-03: memoised occlusion pass — see _renderThumbs. Keyed
+  // by everything the SELECTION depends on (never the pan offset).
+  private _keptSel?: {
+    bands: DetectionBand[];
+    span: number;
+    height: number;
+    spacing: number;
+    sel: { m: DetectionBand; g: DetectionBand }[];
+  };
+
   private _members(): { m: DetectionBand; g: DetectionBand }[] {
     if (this._flatMembers?.bands !== this.bands) {
       const flat: { m: DetectionBand; g: DetectionBand }[] = [];
@@ -1984,14 +2000,41 @@ export class ScrubberTimeline extends LitElement {
     // footage plays; zooming in reveals more. Members iterate OLDEST first —
     // bottom of the timeline upward (older = larger y) — so lastKeptY walks
     // DOWN from +Infinity.
-    const kept: KeptThumb[] = [];
-    let lastKeptY = Infinity;
-    for (const { m, g } of this._members()) {
-      const y = (this._timeToY(m.end) + this._timeToY(m.start)) / 2;
-      if (lastKeptY - y < spacing) continue; // too close to the previous kept thumb
-      lastKeptY = y;
-      kept.push({ m, g, y });
+    // PERF-SCRUB-2026-08-03: the greedy pass is memoised, the positions are not.
+    // This render runs on every pointermove of a scrub and used to walk EVERY
+    // group member each time. As the comment above already states, which thumbs
+    // survive depends on the ZOOM only — the test is `lastKeptY - y < spacing`,
+    // and y is linear in time, so a pan shifts every y by the same amount and
+    // cannot change a single comparison. So cache the SELECTION against the
+    // inputs that can change it and recompute only the (cheap) y positions.
+    // Revert: drop _keptSel and inline the greedy loop below again.
+    const span = spanOf(this._dd);
+    const c = this._keptSel;
+    let sel: { m: DetectionBand; g: DetectionBand }[];
+    if (
+      c &&
+      c.bands === this.bands &&
+      c.span === span &&
+      c.height === this._height &&
+      c.spacing === spacing
+    ) {
+      sel = c.sel;
+    } else {
+      sel = [];
+      let lastKeptY = Infinity;
+      for (const { m, g } of this._members()) {
+        const y = (this._timeToY(m.end) + this._timeToY(m.start)) / 2;
+        if (lastKeptY - y < spacing) continue; // too close to the previous kept thumb
+        lastKeptY = y;
+        sel.push({ m, g });
+      }
+      this._keptSel = { bands: this.bands, span, height: this._height, spacing, sel };
     }
+    const kept: KeptThumb[] = sel.map(({ m, g }) => ({
+      m,
+      g,
+      y: (this._timeToY(m.end) + this._timeToY(m.start)) / 2,
+    }));
     this._kept = kept; // track-hover hit-testing picks from this same set
 
     // The active thumb: the playhead's group plays as ONE event, and the kept

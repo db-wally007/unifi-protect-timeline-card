@@ -153,6 +153,7 @@ Single mode unless noted.
 | `scrub_preview` | boolean | `true` | Show cached footage frames while scrubbing instead of a black stage. Needs the [scrub cache](#scrub-preview--protect_scrubpy) |
 | `scrub_preview_dir` | string | `/protect_scrub/<camera object_id>` | Where that cache lives |
 | `scrub_tip` | boolean | `true` | Near the live edge, fetch an on-demand real-time clip of the newest ~60 s so the last minute scrubs frame by frame. `false` = cron cache only |
+| `scrub_preview_mode` | string | `sprites` | How the scrub preview paints. `video` seeks a cached MP4 — sharpest (640×360), but a seek costs ~99 ms on a low-end Android, capping the preview at ~10 updates/sec. `sprites` draws a tile from a cached JPEG mosaic (480×270, ~0.5 ms per frame on that same device). `auto` starts on `video` and switches to `sprites` only if this device's own measured seek latency turns out to be slow — never user-agent sniffing, which fails on tablets that report a desktop UA. Sprites need the sheets `protect_scrub.py` publishes; units without them (the near-live head/tip tiers) always fall back to video |
 
 ### Playback
 

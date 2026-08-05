@@ -8,7 +8,7 @@
 // BOUNDED EVENT CLIPS ARE STREAMED, via a server-side session. The export proxy
 // ignores HTTP Range AND the NVR writes the MP4 index (`moov`) last, so a
 // streamed export can neither start nor seek — which is why this used to fetch
-// the whole clip into a Blob. At ~52 MB per minute of 4K that peaked near 740 MB
+// the whole clip into a Blob. At ~52 MB per minute of high-res footage that peaked near 740 MB
 // for a 7-minute event and got the WKWebView content process killed on iOS: the
 // Companion app appeared to "jump back to the dashboard" exactly when the
 // download completed. Now `protect_cache` exports + faststart-remuxes the clip
@@ -21,13 +21,13 @@
 // the memory problem, and blobs let the two <video> elements leap-frog without a
 // reload flash. Live is HA's <ha-camera-stream>.
 //
-// TIER-AWARE SEGMENTS: the NVR keeps 4K footage around events and a continuous
+// TIER-AWARE SEGMENTS: the NVR keeps high-res (2K) footage around events and a continuous
 // low-quality track in between, and serves ONE tier per export — a request
-// overlapping an event comes from the 4K track where idle stretches are just
+// overlapping an event comes from the high-res track where idle stretches are just
 // sparse keyframes (they'd play absurdly fast and desync the marker). Segments
 // are therefore CUT at the event boundaries (segmentEndFor), so every request
 // streams real-time footage of a single tier and `clipStart + currentTime` is
-// always the true time — 4K during events, low-quality between, like the app.
+// always the true time — high-res during events, low-quality between, like the app.
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
@@ -38,7 +38,7 @@ import { ScrubPreviewLoader, type PreviewBlock } from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
 
 // Cut playback chunks at recording-tier boundaries. Only needed under ADAPTIVE
-// recording, where one export could straddle the 4K event tier and the low-res
+// recording, where one export could straddle the high-res event tier and the low-res
 // continuous tier and the NVR would serve just one of them (idle stretches then
 // fast-forward and desync the playhead). With always-on recording at a single
 // quality every export is single-tier, so cutting only produces more, shorter
@@ -53,10 +53,54 @@ const CUT_CHUNKS_AT_EVENTS = false;
 // touches the NVR at all.
 const TIP_NEAR_LIVE_MS = 5 * 60_000;
 
+// ---- PERF-SCRUB-2026-08-03: speed-aware preview tier -------------------------
+// A fast drag used to freeze the preview outright. _resolvePlayable prefers the
+// FINE 10-minute unit whenever its bytes are cached, and the neighbour/debounce
+// prefetching means it usually is — so a fling restaged the <video> for every
+// block it flew over, while staging one (src -> loadedmetadata -> seek ->
+// loadeddata -> promote) takes far longer than the ~130 ms the playhead spends
+// inside a block. Nothing ever got promoted, so the stage held one stale frame
+// and only caught up after the finger lifted. Measured at 6x CPU throttle the
+// shown frame drifted to ~57 MINUTES behind the playhead; on a fast CPU staging
+// just barely wins, which is why this is invisible on a phone or a laptop.
+//
+// The hour-long overview tier already exists for exactly this, it was simply
+// never preferred. So: while the playhead is moving faster than the fine tier
+// can be staged, show the overview and let the fine unit upgrade the frame when
+// the drag settles — which is what the UniFi app does too.
+//
+// The thresholds are derived, not tuned: crossing more than one fine block per
+// staging interval is precisely the condition under which a fine unit cannot be
+// promoted before it is stale. Velocity is footage-ms per wall-ms (i.e. "x
+// realtime"), so the trigger is blockMs / interval — ~1500x realtime for the
+// default 10-minute blocks. Separate enter/exit intervals give hysteresis so a
+// drag hovering at the threshold doesn't flip tiers every frame.
+const COARSE_ENTER_MS = 400; // can't stage a fine unit this fast -> go coarse
+const COARSE_EXIT_MS = 1200; // ...and stay coarse until clearly slower
+// A velocity sample older than this is meaningless (the finger stopped, or the
+// gesture was interrupted) — treat the playhead as settled.
+const SCRUB_VEL_STALE_MS = 400;
+
+// SPRITE-PREVIEW-2026-08-04, `scrub_preview_mode: auto`. Measured seek latency
+// above this means the device's video decoder cannot keep the preview under the
+// finger (a 99 ms seek caps it at ~10 updates/sec). Set well clear of both
+// measured populations: ~10 ms on a Mac/iPhone, ~99 ms (p90 122) on the Mali
+// tablet, so neither sits near the boundary.
+const SLOW_SEEK_MS = 40;
+const SEEK_SAMPLE_MIN = 5; // don't judge a device on the first seek of a session
+const SEEK_SAMPLE_MAX = 15;
+
 // Longest a held frame may stay up. Generous — an NVR export can genuinely take
 // a couple of seconds — but finite, so a load that never completes can't pin a
 // stale picture over the player for good.
-const FREEZE_MAX_MS = 12_000;
+// Backstop only. Shortened from 12 s: a hold is meant to cover a gap of a few
+// hundred ms, so if the release logic ever fails, 12 s of a stale still pinned
+// over a working player is far worse than a brief black frame.
+const FREEZE_MAX_MS = 15_000;
+// How often the live-only poster preload is refreshed (see _posterPreload).
+const POSTER_REFRESH_MS = 10_000;
+// HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
+const HOLD_FRAME_ENABLED = true;
 
 /** A play() rejection that means "the browser refused", not "superseded".
  *  NotAllowedError = autoplay policy (iOS Low Power Mode refuses even muted).
@@ -86,6 +130,8 @@ export class MediaView extends LitElement {
   // Directory of the scrub-preview timelapse cache (pyscript protect_scrub job);
   // empty = feature off, the scrub stage stays plain black.
   @property() previewDir = '';
+  // SPRITE-PREVIEW-2026-08-04: 'video' | 'sprites' | 'auto' — see CardConfig.
+  @property() previewMode: 'auto' | 'sprites' | 'video' = 'sprites';
   // EXPERIMENTAL (card config `scrub_tip`): ask the NVR for a real-time clip of
   // the newest ~minute when a scrub starts near live. Off = the cron head only.
   @property({ type: Boolean }) tipEnabled = false;
@@ -148,7 +194,7 @@ export class MediaView extends LitElement {
   // Two <video> elements leap-frog: one plays the current chunk while the next
   // (already-recorded, prefetched) chunk buffers in the other, then we swap with
   // no reload flash. Chunks are cut at recording-tier boundaries so quality
-  // tracks the adaptive recording (low between events, 4K during). Never jumps
+  // tracks the adaptive recording (low between events, high-res during). Never jumps
   // to live — it holds the offset until you stop, seek, or press LIVE.
   @state() private _followSrcA?: string;
   @state() private _followSrcB?: string;
@@ -244,6 +290,23 @@ export class MediaView extends LitElement {
   private _previewRetries: Record<'a' | 'b', number> = { a: 0, b: 0 };
   private _previewWant?: string; // block key being debounced/downloaded right now
   private _previewToken = 0; // invalidates block downloads superseded by scrubbing
+  // PERF-SCRUB-2026-08-03: scrub velocity + the latched coarse-tier decision.
+  private _scrubVelPrev?: { t: number; at: number };
+  private _coarseScrub = false;
+  // +1 = dragging toward newer footage, -1 = older. Drives sheet prefetching.
+  private _scrubDir = 1;
+  // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ----
+  @query('canvas.sprite') private _spriteCanvas?: HTMLCanvasElement;
+  // A frame has been painted, so the canvas is worth showing (an unpainted one
+  // is just black, which is what the held frame is covering).
+  @state() private _spriteReady = false;
+  // Invalidates in-flight draws across a CAMERA CHANGE only. Deliberately not
+  // bumped per draw: doing that discarded every late-arriving sheet during a
+  // continuous gesture and froze the preview (see _drawSprite).
+  private _spriteToken = 0;
+  // 'auto' resolves here once the device has measured itself.
+  private _autoSprites = false;
+  private _seekSamples: number[] = [];
 
   private _loadedForTime?: number;
   private _videoToken = 0;
@@ -418,13 +481,34 @@ export class MediaView extends LitElement {
     video.preview-b {
       transition: none;
     }
+    /* SPRITE-PREVIEW-2026-08-04: the sprite canvas shares the video geometry
+       (absolute inset 0, object-fit: contain) so switching tiers cannot move or
+       resize the picture. <canvas> is a replaced element, so object-fit applies
+       to it exactly as it does to <video>. */
+    canvas.sprite {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      transition: none;
+    }
+    canvas.preview-off,
     video.preview-off {
       opacity: 0;
       z-index: 0;
     }
+    canvas.preview-on,
     video.preview-on {
       opacity: 1;
       z-index: 1;
+    }
+    /* SPRITE-PREVIEW-2026-08-04: when the sprite canvas is live it owns the
+       stage outright — the preview <video>s may still hold an older frame from
+       a unit with no sheets, and it must not show through underneath. */
+    canvas.sprite.preview-on {
+      z-index: 2; /* above the preview <video>s (1), below the held frame (3) */
     }
     /* Shown when the browser refused to start playback (see _playFollowVideo).
        Sits above the video so the tap always reaches it. */
@@ -841,6 +925,33 @@ export class MediaView extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    // HOLDFRAME-2026-08-05c: CAPTURE THE HELD FRAME FIRST — before anything
+    // below tears the outgoing player down. `releaseVideosIn` sets srcObject to
+    // null and calls load(), which drops the element to readyState 0 /
+    // videoWidth 0, so a _holdFrame() running after it finds an EMPTY video and
+    // captures nothing. That ordering is what made the first scrub away from
+    // live flash black: traced it as `deepVideoFound: true, readyState: 0,
+    // videoWidth: 0` at the moment of the hold. The frame has to be copied
+    // while it still exists.
+    if (
+      changed.has('scrubbing') ||
+      changed.has('live') ||
+      changed.has('cameraId') ||
+      (changed.has('targetTime') && !this.scrubbing && !this.live)
+    ) {
+      // Leaving a scrub: the sprite canvas is what is currently on screen.
+      const leavingScrub = changed.has('scrubbing') && !this.scrubbing;
+      // Poster rule, stated as simply as it can be: the camera snapshot is the
+      // fallback for EVERY transition except leaving a scrub. Leaving a scrub is
+      // the one case where a snapshot of NOW would be a lie (the user scrubbed
+      // to 07:17) AND the one case where we already have the truthful frame in
+      // the sprite canvas. Everywhere else — entering a scrub, going to live —
+      // the outgoing picture is live, so a live snapshot IS the honest stand-in.
+      // Deliberately not derived from `changed.get('live')`: the card can flip
+      // live in a separate update from scrubbing, so that test silently failed
+      // and left the first scrub with nothing to show but black.
+      this._holdFrame(leavingScrub, !leavingScrub);
+    }
     // Leaving live (or switching camera) unmounts <ha-camera-stream>. Release
     // it HERE, while it is still in the tree — by updated() Lit has already
     // dropped the element and the live pipeline would be stranded, holding a
@@ -852,6 +963,15 @@ export class MediaView extends LitElement {
     // A new camera at the SAME timestamp is still a new load: the dedup below
     // keys only on the time, so without this the switch showed nothing.
     if (changed.has('cameraId')) this._loadedForTime = undefined;
+    // BUGFIX-POSTER-2026-08-04 / HOLDFRAME-2026-08-05: the warm-poster cache is
+    // gone entirely (see _holdFrame), so there is nothing camera-scoped left to
+    // go stale here. Kept as a belt-and-braces clear of any in-flight hold, so
+    // a still captured from the previous camera can never survive a switch.
+    if (changed.has('cameraId')) {
+      this._holdPoster = '';
+      this._posterPreload = '';
+      this._posterAt = 0;
+    }
     // Same trap, on the hottest path in the card. A scrub swaps the follow
     // slots out for the preview slots and swaps them back when the gesture
     // ends, so ONE PAIR IS REMOVED FROM THE TREE ON EVERY SCRUB — and removal
@@ -869,14 +989,19 @@ export class MediaView extends LitElement {
     // export), a 15s skip, live<->historical, or a camera switch. NOT on every
     // targetTime tick DURING a scrub — the preview is meant to move with the
     // finger, and freezing it would defeat the whole scrub preview.
-    if (
-      changed.has('scrubbing') ||
-      changed.has('live') ||
-      changed.has('cameraId') ||
-      (changed.has('targetTime') && !this.scrubbing)
-    ) {
-      this._holdFrame();
-    }
+    // BUGFIX-POSTER-2026-08-04: drop any hold still up from the PREVIOUS camera
+    // before re-capturing. _holdFrame() bails out early ("already holding and
+    // nothing better to copy") when it can't reach a painting video — which is
+    // exactly the state a camera switch leaves behind, since the outgoing
+    // <ha-camera-stream> was just released above. Without this, a hold captured
+    // from camera 1 survived the switch and every subsequent hold on camera 2
+    // re-armed the same stale frame instead of replacing it. Releasing and
+    // re-capturing in the same synchronous pass means no paint happens in
+    // between, so this cannot reintroduce the black flash.
+    // Revert: delete these two lines.
+    // The hold is now captured at the TOP of willUpdate, before any teardown —
+    // this only drops one belonging to the camera being switched away from.
+    if (changed.has('cameraId')) this._releaseFrame();
     if (changed.has('scrubbing')) {
       const outgoing = this.scrubbing
         ? [this._followVidA, this._followVidB]
@@ -1067,9 +1192,21 @@ export class MediaView extends LitElement {
       }
     }
     if (changed.has('_isFs') && this.stacked) this._syncFsDialog();
-    // Keep the fallback still warm for as long as live is the source: that is
-    // the one player whose frame can refuse to be copied (hardware surface).
-    if (this.live && !this._posterWarm) this._posterWarm = this._posterUrl();
+    // HOLDFRAME-2026-08-05d: keep the poster preload warm ONLY while live is on
+    // screen, and only every POSTER_REFRESH_MS so it costs one small fetch every
+    // ten seconds rather than one per state update (entity_picture's token
+    // changes constantly, which is why the original code latched it forever).
+    if (this._liveStream && Date.now() - this._posterAt > POSTER_REFRESH_MS) {
+      this._posterAt = Date.now();
+      const url = this._posterUrl();
+      if (url) this._posterPreload = url;
+    }
+    // HOLDFRAME-2026-08-05: the warm-poster LATCH is gone. It cached one still
+    // for the life of the card, which is exactly how a stale (and, before the
+    // camera-switch fix, wrong-camera) frame could be shown long after it
+    // stopped being true. The fallback is now resolved fresh at capture time.
+    // (Cost: the first poster fallback may fetch, i.e. show black a moment
+    // longer. That is strictly better than showing something untrue.)
     // The strip's `pointer-events: none` does NOT make it inert. pointer-events
     // is INHERITED, so a descendant that sets `auto` re-enables ITSELF whatever
     // its ancestors say — and .evt-wrap (the event thumbnail) does exactly that.
@@ -1093,6 +1230,16 @@ export class MediaView extends LitElement {
     // all, so an already-armed timer would fire mid-gesture and take the
     // controls — and the timeline being scrubbed — with it.
     if (changed.has('scrubbing')) {
+      if (!this.scrubbing) {
+        // SPRITE-PREVIEW-2026-08-04: kill the sheet download tail the moment the
+        // gesture ends. A fast drag queues tens of MB of sheets and they kept
+        // arriving after the user had gone back to LIVE — measured 27 MB landing
+        // post-gesture — starving an HLS stream that runs on a ~2 s buffer. That
+        // was the "live stutters after scrubbing" regression. Aborting is free:
+        // the sheets are immutable and long-cached, so anything still needed
+        // re-fetches, usually straight from the HTTP cache.
+        this._preview.abortSheets();
+      }
       if (this.scrubbing) {
         clearTimeout(this._followCtrlTimer); // a scrub in flight holds them open
       } else if (this._followCtrl) {
@@ -1132,7 +1279,18 @@ export class MediaView extends LitElement {
     }
     // `scrub-start` fires on pointer-DOWN, before any motion has left live —
     // the earliest moment we know a scrub is coming.
-    if (changed.has('scrubbing') && this.scrubbing) void this._warmPreview();
+    if (changed.has('scrubbing') && this.scrubbing) {
+      // PERF-SCRUB-2026-08-03: every gesture starts settled, so the first
+      // retarget can't inherit the previous fling's coarse latch (or measure a
+      // bogus velocity across the gap between two gestures).
+      this._scrubVelPrev = undefined;
+      this._coarseScrub = false;
+      // SPRITE-PREVIEW-2026-08-04: the canvas is rebuilt (and therefore blank)
+      // for each gesture, so hide it until it holds a frame — otherwise the
+      // first moments of a scrub would show black instead of the held still.
+      this._spriteReady = false;
+      void this._warmPreview();
+    }
     if (this._liveStream) {
       // <ha-camera-stream> renders the live feed; hide its seek bar (live has no
       // meaningful progress) while keeping play/volume/mute/fullscreen, and poll
@@ -1230,7 +1388,56 @@ export class MediaView extends LitElement {
    *  block is just another PreviewBlock, so the existing a/b leap-frog stages,
    *  seeks and promotes it exactly like any other, and the fine unit replaces
    *  it through the standby slot the moment it arrives. */
+  /** PERF-SCRUB-2026-08-03: sample the playhead's speed and latch whether the
+   *  fine tier can keep up. Called EXACTLY ONCE per retarget, from
+   *  _updatePreview — _resolvePlayable is called twice per retarget (once to
+   *  pick a unit, once to re-check it after a download), and sampling there
+   *  would feed it a zero-delta second sample and drop straight back out of
+   *  coarse mode. */
+  private _updateScrubSpeed(t: number): void {
+    const now = performance.now();
+    const prev = this._scrubVelPrev;
+    this._scrubVelPrev = { t, at: now };
+    const dw = prev ? now - prev.at : 0;
+    // footage-ms per wall-ms == multiples of realtime
+    const vel = prev && dw > 0 && dw <= SCRUB_VEL_STALE_MS ? Math.abs(t - prev.t) / dw : 0;
+    // Direction of travel, held across a pause (a still finger keeps the last
+    // heading rather than resetting the prefetch to "forward").
+    if (prev && t !== prev.t) this._scrubDir = t > prev.t ? 1 : -1;
+    const blockMs = this._preview.blockMs();
+    this._coarseScrub = this._coarseScrub
+      ? vel > blockMs / COARSE_EXIT_MS
+      : vel > blockMs / COARSE_ENTER_MS;
+  }
+
   private async _resolvePlayable(t: number): Promise<PreviewBlock | undefined> {
+    // PERF-SCRUB-2026-08-03: moving faster than a fine unit can be staged —
+    // serve the coarse overview hour instead. Checked BEFORE the tip/fine
+    // tiers because at this speed neither of them can promote in time.
+    // Revert: delete this block (the tier logic below is untouched).
+    if (this._coarseScrub) {
+      const over = this._preview.overviewBlockFor(t);
+      if (over) {
+        if (this._unitReady(over)) return over;
+        this._prefetchUnit(over);
+        // Its bytes aren't here yet. Restaging a fine unit we can't promote
+        // would just churn the slots, so hold the frame already on screen and
+        // let the overview take over when it lands. Only once something IS on
+        // screen — an empty stage must fall through and show whatever it can.
+        // SPRITE-PREVIEW-2026-08-04: holding is a VIDEO-mode optimisation —
+        // restaging a <video> that can't be promoted in time is expensive, so
+        // keeping the last frame is the lesser evil. A sprite draw is nearly
+        // free, so holding there just freezes the preview: hand the coarse unit
+        // back instead and let _drawSprite paint it the moment its sheet lands.
+        // Returning the unit (rather than falling through to the fine tier) is
+        // also what keeps the fetch count sane — one overview sheet covers
+        // ~12.8 min of footage against a fine sheet's 60 s.
+        if (this._useSprites()) return over;
+        if (this._previewActive) return undefined;
+      }
+      // No overview coverage at all (the current incomplete hour): fall through
+      // to the normal tiers rather than freezing.
+    }
     // EXPERIMENTAL tip tier: the on-demand real-time clip of the newest ~minute
     // beats everything inside its own range (~30fps vs one frame per 2.4s) and
     // reaches ~2s behind live instead of the head's 10-70s. Checked before the
@@ -1249,16 +1456,164 @@ export class MediaView extends LitElement {
       });
     }
     const fine = await this._resolveFine(t);
-    if (fine && this._preview.isCached(fine)) return fine;
+    if (fine && this._unitReady(fine)) return fine;
     const over = this._preview.overviewBlockFor(t);
-    if (over && this._preview.isCached(over)) {
-      if (fine) void this._preview.getBlock(fine); // keep upgrading underneath
+    if (over && this._unitReady(over)) {
+      if (fine) this._prefetchUnit(fine); // keep upgrading underneath
       return over;
     }
     // Neither in hand: prefer the fine unit (its download is what _updatePreview
     // is about to debounce), falling back to the overview where there is no
     // fine coverage at all.
     return fine ?? over;
+  }
+
+  // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ------------------------------
+
+  /** Whether the scrub preview paints from JPEG mosaics rather than by seeking
+   *  a <video>. 'auto' defers to what this device measured (see _noteSeek). */
+  private _useSprites(): boolean {
+    if (this.previewMode === 'sprites') return true;
+    if (this.previewMode === 'video') return false;
+    return this._autoSprites;
+  }
+
+  /** Feed one observed seek latency into the 'auto' decision.
+   *
+   *  Measuring beats sniffing here: the Android tablet this tier exists for
+   *  reports a DESKTOP Linux user agent (Chrome's desktop-site mode), so a
+   *  platform check fails on the exact device that needs it — while a Mac or
+   *  iPhone seeks in ~10 ms and can never cross the threshold no matter what it
+   *  claims to be. One-way on purpose: a device that has proved slow shouldn't
+   *  flip back mid-session on one lucky sample. */
+  private _noteSeek(ms: number): void {
+    if (this._autoSprites || this.previewMode !== 'auto') return;
+    this._seekSamples.push(ms);
+    if (this._seekSamples.length < SEEK_SAMPLE_MIN) return;
+    if (this._seekSamples.length > SEEK_SAMPLE_MAX) this._seekSamples.shift();
+    const sorted = this._seekSamples.slice().sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    if (median > SLOW_SEEK_MS) {
+      this._autoSprites = true;
+      this.requestUpdate();
+    }
+  }
+
+  /** Paint the frame for `t` from the sprite sheets. Returns false when this
+   *  unit has no sheets (head/tip, or a block the job hasn't reached yet), so
+   *  the caller can fall back to the video path for it. */
+  private async _drawSprite(b: PreviewBlock, t: number): Promise<boolean> {
+    const set = await this._preview.getSprite(b);
+    if (!set) return false;
+    const per = set.cols * set.rows;
+    const token = this._spriteToken; // bumped only on camera change / reset
+    let idx = this._preview.tileIndexFor(b, set, t);
+    const sheetIdx = Math.floor(idx / per);
+    const sheetName = set.sheets[sheetIdx];
+    if (!sheetName) return true; // covered by sheets, just not at this instant
+    // Await only when the sheet isn't resident: an already-decoded one must
+    // paint in the SAME task as the pointer move, or the preview lags a frame
+    // behind the finger for no reason.
+    let bmp = this._preview.hasSheet(sheetName)
+      ? await this._preview.getSheet(sheetName)
+      : undefined;
+    if (!bmp) bmp = await this._preview.getSheet(sheetName);
+    if (!bmp || !this.scrubbing || token !== this._spriteToken) return true;
+    // MONOTONICITY RULE (both paths — even a resident sheet is fetched through
+    // an await, so the playhead can move underneath either one).
+    //
+    // Re-resolve for where the playhead is NOW and paint only if that frame
+    // still lives in THIS sheet. The previous version clamped to the nearest
+    // tile in the sheet and accepted it whenever it was "closer than what's
+    // shown" — which is what made the burned-in timestamp jump around, e.g.
+    // 6:50:45 then 6:50:58 while dragging steadily in ONE direction, because a
+    // late sheet could paint a frame that was not where the playhead was.
+    // The rule is now absolute: EVERY painted frame is the frame for the
+    // CURRENT playhead, so the preview can only move the way the finger moves.
+    // If the playhead has left this sheet, drop the draw — the sheet it moved
+    // into owns the next paint.
+    idx = this._preview.tileIndexFor(b, set, this.targetTime);
+    if (Math.floor(idx / per) !== sheetIdx) return true;
+    const tile = this._preview.tileAt(set, idx);
+    if (!tile) return true;
+    const c = this._spriteCanvas;
+    if (!c) return true;
+    if (c.width !== set.tileW || c.height !== set.tileH) {
+      c.width = set.tileW;
+      c.height = set.tileH;
+    }
+    const ctx = c.getContext('2d');
+    if (!ctx) return true;
+    try {
+      ctx.drawImage(bmp, tile.sx, tile.sy, set.tileW, set.tileH, 0, 0, set.tileW, set.tileH);
+    } catch {
+      return true; // bitmap closed under us by the LRU — next move repaints
+    }
+    if (!this._spriteReady) this._spriteReady = true;
+    // The stage is showing a real frame now, so drop the held still that was
+    // covering the transition. Without this the hold would sit on top of the
+    // canvas for its full timeout, because the watcher only ever releases on a
+    // painting <video> and in sprite mode there isn't one.
+    if (this._frozen) this._releaseFrame();
+    return true;
+  }
+
+  /** Keep the sheet covering `t` — and its neighbours — decoded, so continued
+   *  dragging doesn't stall on a fetch. Fire-and-forget; the loader dedups and
+   *  its LRU bounds the memory. */
+  private async _warmSprites(b: PreviewBlock, t: number): Promise<void> {
+    const set = await this._preview.getSprite(b);
+    if (!set) return;
+    const per = set.cols * set.rows;
+    const span = b.end - b.start;
+    if (span <= 0) return;
+    const frac = Math.min(1, Math.max(0, (t - b.start) / span));
+    const idx = Math.floor(Math.min(set.count - 1, Math.floor(frac * set.count)) / per);
+    // How wide to warm depends on how fast the playhead is moving, because the
+    // two failure modes pull in opposite directions:
+    //   * sweeping fast, warming BOTH neighbours re-pulls the sheet just left
+    //     behind on every move and thrashes the small LRU — measured 97 sheet
+    //     fetches (~36 MB) in one 0.6 s drag for ~24 distinct sheets. A sweep is
+    //     monotonic, so the one behind is exactly the one not needed again.
+    //   * moving slowly, warming only ahead measurably COSTS smoothness (13
+    //     distinct frames painted in a test drag fell to 5), because a small
+    //     back-and-forth keeps landing on the sheet that was never warmed — and
+    //     at this speed the whole gesture only touches a handful of sheets, so
+    //     the extra one is nearly free.
+    const ahead = this._scrubDir || 1;
+    for (const i of this._coarseScrub ? [idx, idx + ahead] : [idx, idx - 1, idx + 1]) {
+      const nm = set.sheets[i];
+      // `true` = speculative: dropped rather than queued when downloads are
+      // already saturated, so warming can never crowd out the sheet on screen
+      // or the live stream.
+      if (nm && !this._preview.hasSheet(nm)) void this._preview.getSheet(nm, true);
+    }
+  }
+
+  /** Pull whichever representation of a unit this device will actually PAINT.
+   *  SPRITE-PREVIEW-2026-08-04: without this, sprite mode still downloaded
+   *  every ~490 KB mp4 block it flew over — bytes that can never reach the
+   *  screen, and on the tablet the staging that comes with them is exactly the
+   *  decoder work this tier exists to avoid. */
+  private _prefetchUnit(b: PreviewBlock): void {
+    if (this._useSprites() && this._preview.hasSprites(b)) {
+      void this._warmSprites(b, this.targetTime);
+      return;
+    }
+    if (!this._preview.isCached(b)) void this._preview.getBlock(b);
+  }
+
+  /** "Already in hand", for whichever representation is in use — the tier
+   *  choice in _resolvePlayable is about what can be shown WITHOUT waiting, and
+   *  in sprite mode that is a decoded sheet, not an mp4 blob. */
+  private _unitReady(b: PreviewBlock): boolean {
+    if (this._useSprites() && this._preview.hasSprites(b)) {
+      const set = this._preview.spriteIfLoaded(b);
+      if (!set) return false;
+      const tile = this._preview.tileFor(b, set, this.targetTime);
+      return !!tile && this._preview.hasSheet(tile.sheet);
+    }
+    return this._preview.isCached(b);
   }
 
   private _previewVideo(slot: 'a' | 'b'): HTMLVideoElement | undefined {
@@ -1300,8 +1655,14 @@ export class MediaView extends LitElement {
     await this._preview.ensureIndex(this.targetTime);
     // While live this is the small rolling head block — the exact unit a scrub
     // back from the live edge lands in.
+    // SPRITE-PREVIEW-2026-08-04: on MOUNT (as opposed to at scrub-start) stop
+    // here. Live is starting at this exact moment — ~8 Mbps with only a ~2 s
+    // HLS buffer — and pulling preview units alongside it is enough to make it
+    // stall on first open. `_warmPreview` runs again on scrub-start, so the
+    // warming still happens, just not while live is fighting for the pipe.
+    if (!this.scrubbing) return;
     const b = await this._resolveFine(this.targetTime);
-    if (b) void this._preview.getBlock(b);
+    if (b) this._prefetchUnit(b); // sheets, not mp4
     // Plus the overview hour under the playhead: it is what a drag away from
     // here shows first, and it is cheap enough to hold speculatively.
     this._warmOverview(this.targetTime);
@@ -1313,7 +1674,7 @@ export class MediaView extends LitElement {
     const hour = 3_600_000;
     for (const at of [t, t - hour, t + hour]) {
       const o = this._preview.overviewBlockFor(at);
-      if (o && !this._preview.isCached(o)) void this._preview.getBlock(o);
+      if (o) this._prefetchUnit(o); // SPRITE-PREVIEW-2026-08-04: mode-aware
     }
   }
 
@@ -1334,12 +1695,39 @@ export class MediaView extends LitElement {
       void this._preview.ensureTip();
     }
     if (!this.scrubbing) return;
-    const b = await this._resolvePlayable(this.targetTime);
-    if (!b || !this.scrubbing) return; // no coverage here — keep the last frame
+    // PERF-SCRUB-2026-08-03: latch the coarse/fine decision once per retarget,
+    // before either _resolvePlayable call reads it.
+    this._updateScrubSpeed(this.targetTime);
     // Dragging leaves the current hour long before it leaves the current
     // block, so keep the overview neighbours warm on every retarget — that is
     // what makes a long fast drag keep showing frames instead of freezing.
+    // PERF-SCRUB-2026-08-03: moved ABOVE the no-coverage return. A fling is
+    // exactly when warming matters most, and it is also when _resolvePlayable
+    // most often returns undefined (holding the frame while an overview hour
+    // downloads) — so leaving this below the guard stopped the prefetching in
+    // the one case it exists for. Revert: move it back under the `if (!b ...)`.
     this._warmOverview(this.targetTime);
+    const b = await this._resolvePlayable(this.targetTime);
+    if (!b || !this.scrubbing) return; // no coverage here — keep the last frame
+    // SPRITE-PREVIEW-2026-08-04: decoder-free path. Returns false only when this
+    // unit has no sheets (head/tip, or one the sync job hasn't reached), in
+    // which case we fall through to the <video> tiers for it — so near-live
+    // scrubbing and any gap in the cache still work exactly as before.
+    if (this._useSprites()) {
+      void this._warmSprites(b, this.targetTime);
+      if (await this._drawSprite(b, this.targetTime)) return;
+      // This unit has NO sheets (the head/tip tiers never do), so the video
+      // tiers own the stage from here — which means the canvas has to get out
+      // of the way. It sits above the preview <video>s and is opaque, so
+      // leaving it up pinned the picture to the newest SPRITED frame while the
+      // correct near-live footage rendered invisibly underneath. The newest
+      // sprited frame is the end of the last COMPLETED block, i.e. 5-10 min
+      // behind live, and no amount of scrubbing toward live could improve it:
+      // exactly the "goes to minus 5-6 minutes and never gets closer" report.
+      // Only bites after sprites have painted at least once, which is why the
+      // first scrub down from live looked fine.
+      this._spriteReady = false;
+    }
     const active = this._previewActive;
     if (active && this._previewBlocks[active]?.key === b.key) {
       this._seekPreview(active);
@@ -1434,6 +1822,17 @@ export class MediaView extends LitElement {
       return;
     }
     this._previewPending[slot] = undefined;
+    // SPRITE-PREVIEW-2026-08-04: time this seek for `scrub_preview_mode: auto`.
+    // The preview's own seeks are the honest sample — same file sizes, same
+    // decoder, same moment — so no separate probe is needed.
+    if (this.previewMode === 'auto') {
+      const t0 = performance.now();
+      const done = (): void => {
+        v.removeEventListener('seeked', done);
+        this._noteSeek(performance.now() - t0);
+      };
+      v.addEventListener('seeked', done, { once: true });
+    }
     v.currentTime = target;
   }
 
@@ -1521,6 +1920,8 @@ export class MediaView extends LitElement {
     this._previewPending = { a: undefined, b: undefined };
     this._previewRetries = { a: 0, b: 0 };
     this._previewWant = undefined;
+    this._spriteReady = false; // SPRITE-PREVIEW-2026-08-04 (camera switch)
+    this._spriteToken++; // strands any sheet still in flight for the old camera
     this._preview.setPinned([]);
   }
 
@@ -1573,7 +1974,7 @@ export class MediaView extends LitElement {
     // Ask the server to materialise this clip, then STREAM it. The old path
     // downloaded the whole export into a Blob because the export proxy ignores
     // Range and the NVR writes the MP4 index last — but at ~52 MB per minute of
-    // 4K that peaked around 740 MB for a 7-minute event and got the WKWebView
+    // high-res footage that peaked around 740 MB for a 7-minute event and got the WKWebView
     // content process killed on iOS (the Companion app snaps back to the default
     // dashboard the moment the download finishes). The session endpoint returns a
     // faststart file served with real Range, so the phone holds only its buffer.
@@ -2045,10 +2446,19 @@ export class MediaView extends LitElement {
   private _framePresented = false;
   private _rvfcKey?: string;
   @state() private _holdPoster = '';
+  // HOLDFRAME-2026-08-05d: a BOUNDED preload of the camera snapshot, kept only
+  // while live is on screen and refreshed every POSTER_REFRESH_MS. The poster
+  // has to be already decoded to cover a gap — fetching it at transition time
+  // means it downloads first and the stage is black meanwhile (measured ~600 ms).
+  // This is NOT the old `_posterWarm` bug: that latched ONE url for the life of
+  // the card and leaked across cameras. This is refreshed on a timer, cleared on
+  // camera change, and only ever used when LEAVING LIVE, where a stand-in a few
+  // seconds old is honest by construction.
+  @state() private _posterPreload = '';
+  private _posterAt = 0;
   // The fallback still, fetched WHILE LIVE IS PLAYING so it is decoded and ready
   // the instant it is needed. Loading it at transition time would show black for
   // exactly as long as the fetch took — the thing we are trying to remove.
-  @state() private _posterWarm = '';
 
   /** Mean luminance over a small sample; a copy this dark is a failed copy. */
   private _looksBlack(ctx: CanvasRenderingContext2D, c: HTMLCanvasElement): boolean {
@@ -2071,6 +2481,26 @@ export class MediaView extends LitElement {
     return typeof pic === 'string' ? pic : '';
   }
 
+  /** A player that is ACTIVELY PRESENTING right now — not merely mounted with a
+   *  decoded frame. HOLDFRAME-2026-08-05: this is what makes the held frame
+   *  lowest-priority. `_visibleVideo` only proves a frame EXISTS, which is true
+   *  of a stalled or paused element too; anything that is playing means there
+   *  is no gap to cover and the still must get out of the way. */
+  /** As _playingVideo, ignoring `skip` — used to exclude the element a held
+   *  still was copied FROM, which is still playing for a moment after the
+   *  transition that took the still. */
+  private _playingVideoExcluding(skip?: HTMLVideoElement): HTMLVideoElement | undefined {
+    const cands = [
+      this._followActive ? this._followVideo(this._followActive) : undefined,
+      this._video,
+      this._liveVideo(),
+    ];
+    return cands.find(
+      (v): v is HTMLVideoElement =>
+        !!v && v !== skip && !v.paused && !v.ended && v.readyState >= 3 && v.videoWidth > 0,
+    );
+  }
+
   /** Whatever the viewer can actually see right now, whichever player owns the
    *  stage. Ordered by which one is on top when several are mounted. */
   private _visibleVideo(): HTMLVideoElement | null | undefined {
@@ -2088,25 +2518,88 @@ export class MediaView extends LitElement {
 
   /** Copy the current frame onto the overlay canvas and hold it. No-op when
    *  nothing is showing yet — a black hold is worse than the honest black. */
-  private _holdFrame(): void {
+  // HOLDFRAME-DISABLED-2026-08-05 — the whole held-frame feature is switched off
+  // here at the user's direction, because live playback started stuttering
+  // (video freezing for seconds while AUDIO kept playing) around when this
+  // landed, on every device and both browsers.
+  //
+  // Why this is a credible cause: _holdFrame runs on `changed.has('targetTime')
+  // && !this.scrubbing`, and the live tick moves targetTime every second — so
+  // while LIVE is on screen this executes once a second, and before it decides
+  // whether to show anything it already does the expensive part: drawImage() of
+  // the full 2688x1512 live frame into a canvas, then getImageData() — a GPU
+  // readback that forces a pipeline sync, and on Apple platforms can knock a
+  // hardware-decoded video off its zero-copy path. A receive pipeline stalled
+  // like that overflows its buffers, which reports as packetsLost and reads as
+  // "network loss" even though nothing is wrong with the network.
+  //
+  // NOTE my earlier test was invalid: it sampled `_frozen` (whether the
+  // overlay was VISIBLE) and saw 0%, but the cost above is paid on every call
+  // regardless of whether a hold is ultimately shown.
+  //
+  // TO RESTORE: delete this early return. Everything below is untouched.
+  private _holdFrame(preferSprite = false, posterOk = false): void {
+    if (!HOLD_FRAME_ENABLED) return;
+    // HOLDFRAME-2026-08-05b: capture EVEN IF the outgoing player is still
+    // playing. _holdFrame only runs at a real transition, and at that instant
+    // the thing about to disappear is still on screen — its last frame is
+    // exactly what must cover the gap. Refusing to capture here (the first
+    // version of the "lowest priority" rule) is what made the FIRST scrub away
+    // from live flash BLACK for ~0.5-1 s: live was playing, so nothing was
+    // held, and the scrub stage is empty until the first sprite paints. Same
+    // flash on the jump-to-live arrow. "Lowest priority" is enforced where it
+    // belongs — on RELEASE: the watcher drops the hold the moment any player
+    // OTHER than the one we copied from is presenting.
     const v = this._visibleVideo();
+    // HOLDFRAME-2026-08-05: the SPRITE CANVAS is a copy source too. During a
+    // sprite-mode scrub it is literally what is on screen, and at scrub-END it
+    // holds the frame for the time just scrubbed TO — which is precisely the
+    // frame to keep up while that footage loads. Without this there was no
+    // video to copy at scrub-end (preview is a canvas, live is unmounted), so
+    // the code fell through to the poster fallback and showed a picture of NOW
+    // after the user had scrubbed to 5am.
+    const sprite =
+      this._spriteReady && this._spriteCanvas && this._spriteCanvas.width > 0
+        ? this._spriteCanvas
+        : undefined;
+    // SPRITE CANVAS WINS over any <video>. This ordering is the whole fix for
+    // "shows a near-live frame before the footage I scrubbed to":
+    // _holdFrame runs in willUpdate, i.e. BEFORE the re-render that unmounts
+    // <ha-camera-stream>, so at scrub-end the live element is still in the DOM
+    // holding its last (near-live) frame — and `v ?? sprite` copied THAT,
+    // ignoring the canvas that already holds the frame the user scrubbed to.
+    // The rule is simply: if a scrub just happened, the last scrubbed frame is
+    // what to hold. Nothing else is ever a better answer.
+    // Which source is on screen RIGHT NOW? _holdFrame runs in willUpdate, so the
+    // stage still shows the OLD state: entering a scrub it is live/clip (take
+    // the video), leaving one it is the sprite canvas (take the canvas). A
+    // fixed order is wrong in one direction or the other — preferring the
+    // canvas always meant a SECOND scrub held the previous gesture's stale
+    // sprite instead of the live frame it was leaving.
+    const pick: (HTMLVideoElement | HTMLCanvasElement | undefined)[] = preferSprite
+      ? [sprite, v ?? undefined]
+      : [v ?? undefined, sprite];
+    const src = pick.find((x) => !!x);
+    const isCanvas = src instanceof HTMLCanvasElement;
+    const srcW = isCanvas ? src.width : (src as HTMLVideoElement | undefined)?.videoWidth ?? 0;
+    const srcH = isCanvas ? src.height : (src as HTMLVideoElement | undefined)?.videoHeight ?? 0;
     const c = this._freezeCanvas;
     // Already holding and there is nothing better to copy: KEEP what we have.
     // A transition fires this more than once (the button, then the property it
     // sets), and by the later call the outgoing player is usually gone — so
     // without this the good frame captured on the press was overwritten by the
     // coarser poster, or by nothing at all. Just re-arm the watcher.
-    if (this._frozen && !v) {
+    if (this._frozen && !src) {
       this._watchForFirstFrame();
       return;
     }
     if (!c) return;
     let copied = false;
-    if (v) {
+    if (src && srcW > 0 && srcH > 0) {
       try {
-        if (c.width !== v.videoWidth || c.height !== v.videoHeight) {
-          c.width = v.videoWidth;
-          c.height = v.videoHeight;
+        if (c.width !== srcW || c.height !== srcH) {
+          c.width = srcW;
+          c.height = srcH;
         }
         const ctx = c.getContext('2d', { willReadFrequently: true });
         // Clear FIRST. Setting width/height only clears when the size actually
@@ -2114,20 +2607,35 @@ export class MediaView extends LitElement {
         // on the canvas — which reads as a good copy, defeats the check below,
         // and shows a stale (possibly other-camera) frame as if it were current.
         ctx?.clearRect(0, 0, c.width, c.height);
-        ctx?.drawImage(v, 0, 0, c.width, c.height);
+        ctx?.drawImage(src, 0, 0, c.width, c.height);
         copied = !!ctx && !this._looksBlack(ctx, c);
       } catch {
         copied = false; // decoder gone mid-copy, or a tainted/protected surface
       }
     }
-    // A LIVE frame can refuse to be copied: 4K H.265 decoded in hardware often
+    // A LIVE frame can refuse to be copied: hardware-decoded live often
     // draws as pure black (or throws) on Android WebView and iOS, even though it
     // renders perfectly on screen. Headless Chromium decodes in software and
     // copies fine, so this only ever shows up on the real devices. Holding a
     // black canvas would be worse than not holding at all — it would mask a
     // working player for up to FREEZE_MAX_MS — so fall back to the camera's own
     // poster image, which is a real (slightly older) picture of the same view.
-    this._holdPoster = copied ? '' : this._posterWarm || this._posterUrl();
+    // HOLDFRAME-2026-08-05: entity_picture is a picture of NOW, so it is only a
+    // valid fallback when LIVE is what we are waiting for. Using it while a
+    // HISTORICAL clip loads showed a live snapshot after scrubbing to 5am — the
+    // exact symptom reported. When there is nothing truthful to show, show
+    // nothing: a brief black frame beats a frame from the wrong time.
+    // entity_picture is a picture of NOW, so it is honest only when LIVE is one
+    // side of this transition — `posterOk`, decided by the caller from what was
+    // actually on screen. Two earlier gates were both wrong: `this.live` (still
+    // set while transitioning AWAY from live, so it let a live snapshot cover a
+    // scrub to 07:17) and then `targetTime` near now (which REJECTED it at
+    // scrub-start, because by the time the hold runs the playhead has already
+    // moved minutes back — traced at 3.8 min — leaving nothing to show and
+    // flashing black). What matters is the stage being left or entered, not
+    // where the playhead has since travelled.
+    // Use the PRELOADED url so the still is already decoded and appears at once.
+    this._holdPoster = copied || !posterOk ? '' : this._posterPreload || this._posterUrl();
     if (!copied && !this._holdPoster) return; // nothing worth showing
     this._frozen = true;
     // Reveal NOW, not on the next render (see the note in render()).
@@ -2136,7 +2644,16 @@ export class MediaView extends LitElement {
       c.removeAttribute('hidden');
       img?.setAttribute('hidden', '');
     } else if (img) {
-      if (!img.getAttribute('src')) img.src = this._holdPoster;
+      // BUGFIX-POSTER-2026-08-04: was `if (!img.getAttribute('src'))`, i.e. the
+      // src was written ONCE and never again — a second latch that pinned the
+      // first camera's poster even after _posterWarm had moved on. Compare
+      // against the wanted URL instead: that keeps the original intent (never
+      // re-assign the same src, which would drop the decoded image and put a
+      // flash back) while letting a camera switch actually take effect. This
+      // has to be imperative — Lit's render is async and the hold is revealed
+      // synchronously, so the binding in render() lands a frame too late.
+      // Revert: `if (!img.getAttribute('src')) img.src = this._holdPoster;`
+      if (img.getAttribute('src') !== this._holdPoster) img.src = this._holdPoster;
       img.removeAttribute('hidden');
       c.setAttribute('hidden', '');
     }
@@ -2164,9 +2681,24 @@ export class MediaView extends LitElement {
         this._releaseFrame();
         return;
       }
+      // HOLDFRAME-2026-08-05b: any player OTHER than the one this still was
+      // copied from, actually presenting, ends the hold at once. Excluding the
+      // source element is what lets the capture survive the instant after a
+      // transition (the outgoing player is still playing then — that is why we
+      // have its frame at all); without the exclusion the hold released
+      // immediately and the black flash came straight back. The stuck-forever
+      // bug this replaced came from _holdFrame running on every live tick, and
+      // that trigger is gated off now, so the exclusion is safe again.
+      const held = this._frozenFrom?.el;
+      const other = this._playingVideoExcluding(held);
+      if (other) {
+        this._releaseFrame();
+        return;
+      }
       const v = this._visibleVideo();
-      // Only the INCOMING source may end the hold. A skip reloads the very same
-      // element, so identity alone can't separate them — the src changes with it.
+      // Below here nothing is playing, so the hold is still legitimate; wait for
+      // the INCOMING source to present its first frame. A skip reloads the very
+      // same element, so identity alone can't separate them — src changes too.
       const from = this._frozenFrom;
       const isNew = !!v && (!from || v !== from.el || (v.currentSrc || v.src) !== from.src);
       if (v && isNew) {
@@ -2682,7 +3214,7 @@ export class MediaView extends LitElement {
       <canvas class="freeze" ?hidden=${!this._frozen || !!this._holdPoster}></canvas>
       <img
         class="freeze"
-        src=${this._posterWarm || nothing}
+        src=${this._posterPreload || this._holdPoster || nothing}
         ?hidden=${!this._frozen || !this._holdPoster}
         alt=""
       />
@@ -2736,6 +3268,14 @@ export class MediaView extends LitElement {
       // player behind it right now) so it doesn't blink out mid-gesture.
       return html`
         <div class="stage" style=${this.accent ? `--upc-accent:${this.accent}` : ''}>
+          <!-- SPRITE-PREVIEW-2026-08-04: the decoder-free surface. Always in the
+               tree while scrubbing so _drawSprite can paint it synchronously
+               (Lit's update is async and the first frame must not wait a tick),
+               but only revealed once it actually holds a frame — an unpainted
+               canvas is black, and the held still is covering that moment. -->
+          <canvas
+            class="sprite ${this._spriteReady ? 'preview-on' : 'preview-off'}"
+          ></canvas>
           <video
             class="preview-a ${this._previewActive === 'a' ? 'preview-on' : 'preview-off'}"
             muted

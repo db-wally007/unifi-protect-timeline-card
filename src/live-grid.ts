@@ -1,7 +1,7 @@
 // Always-live camera grid (multi-camera page, below the event strip): one
 // muted, control-less <ha-camera-stream> per configured camera — the tiles
 // stream each entry's `live_camera` (e.g. the medium-resolution channel) so N
-// simultaneous tiles don't decode N × 4K. Overlays per tile, UniFi-app style:
+// simultaneous tiles don't decode N × the high-res stream. Overlays per tile, UniFi-app style:
 // camera name bottom-left, "<Kind>: <relative time>" of the newest event
 // bottom-right (re-rendered by the parent's minute tick).
 //
@@ -265,7 +265,7 @@ export class LiveGrid extends LitElement {
     // Unmounting the tiles does NOT stop them decoding: a detached <video>
     // holds its MediaSource and stays at NETWORK_LOADING, and HA caches the
     // view so it is never collected. On iOS those retained pipelines starve
-    // whatever mounts next (the per-camera view's 4K live stream, its scrub
+    // whatever mounts next (the per-camera view's high-res live stream, its scrub
     // preview, its clip playback). See data/media-release.ts.
     releaseVideosIn(this.renderRoot as unknown as DocumentFragment);
   }

@@ -67,6 +67,14 @@ const SYNC_THROTTLE_MS = 5 * 60_000;
 // exactly the freeze the tier exists to prevent. ~16 x ~650 KB = ~10 MB, which
 // is nowhere near the iOS memory ceiling this code has hit before.
 const MAX_BLOBS = 16;
+// SPRITE-PREVIEW-2026-08-04: decoded sheets kept warm. Small on purpose — see
+// the field comment; ~13 MB of RGBA each.
+const MAX_SHEETS = 6;
+// Concurrent sheet downloads. Sheets are ~700 KB each and the LIVE stream this
+// competes with survives on a ~2 s buffer, so an unbounded fan-out (measured:
+// 88 requests from ONE 0.5 s drag) is what made live stutter. Two keeps the
+// shown sheet responsive without monopolising the connection pool.
+const MAX_SHEET_INFLIGHT = 2;
 
 /** One playable preview unit: a completed <start>.mp4, an overview hour, one
  *  head generation (h<start>-<end>.mp4), or a single part of a mapped block.
@@ -85,6 +93,27 @@ export interface PreviewBlock {
   // so one linear mapping would skew by minutes around events). A mapped
   // block is not itself playable — resolvePart() picks the covering part.
   mapped?: boolean;
+  // SPRITE-PREVIEW-2026-08-04: a coarse overview hour. Only blocks and overview
+  // hours have sprite sheets, and their stems differ, so the tier has to be
+  // distinguishable from the unit alone.
+  overview?: boolean;
+}
+
+/** SPRITE-PREVIEW-2026-08-04. The decoder-free form of a unit: its frames as
+ *  JPEG mosaics. `count` is PER UNIT (it varies — a 10-min block holds ~251
+ *  frames, an overview hour ~299) and is the ground truth for time -> tile,
+ *  which is why this sidecar exists at all rather than the geometry living in
+ *  index.json. Time maps exactly as the video path maps seconds:
+ *    tile  = floor(frac * count)
+ *    sheet = floor(tile / (cols * rows))
+ *    pos   = tile % (cols * rows)   -> sx = (pos % cols) * tileW, etc. */
+export interface SpriteSet {
+  count: number;
+  cols: number;
+  rows: number;
+  tileW: number;
+  tileH: number;
+  sheets: string[];
 }
 
 /** One sidecar map entry: real range [s, e] is the standalone part file `f`. */
@@ -121,6 +150,20 @@ export class ScrubPreviewLoader {
   // file: reusing it can only show a slightly older frame within its own range.
   private _headHeld?: PreviewBlock;
   private _warnedNoHeadFile = false;
+  // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ----
+  // Which units the sync job also published as JPEG mosaics, plus the decoded
+  // sheets. A sheet is 2400x1350 -> ~13 MB of RGBA once decoded, so this LRU is
+  // deliberately small and evicted bitmaps are close()d: holding a dozen would
+  // be ~150 MB, which is exactly the kind of pressure that has blacked out iOS
+  // before. Six covers the on-screen sheet plus its neighbours either side.
+  private _spriteBlocks = new Set<number>();
+  private _spriteOverview = new Set<number>();
+  private _sprites = new Map<string, SpriteSet | null>(); // unit key -> sidecar (null = none)
+  private _spriteLoading = new Map<string, Promise<SpriteSet | undefined>>();
+  private _sheets = new Map<string, ImageBitmap>();
+  private _sheetLoading = new Map<string, Promise<ImageBitmap | undefined>>();
+  private _sheetAborts = new Map<string, AbortController>();
+  private _sheetInflight = 0;
   // ---- tip tier (EXPERIMENTAL) ----
   private _tip?: { start: number; end: number; file: string };
   private _tipHeld?: PreviewBlock; // generation whose bytes we already hold
@@ -160,6 +203,198 @@ export class ScrubPreviewLoader {
     this._tipReqAt = 0;
     this._pinned.clear();
     this._indexAt = 0;
+    // SPRITE-PREVIEW-2026-08-04: decoded bitmaps are not garbage — close them.
+    for (const bmp of this._sheets.values()) bmp.close();
+    this._sheets.clear();
+    this._sheetLoading.clear();
+    this._sprites.clear();
+    this._spriteLoading.clear();
+    this._spriteBlocks.clear();
+    this._spriteOverview.clear();
+  }
+
+  // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ------------------------------
+
+  /** Whether this unit was also published as JPEG mosaics. Only whole fine
+   *  blocks and overview hours are: the head is re-exported every minute and
+   *  the tip is on demand, so neither has sheets and both stay on the video
+   *  path (near-live scrubbing is unchanged by this tier). */
+  hasSprites(b: PreviewBlock): boolean {
+    if (b.head || b.tip || b.part) return false;
+    if (b.overview) return this._spriteOverview.has(b.start);
+    return this._spriteBlocks.has(b.start);
+  }
+
+  /** The sidecar if it is already in hand (synchronous — for "can I paint this
+   *  unit right now?" checks that must not await). */
+  spriteIfLoaded(b: PreviewBlock): SpriteSet | undefined {
+    return this._sprites.get(b.key) ?? undefined;
+  }
+
+  /** The sidecar for a unit — cached + deduped, exactly like getMap(). */
+  async getSprite(b: PreviewBlock): Promise<SpriteSet | undefined> {
+    if (!this.hasSprites(b)) return undefined;
+    const hit = this._sprites.get(b.key);
+    if (hit !== undefined) return hit ?? undefined;
+    let p = this._spriteLoading.get(b.key);
+    if (!p) {
+      p = this._fetchSprite(b).finally(() => this._spriteLoading.delete(b.key));
+      this._spriteLoading.set(b.key, p);
+    }
+    return p;
+  }
+
+  private async _fetchSprite(b: PreviewBlock): Promise<SpriteSet | undefined> {
+    try {
+      // Sits beside its unit under the same stem, like the .map.json sidecar.
+      const res = await fetch(b.url.replace(/\.mp4$/, '.sprite.json'));
+      const d = res.ok
+        ? ((await res.json()) as {
+            version?: number;
+            count?: number;
+            cols?: number;
+            rows?: number;
+            tile_w?: number;
+            tile_h?: number;
+            sheets?: string[];
+          })
+        : undefined;
+      let set: SpriteSet | null = null;
+      if (
+        d?.version === 1 &&
+        d.count &&
+        d.cols &&
+        d.rows &&
+        d.tile_w &&
+        d.tile_h &&
+        Array.isArray(d.sheets) &&
+        d.sheets.length
+      ) {
+        set = {
+          count: d.count,
+          cols: d.cols,
+          rows: d.rows,
+          tileW: d.tile_w,
+          tileH: d.tile_h,
+          sheets: d.sheets,
+        };
+      }
+      this._sprites.set(b.key, set);
+      return set ?? undefined;
+    } catch {
+      this._sprites.set(b.key, null);
+      return undefined;
+    }
+  }
+
+  /** Tile index within the unit for `t`. `count - 1` is the last REAL frame:
+   *  the trailing tiles of the final sheet are ffmpeg's padding and must never
+   *  be shown. */
+  tileIndexFor(b: PreviewBlock, set: SpriteSet, t: number): number {
+    const span = b.end - b.start;
+    if (span <= 0) return 0;
+    const frac = Math.min(1, Math.max(0, (t - b.start) / span));
+    return Math.min(set.count - 1, Math.floor(frac * set.count));
+  }
+
+  /** Which sheet a tile index lives in, and where inside it. */
+  tileAt(set: SpriteSet, index: number): { sheet: string; sx: number; sy: number } | undefined {
+    const per = set.cols * set.rows;
+    const i = Math.min(set.count - 1, Math.max(0, index));
+    const sheet = set.sheets[Math.floor(i / per)];
+    if (!sheet) return undefined;
+    const pos = i % per;
+    return { sheet, sx: (pos % set.cols) * set.tileW, sy: Math.floor(pos / set.cols) * set.tileH };
+  }
+
+  /** The footage time a tile represents (its centre), so a caller can tell
+   *  whether one candidate frame is closer to the wanted time than another. */
+  tileTime(b: PreviewBlock, set: SpriteSet, index: number): number {
+    return b.start + ((index + 0.5) / set.count) * (b.end - b.start);
+  }
+
+  /** Which sheet (and where in it) shows `t` for a unit. */
+  tileFor(b: PreviewBlock, set: SpriteSet, t: number): { sheet: string; sx: number; sy: number } | undefined {
+    return this.tileAt(set, this.tileIndexFor(b, set, t));
+  }
+
+  /** Whether a sheet's bitmap is already decoded and resident. */
+  hasSheet(name: string): boolean {
+    return this._sheets.has(name);
+  }
+
+  /** Abort every sheet download still in flight.
+   *
+   *  Called the moment a gesture ends. A fast drag queues a LOT of sheets and
+   *  they keep arriving long after the user has gone back to LIVE — measured on
+   *  one 0.5 s drag: 88 requests / 44 MB total, of which 37 requests / 27 MB
+   *  landed AFTER the gesture had finished. The live HLS stream carries only a
+   *  ~2 s buffer (PART-HOLD-BACK=2.0) at ~7 Mbps, so that tail starves it and
+   *  live stutters for several seconds — which is exactly the regression this
+   *  tier introduced. Nothing is lost by aborting: the sheets are immutable and
+   *  long-cached, so anything genuinely needed later re-fetches (usually from
+   *  the HTTP cache). */
+  abortSheets(): void {
+    for (const c of this._sheetAborts.values()) {
+      try {
+        c.abort();
+      } catch {
+        /* already settled */
+      }
+    }
+    this._sheetAborts.clear();
+    this._sheetLoading.clear();
+    this._sheetInflight = 0;
+  }
+
+  /** Decoded sheet bitmap — cached, deduped, LRU-bounded.
+   *
+   *  `prefetch` marks a speculative neighbour: those are DROPPED rather than
+   *  queued when enough downloads are already in flight, so warming can never
+   *  crowd out the sheet actually being shown (or the live stream). */
+  async getSheet(name: string, prefetch = false): Promise<ImageBitmap | undefined> {
+    const hit = this._sheets.get(name);
+    if (hit) {
+      this._sheets.delete(name); // refresh LRU position
+      this._sheets.set(name, hit);
+      return hit;
+    }
+    let p = this._sheetLoading.get(name);
+    if (!p) {
+      if (prefetch && this._sheetInflight >= MAX_SHEET_INFLIGHT) return undefined;
+      p = this._fetchSheet(name).finally(() => this._sheetLoading.delete(name));
+      this._sheetLoading.set(name, p);
+    }
+    return p;
+  }
+
+  private async _fetchSheet(name: string): Promise<ImageBitmap | undefined> {
+    const ctrl = new AbortController();
+    this._sheetAborts.set(name, ctrl);
+    this._sheetInflight++;
+    try {
+      // Immutable and long-cached by the static mount, like every other unit
+      // here, so the HTTP cache does the repeat work for free.
+      const res = await fetch(`${this._dir}/${name}`, { signal: ctrl.signal });
+      if (!res.ok) return undefined;
+      const bmp = await createImageBitmap(await res.blob());
+      this._sheets.set(name, bmp);
+      while (this._sheets.size > MAX_SHEETS) {
+        const oldest = this._sheets.keys().next().value as string | undefined;
+        if (oldest === undefined || oldest === name) break;
+        const old = this._sheets.get(oldest);
+        this._sheets.delete(oldest);
+        old?.close(); // frees the decoded pixels; drawing a closed bitmap throws
+      }
+      return bmp;
+    } catch {
+      // Includes AbortError from abortSheets() — the caller simply keeps the
+      // frame already on screen, which is the same as any other miss.
+      return undefined;
+    } finally {
+      this._sheetAborts.delete(name);
+      this._sheetInflight = Math.max(0, this._sheetInflight - 1);
+    }
   }
 
   /** Blob URLs that are currently assigned to a mounted <video>. These are never
@@ -208,6 +443,10 @@ export class ScrubPreviewLoader {
           overview_block_ms?: number;
           overview?: number[];
           head?: { start?: number; end?: number; map?: boolean; file?: string } | null;
+          // SPRITE-PREVIEW-2026-08-04 (absent on an older sync job -> the sets
+          // stay empty and every unit simply resolves to its mp4, as before).
+          sprites?: number[];
+          osprites?: number[];
         };
         if (Array.isArray(data.blocks)) {
           ok = true;
@@ -217,6 +456,8 @@ export class ScrubPreviewLoader {
           // Absent on an index written before the overview tier existed — the
           // set just stays empty and the card behaves exactly as it used to.
           this._overview = new Set(data.overview ?? []);
+          this._spriteBlocks = new Set(data.sprites ?? []); // SPRITE-PREVIEW-2026-08-04
+          this._spriteOverview = new Set(data.osprites ?? []);
           if (data.overview_block_ms && data.overview_block_ms > 0) {
             this._overviewMs = data.overview_block_ms;
           }
@@ -440,6 +681,13 @@ export class ScrubPreviewLoader {
     return this._head?.end ?? 0;
   }
 
+  /** Fine block length in ms (from index.json). PERF-SCRUB-2026-08-03: the
+   *  media-view compares it against the scrub velocity to decide whether a fine
+   *  unit could even be staged before the playhead has left it. */
+  blockMs(): number {
+    return this._blockMs;
+  }
+
   /** The coarse overview unit covering `t`, if that hour has been exported.
    *  Never `mapped` (uniform density by construction at this speedup), so it is
    *  always directly playable — no sidecar round trip before a frame can show.
@@ -453,6 +701,7 @@ export class ScrubPreviewLoader {
       start,
       end: start + this._overviewMs,
       url: `${this._dir}/o${start}.mp4`,
+      overview: true, // SPRITE-PREVIEW-2026-08-04
     };
   }
 

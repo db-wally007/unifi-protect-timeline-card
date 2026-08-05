@@ -219,6 +219,24 @@ export interface CardConfig {
   // behind live and scrubs at ~30fps. Costs ~0.9 MB per gesture and one short
   // NVR export. Set false to fall back to the cron cache alone.
   scrub_tip?: boolean;
+  // SPRITE-PREVIEW-2026-08-04. How the scrub preview paints its frames:
+  //   'video'   - seek a cached <video>. Sharpest (640x360), but a seek costs
+  //               ~10 ms on a Mac/iPhone and ~99 ms on a low-end Android, whose
+  //               hardware decoder caps the preview at ~10 updates/sec.
+  //   'sprites' - draw a tile from a cached JPEG mosaic into a <canvas>. 480x270
+  //               and ~0.5 ms per frame on that same Android. Needs the sheets
+  //               the pyscript job publishes; falls back to video per unit where
+  //               they are missing (the head/tip tiers never have them).
+  //   'auto'    - start on video and switch to sprites only if this device's own
+  //               MEASURED seek latency turns out to be slow. Deliberately NOT
+  //               user-agent sniffing: the tablet this exists for reports a
+  //               DESKTOP Linux UA, so sniffing fails on the very device that
+  //               needs it, while a fast device measures ~10 ms and can never
+  //               trip the switch.
+  // TEMPORARY DEFAULT 'sprites' (2026-08-04) so the quality can be judged on
+  // every device at once; the intended long-term default is 'auto'. One word to
+  // change, in getStubConfig and in card.ts's render().
+  scrub_preview_mode?: 'auto' | 'sprites' | 'video';
   // UniFi-app-style scrubber overlaid on the RIGHT edge of the FULLSCREEN
   // player (mobile + tablet), fading in and out with the video controls
   // (default true), and its width in px (default 110). A reduced timeline: no
