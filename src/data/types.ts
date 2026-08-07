@@ -28,9 +28,9 @@ export interface CameraEntry {
   // entity_id. Everything server-side is keyed to this.
   camera: string;
   name?: string;
-  // Multi mode: the entity streamed in the live grid tile (e.g. the camera's
-  // medium-resolution channel, so N simultaneous tiles don't decode N × 4K).
-  // Defaults to `camera`.
+  // Entity streamed in the live grid tile and used as the brief Apple-mobile
+  // bridge while the high WebRTC player connects. Defaults to `camera` in the
+  // grid; detail view can also discover the same-device medium entity.
   live_camera?: string;
   // Multi mode: dashboard path a live-tile tap navigates to (the camera's own
   // single-camera timeline view). Empty/absent = the tap DRILLS IN-CARD
@@ -116,6 +116,10 @@ export interface CardConfig {
   // high-resolution video is moving; `muted` always waits for a user tap.
   // Visual playback remains muted/autoplay-safe while either policy starts.
   live_audio_start?: 'auto' | 'muted';
+  // LIVE transport policy. `auto` uses buffered high HLS except on Apple mobile,
+  // where a medium bridge covers high WebRTC negotiation. Explicit values are
+  // primarily for diagnosis and rollback testing.
+  live_transport?: 'auto' | 'hls' | 'webrtc';
   // Pause between releasing a scrub (drag/flick/wheel) and playback starting,
   // in ms (default 700). Taps play immediately. 0 = no delay.
   scrub_settle_ms?: number;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LiveHealthTracker,
+  liveProgressValue,
   shouldAttemptLiveAudio,
   type LiveHealthSample,
 } from '../src/data/live-health';
@@ -74,5 +75,37 @@ describe('shouldAttemptLiveAudio', () => {
 
   it('never attempts before video is stable', () => {
     expect(shouldAttemptLiveAudio('auto', undefined, false, false)).toBe(false);
+  });
+});
+
+describe('liveProgressValue', () => {
+  it('uses decoded frames for WebRTC health', () => {
+    expect(
+      liveProgressValue(
+        {
+          currentTime: 20,
+          getVideoPlaybackQuality: () => ({ totalVideoFrames: 600 }),
+        },
+        true,
+      ),
+    ).toBe(600);
+  });
+
+  it('keeps media time for HLS and as the WebRTC fallback', () => {
+    expect(liveProgressValue({ currentTime: 20 }, false)).toBe(20);
+    expect(liveProgressValue({ currentTime: 20 }, true)).toBe(20);
+  });
+
+  it('uses Safari decoded frames when playback quality remains zero', () => {
+    expect(
+      liveProgressValue(
+        {
+          currentTime: 20,
+          getVideoPlaybackQuality: () => ({ totalVideoFrames: 0 }),
+          webkitDecodedFrameCount: 42,
+        },
+        true,
+      ),
+    ).toBe(42);
   });
 });
