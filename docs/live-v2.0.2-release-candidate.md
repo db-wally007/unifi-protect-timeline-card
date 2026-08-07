@@ -7,6 +7,7 @@ camera access tokens, or RTSPS URLs.
 
 - Repository: `db-wally007/unifi-protect-timeline-card`
 - Branch: `fix/lean-high-live-20260807`
+- Candidate snapshot tag: `snapshot/live-v2.0.2-candidate-20260807`
 - Source and bundle commit: `7ed7a465a1643a7755691ce327c78ff3ef7f5bac`
 - Version: `2.0.2`
 - Bundle SHA-256 prefix: `980e3ed6c421`
