@@ -779,6 +779,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       default_timeline_zoom: 100,
       chunk_seconds: 300,
       delay_seconds: 15,
+      live_audio_start: 'auto',
       scrub_settle_ms: 700,
       timeline_font_size: 12,
       timeline_font_color: '#d0d0d0',
@@ -1937,6 +1938,7 @@ export class UnifiProtectTimelineCard extends LitElement {
               .clipEndTime=${this._clipEnd}
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
+              .liveAudioStart=${this._config.live_audio_start ?? 'auto'}
               .startFs=${this._drillFs}
               .fsTimeline=${fsTimeline}
               .fsTimelineWidth=${fsTimelineWidth}

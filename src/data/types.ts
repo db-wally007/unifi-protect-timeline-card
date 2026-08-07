@@ -112,6 +112,10 @@ export interface CardConfig {
   // below ~12 are clamped; larger values = longer gapless chunks (fewer swaps)
   // but further behind live.
   delay_seconds?: number;
+  // LIVE audio policy. `auto` makes one best-effort unmute attempt only after
+  // high-resolution video is moving; `muted` always waits for a user tap.
+  // Visual playback remains muted/autoplay-safe while either policy starts.
+  live_audio_start?: 'auto' | 'muted';
   // Pause between releasing a scrub (drag/flick/wheel) and playback starting,
   // in ms (default 700). Taps play immediately. 0 = no delay.
   scrub_settle_ms?: number;
