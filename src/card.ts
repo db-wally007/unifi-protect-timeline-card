@@ -52,7 +52,7 @@ const BAND_REFRESH_MS = 30_000;
 // The card calls the sync service itself when the manifest is stale (job not
 // running / not run yet), at most once per SYNC_THROTTLE_MS.
 const SYNC_THROTTLE_MS = 2 * 60_000;
-const VERSION = '2.0.1';
+const VERSION = '2.0.2';
 
 // A playback-time step at least this large is a SKIP, not playback advancing;
 // the ruler glides across it. Well above the sub-second cadence of normal

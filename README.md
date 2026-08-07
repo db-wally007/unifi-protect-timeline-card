@@ -161,13 +161,21 @@ Single mode unless noted.
 |---|---|---|---|
 | `chunk_seconds` | number | `300` | Length of each exported clip segment. Longer = slower to start, fewer joins. Minimum 2. Both modes |
 | `delay_seconds` | number | `15` | How far behind live delayed-follow playback holds. Minimum 12 |
+| `live_audio_start` | `auto` \| `muted` | `auto` | `auto` makes one best-effort audible start after video is stable; browser autoplay policy can leave it muted. `muted` waits for the mute-button gesture |
 
 #### Reliable live startup
 
-Live uses Home Assistant's `<ha-camera-stream>` negotiation rather than a card-owned transport.
-Each fresh live session starts muted so HLS/WebRTC can autoplay reliably; the mute button enables
-audio after video starts. When WebRTC has no audio, Home Assistant switches to its already-running
-HLS player on unmute.
+Detail LIVE uses one Home Assistant `<ha-hls-player>` bound to the configured camera entity. It does
+not mount `<ha-camera-stream>` or negotiate a concurrent WebRTC player, and it does not silently
+switch to a lower-resolution entity. The nested video starts muted so visual autoplay is reliable;
+with `live_audio_start: auto`, the card makes one audible attempt after motion is stable and safely
+continues muted if browser policy rejects it. The mute button changes audio on that same HLS player,
+without switching transports.
+
+After stable playback, a genuine progress stall releases and remounts the player. Hiding the card
+also releases its network and decoder pipeline; showing it mounts a fresh muted player and reapplies
+the audio policy. This prevents a closed popup or cached dashboard view from decoding in the
+background.
 
 For consistently fast high-resolution startup, enable **Preload stream** in Home Assistant's camera
 preferences for each entity used by a timeline, and align LL-HLS with UniFi Protect's five-second
@@ -181,9 +189,10 @@ stream:
 ```
 
 Preloading continuously pulls each selected camera stream into Home Assistant, so account for its
-network and decode cost. On the measured 2688x1512 cameras, ten standalone starts improved from a
-724-6199 ms range without preload to 756-1388 ms with preload; ten jumps back to LIVE completed in
-428-1858 ms. Enabling audio switched from muted WebRTC to audio-capable HLS in 1436 ms.
+network cost. On the measured 2688x1512 high channel, the release candidate's 20 fresh starts took
+358-1180 ms (753 ms median), and 20 actual timeline-to-LIVE returns took 226-1012 ms (605 ms median).
+Five injected HLS freezes resumed full-resolution motion 957-1956 ms after the last advancing frame,
+with the replaced decoder released each time.
 
 ### Fullscreen overlay
 
