@@ -264,7 +264,7 @@ rt.elementStyles = [], rt.shadowRootOptions = { mode: "open" }, rt[ft("elementPr
  */
 const Ht = globalThis, Qt = (e) => e, Pt = Ht.trustedTypes, te = Pt ? Pt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Se = "$lit$", X = `lit$${Math.random().toFixed(9).slice(2)}$`, Te = "?" + X, ei = `<${Te}>`, tt = document, vt = () => tt.createComment(""), gt = (e) => e === null || typeof e != "object" && typeof e != "function", Wt = Array.isArray, ii = (e) => Wt(e) || typeof e?.[Symbol.iterator] == "function", Ft = `[ 	
 \f\r]`, dt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ee = /-->/g, ie = />/g, Z = RegExp(`>|${Ft}(?:([^\\s"'>=/]+)(${Ft}*=${Ft}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), se = /'/g, oe = /"/g, Ae = /^(?:script|style|textarea|title)$/i, si = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), d = si(1), et = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), re = /* @__PURE__ */ new WeakMap(), Q = tt.createTreeWalker(tt, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), se = /'/g, oe = /"/g, Ae = /^(?:script|style|textarea|title)$/i, si = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), d = si(1), et = Symbol.for("lit-noChange"), g = Symbol.for("lit-nothing"), re = /* @__PURE__ */ new WeakMap(), Q = tt.createTreeWalker(tt, 129);
 function Me(e, t) {
   if (!Wt(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return te !== void 0 ? te.createHTML(t) : t;
@@ -276,8 +276,8 @@ const oi = (e, t) => {
     const l = e[n];
     let p, u, h = -1, f = 0;
     for (; f < l.length && (a.lastIndex = f, u = a.exec(l), u !== null); ) f = a.lastIndex, a === dt ? u[1] === "!--" ? a = ee : u[1] !== void 0 ? a = ie : u[2] !== void 0 ? (Ae.test(u[2]) && (o = RegExp("</" + u[2], "g")), a = Z) : u[3] !== void 0 && (a = Z) : a === Z ? u[0] === ">" ? (a = o ?? dt, h = -1) : u[1] === void 0 ? h = -2 : (h = a.lastIndex - u[2].length, p = u[1], a = u[3] === void 0 ? Z : u[3] === '"' ? oe : se) : a === oe || a === se ? a = Z : a === ee || a === ie ? a = dt : (a = Z, o = void 0);
-    const g = a === Z && e[n + 1].startsWith("/>") ? " " : "";
-    r += a === dt ? l + ei : h >= 0 ? (s.push(p), l.slice(0, h) + Se + l.slice(h) + X + g) : l + X + (h === -2 ? n : g);
+    const b = a === Z && e[n + 1].startsWith("/>") ? " " : "";
+    r += a === dt ? l + ei : h >= 0 ? (s.push(p), l.slice(0, h) + Se + l.slice(h) + X + b) : l + X + (h === -2 ? n : b);
   }
   return [Me(e, r + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
@@ -294,14 +294,14 @@ class bt {
     for (; (o = Q.nextNode()) !== null && l.length < n; ) {
       if (o.nodeType === 1) {
         if (o.hasAttributes()) for (const h of o.getAttributeNames()) if (h.endsWith(Se)) {
-          const f = u[a++], g = o.getAttribute(h).split(X), x = /([.?@])?(.*)/.exec(f);
-          l.push({ type: 1, index: r, name: x[2], strings: g, ctor: x[1] === "." ? ai : x[1] === "?" ? ni : x[1] === "@" ? li : Ct }), o.removeAttribute(h);
+          const f = u[a++], b = o.getAttribute(h).split(X), x = /([.?@])?(.*)/.exec(f);
+          l.push({ type: 1, index: r, name: x[2], strings: b, ctor: x[1] === "." ? ai : x[1] === "?" ? ni : x[1] === "@" ? li : Ct }), o.removeAttribute(h);
         } else h.startsWith(X) && (l.push({ type: 6, index: r }), o.removeAttribute(h));
         if (Ae.test(o.tagName)) {
           const h = o.textContent.split(X), f = h.length - 1;
           if (f > 0) {
             o.textContent = Pt ? Pt.emptyScript : "";
-            for (let g = 0; g < f; g++) o.append(h[g], vt()), Q.nextNode(), l.push({ type: 2, index: ++r });
+            for (let b = 0; b < f; b++) o.append(h[b], vt()), Q.nextNode(), l.push({ type: 2, index: ++r });
             o.append(h[f], vt());
           }
         }
@@ -357,7 +357,7 @@ class ht {
     return this._$AM?._$AU ?? this._$Cv;
   }
   constructor(t, i, s, o) {
-    this.type = 2, this._$AH = b, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = o, this._$Cv = o?.isConnected ?? !0;
+    this.type = 2, this._$AH = g, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = o, this._$Cv = o?.isConnected ?? !0;
   }
   get parentNode() {
     let t = this._$AA.parentNode;
@@ -371,7 +371,7 @@ class ht {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = lt(this, t, i), gt(t) ? t === b || t == null || t === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : t !== this._$AH && t !== et && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : ii(t) ? this.k(t) : this._(t);
+    t = lt(this, t, i), gt(t) ? t === g || t == null || t === "" ? (this._$AH !== g && this._$AR(), this._$AH = g) : t !== this._$AH && t !== et && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : ii(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -380,7 +380,7 @@ class ht {
     this._$AH !== t && (this._$AR(), this._$AH = this.O(t));
   }
   _(t) {
-    this._$AH !== b && gt(this._$AH) ? this._$AA.nextSibling.data = t : this.T(tt.createTextNode(t)), this._$AH = t;
+    this._$AH !== g && gt(this._$AH) ? this._$AA.nextSibling.data = t : this.T(tt.createTextNode(t)), this._$AH = t;
   }
   $(t) {
     const { values: i, _$litType$: s } = t, o = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = bt.createElement(Me(s.h, s.h[0]), this.options)), s);
@@ -419,7 +419,7 @@ class Ct {
     return this._$AM._$AU;
   }
   constructor(t, i, s, o, r) {
-    this.type = 1, this._$AH = b, this._$AN = void 0, this.element = t, this.name = i, this._$AM = o, this.options = r, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = b;
+    this.type = 1, this._$AH = g, this._$AN = void 0, this.element = t, this.name = i, this._$AM = o, this.options = r, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = g;
   }
   _$AI(t, i = this, s, o) {
     const r = this.strings;
@@ -428,12 +428,12 @@ class Ct {
     else {
       const n = t;
       let l, p;
-      for (t = r[0], l = 0; l < r.length - 1; l++) p = lt(this, n[s + l], i, l), p === et && (p = this._$AH[l]), a ||= !gt(p) || p !== this._$AH[l], p === b ? t = b : t !== b && (t += (p ?? "") + r[l + 1]), this._$AH[l] = p;
+      for (t = r[0], l = 0; l < r.length - 1; l++) p = lt(this, n[s + l], i, l), p === et && (p = this._$AH[l]), a ||= !gt(p) || p !== this._$AH[l], p === g ? t = g : t !== g && (t += (p ?? "") + r[l + 1]), this._$AH[l] = p;
     }
     a && !o && this.j(t);
   }
   j(t) {
-    t === b ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
+    t === g ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
 class ai extends Ct {
@@ -441,7 +441,7 @@ class ai extends Ct {
     super(...arguments), this.type = 3;
   }
   j(t) {
-    this.element[this.name] = t === b ? void 0 : t;
+    this.element[this.name] = t === g ? void 0 : t;
   }
 }
 class ni extends Ct {
@@ -449,7 +449,7 @@ class ni extends Ct {
     super(...arguments), this.type = 4;
   }
   j(t) {
-    this.element.toggleAttribute(this.name, !!t && t !== b);
+    this.element.toggleAttribute(this.name, !!t && t !== g);
   }
 }
 class li extends Ct {
@@ -457,8 +457,8 @@ class li extends Ct {
     super(t, i, s, o, r), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = lt(this, t, i, 0) ?? b) === et) return;
-    const s = this._$AH, o = t === b && s !== b || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, r = t !== b && (s === b || o);
+    if ((t = lt(this, t, i, 0) ?? g) === et) return;
+    const s = this._$AH, o = t === g && s !== g || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, r = t !== g && (s === g || o);
     o && this.element.removeEventListener(this.name, this, s), r && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
   handleEvent(t) {
@@ -1007,25 +1007,25 @@ const _e = (e, t, i) => {
     const o = ji(e), { values: r, keys: a } = this.dt(t, i, s);
     if (!Array.isArray(o)) return this.ut = a, r;
     const n = this.ut ??= [], l = [];
-    let p, u, h = 0, f = o.length - 1, g = 0, x = r.length - 1;
-    for (; h <= f && g <= x; ) if (o[h] === null) h++;
+    let p, u, h = 0, f = o.length - 1, b = 0, x = r.length - 1;
+    for (; h <= f && b <= x; ) if (o[h] === null) h++;
     else if (o[f] === null) f--;
-    else if (n[h] === a[g]) l[g] = J(o[h], r[g]), h++, g++;
+    else if (n[h] === a[b]) l[b] = J(o[h], r[b]), h++, b++;
     else if (n[f] === a[x]) l[x] = J(o[f], r[x]), f--, x--;
     else if (n[h] === a[x]) l[x] = J(o[h], r[x]), pt(e, l[x + 1], o[h]), h++, x--;
-    else if (n[f] === a[g]) l[g] = J(o[f], r[g]), pt(e, o[h], o[f]), f--, g++;
-    else if (p === void 0 && (p = _e(a, g, x), u = _e(n, h, f)), p.has(n[h])) if (p.has(n[f])) {
-      const F = u.get(a[g]), W = F !== void 0 ? o[F] : null;
+    else if (n[f] === a[b]) l[b] = J(o[f], r[b]), pt(e, o[h], o[f]), f--, b++;
+    else if (p === void 0 && (p = _e(a, b, x), u = _e(n, h, f)), p.has(n[h])) if (p.has(n[f])) {
+      const F = u.get(a[b]), W = F !== void 0 ? o[F] : null;
       if (W === null) {
         const G = pt(e, o[h]);
-        J(G, r[g]), l[g] = G;
-      } else l[g] = J(W, r[g]), pt(e, o[h], W), o[F] = null;
-      g++;
+        J(G, r[b]), l[b] = G;
+      } else l[b] = J(W, r[b]), pt(e, o[h], W), o[F] = null;
+      b++;
     } else Rt(o[f]), f--;
     else Rt(o[h]), h++;
-    for (; g <= x; ) {
+    for (; b <= x; ) {
       const F = pt(e, l[x + 1]);
-      J(F, r[g]), l[g++] = F;
+      J(F, r[b]), l[b++] = F;
     }
     for (; h <= f; ) {
       const F = o[h++];
@@ -1488,8 +1488,8 @@ let w = class extends j {
       this.mirror ? t.measureText(this._fmt(this._dd.end, { hour: "2-digit", minute: "2-digit" })).width : 0
     );
     this._evtAnchor !== u.evtAnchor && (this._evtAnchor = u.evtAnchor, this.requestUpdate());
-    const h = this.recordedColor || a, f = Math.max(0, Math.min(this._timeToY(this.now), s)), g = u.trackX1 - u.trackX0;
-    if (f > 0 && (this._roundRect(t, u.trackX0, 0, g, f, 3), this.futureColor ? (t.fillStyle = this.futureColor, t.globalAlpha = 1) : (t.fillStyle = h, t.globalAlpha = 0.7), t.fill(), t.globalAlpha = 1), f < s && (this._roundRect(t, u.trackX0, f, g, s - f, 3), t.fillStyle = h, t.fill()), this._gapHits = [], this.gaps && this.gaps.length) {
+    const h = this.recordedColor || a, f = Math.max(0, Math.min(this._timeToY(this.now), s)), b = u.trackX1 - u.trackX0;
+    if (f > 0 && (this._roundRect(t, u.trackX0, 0, b, f, 3), this.futureColor ? (t.fillStyle = this.futureColor, t.globalAlpha = 1) : (t.fillStyle = h, t.globalAlpha = 0.7), t.fill(), t.globalAlpha = 1), f < s && (this._roundRect(t, u.trackX0, f, b, s - f, 3), t.fillStyle = h, t.fill()), this._gapHits = [], this.gaps && this.gaps.length) {
       const N = this.gapColor || "#4a4a52";
       t.fillStyle = N, t.globalAlpha = 1;
       for (const S of this.gaps) {
@@ -1499,7 +1499,7 @@ let w = class extends j {
             const K = (R + q) / 2;
             R = K - 1.5, q = K + 1.5;
           }
-          this._roundRect(t, u.trackX0, R, g, q - R, 3), t.fill(), this._gapHits.push({ gap: S, yTop: R, yBot: q });
+          this._roundRect(t, u.trackX0, R, b, q - R, 3), t.fill(), this._gapHits.push({ gap: S, yTop: R, yBot: q });
         }
       }
     }
@@ -1516,7 +1516,7 @@ let w = class extends j {
       S < Y || S > s - Y || (t.strokeStyle = W, t.lineWidth = Math.max(V, 1.5), t.globalAlpha = 0.95, t.beginPath(), t.moveTo(u.tickRight - $, S), t.lineTo(u.tickRight, S), t.stroke(), t.globalAlpha = 1, t.lineWidth = 1, t.fillStyle = this.fontColor || r, t.fillText(this._fmt(N, { hour: "2-digit", minute: "2-digit" }), u.labelRight, S));
     }
     this._hits = [];
-    const yt = g;
+    const yt = b;
     for (const N of this.bands) {
       let S = this._timeToY(N.end), R = this._timeToY(N.start);
       if (R < 0 || S > s) continue;
@@ -1563,15 +1563,15 @@ let w = class extends j {
                 style="top:${this._height * this.playheadFrac}px"
               >
                 ${s ? "LIVE" : o}
-              </div>` : b}
+              </div>` : g}
           ${this._hoverGap ? d`<div class="gap-tip" style="top:${this._hoverGap.y}px">
                 Camera offline
                 <div class="gap-sub">
                   ${this._fmt(this._hoverGap.gap.start, { hour: "2-digit", minute: "2-digit" })} –
                   ${this._fmt(this._hoverGap.gap.end, { hour: "2-digit", minute: "2-digit" })}
                 </div>
-              </div>` : b}
-          ${this.zoomUi ? this._renderZoom(n) : b}
+              </div>` : g}
+          ${this.zoomUi ? this._renderZoom(n) : g}
           ${this.liveArrow && !this.live ? d`<button
                 class="live-arrow"
                 title="Jump to live"
@@ -1579,7 +1579,7 @@ let w = class extends j {
                 @click=${this._goLive}
               >
                 ↑
-              </button>` : b}
+              </button>` : g}
         </div>
       </div>
     `;
@@ -1656,7 +1656,7 @@ let w = class extends j {
    *  .scrub gestures so a drag starting on it still scrubs — and a TAP on one
    *  winds the timeline to that event from _onPointerUp instead. */
   _renderThumbs() {
-    if (!this._height || !this.domain) return b;
+    if (!this._height || !this.domain) return g;
     const e = M(this.domain, this.playheadFrac), t = this.thumbSizeActive * 0.75 / 2, i = this.thumbSize * 0.75 / 2, s = t + i + 6, o = P(this._dd), r = this._keptSel;
     let a;
     if (r && r.bands === this.bands && r.span === o && r.height === this._height && r.spacing === s)
@@ -1664,9 +1664,9 @@ let w = class extends j {
     else {
       a = [];
       let h = 1 / 0;
-      for (const { m: f, g } of this._members()) {
+      for (const { m: f, g: b } of this._members()) {
         const x = (this._timeToY(f.end) + this._timeToY(f.start)) / 2;
-        h - x < s || (h = x, a.push({ m: f, g }));
+        h - x < s || (h = x, a.push({ m: f, g: b }));
       }
       this._keptSel = { bands: this.bands, span: o, height: this._height, spacing: s, sel: a };
     }
@@ -1690,9 +1690,9 @@ let w = class extends j {
       u,
       (h) => Dt(h.m),
       (h) => {
-        const f = h === l, g = this._hoverBand === h.m, x = this.loader?.get(h.m);
+        const f = h === l, b = this._hoverBand === h.m, x = this.loader?.get(h.m);
         return d`<div
-          class="evt ${f ? "active" : ""} ${g ? "hovered" : ""}"
+          class="evt ${f ? "active" : ""} ${b ? "hovered" : ""}"
           style="top:${h.y}px"
         >
           <span class="evt-line"></span>
@@ -2432,7 +2432,7 @@ let A = class extends j {
                           style="font-size:${this.dateFontSize}px;color:${this.dateFontColor || "#fff"}"
                           >${this._fmtDay(i.start)}</span
                         >
-                      </div>` : b}
+                      </div>` : g}
                   <button class="row ${a ? "playing" : ""}" @click=${() => this._play(i)}>
                     <div class="info">
                       <div class="t1">${p}</div>
@@ -2654,7 +2654,7 @@ A = C([
  */
 const _t = Ve(class extends Ne {
   constructor() {
-    super(...arguments), this.key = b;
+    super(...arguments), this.key = g;
   }
   render(e, t) {
     return this.key = e, t;
@@ -3311,7 +3311,7 @@ let _ = class extends j {
     }
   }
   _onHostVisibility(e) {
-    e !== !this._hidden && (this._hidden = !e, this._hidden ? this._muteAndPauseAll() : this._resumeAfterVisible());
+    e !== !this._hidden && (this._hidden = !e, this._hidden ? (this._muteAndPauseAll(), this._liveStream && this._restartLivePlayer()) : this._resumeAfterVisible());
   }
   /** Silence + pause EVERY player (live stream's inner <video>, clip, follow,
    *  preview) so nothing plays audio while the card is hidden. */
@@ -4211,7 +4211,7 @@ let _ = class extends j {
    *  skip-forward jumps to live there); a clip enables everything. */
   _renderCtrlBar(e, t = !1) {
     t || (this._ctrlMode = e);
-    const i = e === "live", s = e === "clip", o = i ? this._livePausedState : s ? this._clipPaused : this._followPaused, r = i ? this._liveMuted : s ? this._clipMuted : this._followMuted, a = s ? this._clipRate : i ? 1 : this._followRate, n = s ? this._clipRate > 1 : !i && this._followRate > 1, l = i || e === "follow" && this._nearLive, p = i ? this._liveSkipBack : s ? this._clipSkipBack : this._skipBack, u = i ? this._toggleLivePlay : s ? this._toggleClipPlay : this._toggleFollowPlay, h = s ? this._clipSkipFwd : this._skipFwd, f = s ? this._toggleClipRate : this._toggleFollowRate, g = i ? this._toggleLiveMute : s ? this._toggleClipMute : this._toggleFollowMute, x = e === "follow" && this._nearLive ? "Go live" : "Forward 15s";
+    const i = e === "live", s = e === "clip", o = i ? this._livePausedState : s ? this._clipPaused : this._followPaused, r = i ? this._liveMuted : s ? this._clipMuted : this._followMuted, a = s ? this._clipRate : i ? 1 : this._followRate, n = s ? this._clipRate > 1 : !i && this._followRate > 1, l = i || e === "follow" && this._nearLive, p = i ? this._liveSkipBack : s ? this._clipSkipBack : this._skipBack, u = i ? this._toggleLivePlay : s ? this._toggleClipPlay : this._toggleFollowPlay, h = s ? this._clipSkipFwd : this._skipFwd, f = s ? this._toggleClipRate : this._toggleFollowRate, b = i ? this._toggleLiveMute : s ? this._toggleClipMute : this._toggleFollowMute, x = e === "follow" && this._nearLive ? "Go live" : "Forward 15s";
     return d`
       <div
         class="vctrl ${this._followCtrl ? "show" : ""} ${this._isFs ? "fs" : ""} ${this._fsStrip ? "fs-inset" : ""} ${t ? "inert" : ""}"
@@ -4235,7 +4235,7 @@ let _ = class extends j {
         >
           ${a}×
         </button>
-        <button @click=${g} title=${r ? "Unmute" : "Mute"}>
+        <button @click=${b} title=${r ? "Unmute" : "Mute"}>
           <ha-icon icon=${r ? "mdi:volume-off" : "mdi:volume-high"}></ha-icon>
         </button>
         <button class="vfs" @click=${this._toggleFs} title="Fullscreen">
@@ -4267,7 +4267,7 @@ let _ = class extends j {
    *  vertical scrub as "open the camera strip". Down/move also re-arm the
    *  auto-hide so a long drag can't make the strip vanish under the finger. */
   _renderFsTimeline() {
-    if (!this._fsStrip) return b;
+    if (!this._fsStrip) return g;
     const e = (o) => {
       o.stopPropagation(), this._showFollowCtrl();
     }, t = this.fsTimelineScrim, i = `linear-gradient(to left, rgba(0,0,0,${t}) 30%, rgba(0,0,0,${(t * 0.78).toFixed(3)}) 55%, rgba(0,0,0,${(t * 0.35).toFixed(3)}) 80%, transparent)`, s = this.fsTimelineGrabWidth > 0 ? `calc(${Math.max(this.fsTimelineWidth, this.fsTimelineGrabWidth)}px + ${this.fsTimelineGutter}px)` : "100%";
@@ -4290,7 +4290,7 @@ let _ = class extends j {
       <canvas class="freeze" ?hidden=${!this._frozen || !!this._holdPoster}></canvas>
       <img
         class="freeze"
-        src=${this._posterPreload || this._holdPoster || b}
+        src=${this._posterPreload || this._holdPoster || g}
         ?hidden=${!this._frozen || !this._holdPoster}
         alt=""
       />
@@ -4315,16 +4315,16 @@ let _ = class extends j {
           @pointerdown=${this._onStagePress}
           @click=${this._onStageTap}
         >
-          ${e ? d`${_t(
+          ${e ? d`${this._hidden ? g : _t(
         this._liveRestartKey,
         d`<ha-hls-player
-                    class="live-player"
-                    autoplay
-                    playsinline
-                    .entityid=${this.cameraId}
-                    .controls=${!1}
-                    .muted=${!1}
-                  ></ha-hls-player>`
+                        class="live-player"
+                        autoplay
+                        playsinline
+                        .entityid=${this.cameraId}
+                        .controls=${!1}
+                        .muted=${!1}
+                      ></ha-hls-player>`
       )}
                 ${this._renderCtrlBar("live")}` : d`<div class="msg error">Camera entity not found.</div>`}
         </div>
@@ -4399,8 +4399,8 @@ let _ = class extends j {
             @ended=${() => this._onFollowEnded("b")}
             @error=${() => this._onFollowError("b")}
           ></video>
-          ${this._tapToPlay ? d`<button class="tap-play" @click=${this._onTapToPlay} title="Play">▶</button>` : this._loadingVideo ? d`<div class="overlay"><div class="spinner"></div></div>` : b}
-          ${this._error ? d`<div class="msg error">${this._error}</div>` : b}
+          ${this._tapToPlay ? d`<button class="tap-play" @click=${this._onTapToPlay} title="Play">▶</button>` : this._loadingVideo ? d`<div class="overlay"><div class="spinner"></div></div>` : g}
+          ${this._error ? d`<div class="msg error">${this._error}</div>` : g}
           ${this._renderCtrlBar("follow")}
         </div>
       `;
@@ -4419,7 +4419,7 @@ let _ = class extends j {
         // (~5.6s for a 5-minute clip), the remux is ~0.3s.
         d`<div class="overlay"><div class="spinner"></div>Preparing clip…</div>`
       ) : d`<div class="overlay"><div class="spinner"></div></div>` : this._error ? d`<div class="msg error">${this._error}</div>` : d`<div class="msg">Tap the timeline to play from a time.</div>`}
-        ${this._isFs ? this._renderCtrlBar(this._ctrlMode, !0) : b}
+        ${this._isFs ? this._renderCtrlBar(this._ctrlMode, !0) : g}
       </div>`;
     }
     return d`
@@ -4445,7 +4445,7 @@ let _ = class extends j {
           @error=${this._onVideoError}
         ></video>
         ${this._renderCtrlBar("clip")}
-        ${this._error ? d`<div class="msg error">${this._error}</div>` : b}
+        ${this._error ? d`<div class="msg error">${this._error}</div>` : g}
       </div>
     `;
   }
@@ -5178,6 +5178,9 @@ v([
 ], _.prototype, "_spriteReady", 2);
 v([
   m()
+], _.prototype, "_hidden", 2);
+v([
+  m()
 ], _.prototype, "_frozen", 2);
 v([
   B("canvas.freeze")
@@ -5328,13 +5331,13 @@ let E = class extends j {
           ${i ? d`<img src=${i} alt=${e.label} loading="lazy" />` : d`<span class="ph"></span>`}
           <!-- Caption mode moves the time to the line below (with the
                duration); the compact mode overlays it on the footage. -->
-          ${this.captions ? b : d`<span class="time">${this._fmtTime(e.start)}</span>`}
+          ${this.captions ? g : d`<span class="time">${this._fmtTime(e.start)}</span>`}
         </div>
         <span class="cam">${e.cameraName}</span>
         ${this.captions ? d`<span class="sub"
               >${this._fmtTimeLong(e.start)} ·
               ${e.ongoing ? "In progress" : this._fmtDur(e.durMs ?? e.end - e.start)}</span
-            >` : b}
+            >` : g}
       </button>
     `;
   }
@@ -5350,13 +5353,13 @@ let E = class extends j {
         return d`
           ${a ? d`<div class="day-divider">
                 <span class="day-label">${this._fmtDay(i.start)}</span>
-              </div>` : b}
+              </div>` : g}
           ${this._renderClip(i, o, r)}
         `;
       }
     );
     return d`
-      ${this.hideHead ? b : d`<div class="head">
+      ${this.hideHead ? g : d`<div class="head">
             <span>${this.headerText}</span>
             <span class="head-count">${this.bands.length}</span>
             <button
@@ -5383,7 +5386,7 @@ let E = class extends j {
             >
               ${t}
             </div>`}
-      ${b}
+      ${g}
     `;
   }
 };
@@ -6131,7 +6134,7 @@ let D = class extends j {
     </div>`;
   }
   render() {
-    if (!this.hass || !this.config) return b;
+    if (!this.hass || !this.config) return g;
     const e = this._entries(), t = e[0]?.camera ?? "";
     this._loader.configure(
       this.hass,
@@ -6168,7 +6171,7 @@ let D = class extends j {
                   <button class="live-pill" @click=${this._closePlayback}>✕</button>
                 </div>`
     )}
-            </div>` : b : d`<div class="body">
+            </div>` : g : d`<div class="body">
         ${s ? _t(
       o,
       d`<div class="playwrap">
@@ -6236,13 +6239,13 @@ let D = class extends j {
           ${i ? d`<div class="playoverlay" @click=${this._closePlayback}>
                 ${_t(
       s,
-      d`<div class="playbox" @click=${(g) => g.stopPropagation()}>
+      d`<div class="playbox" @click=${(b) => b.stopPropagation()}>
                     ${this._renderPlayer(i, o, t)}
                     <span class="play-cam">${i.cameraName}</span>
                     <button class="live-pill" @click=${this._closePlayback}>✕</button>
                   </div>`
     )}
-              </div>` : b}
+              </div>` : g}
         </div>
       ` : d`
       <div class="tablet">
@@ -7078,7 +7081,7 @@ let ut = 0, $e = "", k = class extends j {
                 @click=${this._goBack}
               >
                 <ha-icon icon="mdi:chevron-left"></ha-icon>
-              </button>` : b}
+              </button>` : g}
           <span class="title-text">${e.title ?? "Cameras"}</span>
         </div>
         <upc-multi-view
@@ -7138,14 +7141,14 @@ let ut = 0, $e = "", k = class extends j {
     }).format(o), u = Array.from(
       { length: 7 },
       ($, V) => At({ weekday: "narrow" }).format(new Date(2023, 0, V + 1))
-    ), h = this._mode === "list" ? this._eventDayKeys() : void 0, f = !!h && h.size > 0, g = e * 12 + t;
+    ), h = this._mode === "list" ? this._eventDayKeys() : void 0, f = !!h && h.size > 0, b = e * 12 + t;
     let x = s.getFullYear() * 12 + s.getMonth();
     if (f) {
       let $ = 1 / 0;
       for (const V of h) V < $ && ($ = V);
       x = Math.floor($ / 1e4) * 12 + Math.floor($ % 1e4 / 100);
     }
-    const F = g > x, W = g < i.getFullYear() * 12 + i.getMonth(), G = [];
+    const F = b > x, W = b < i.getFullYear() * 12 + i.getMonth(), G = [];
     for (let $ = 0; $ < r; $++) G.push(d`<span class="cal-cell"></span>`);
     for (let $ = 1; $ <= a; $++) {
       const V = new Date(e, t, $), Y = f ? h.has(e * 1e4 + t * 100 + $) : V <= i && V >= s;
@@ -7191,7 +7194,7 @@ let ut = 0, $e = "", k = class extends j {
     const t = this._config, i = t.tick_size, s = typeof i == "number" ? i : { small: 4, medium: 8, large: 14 }[i ?? "medium"] ?? 8, o = this._isStacked();
     return d`
       <upc-scrubber-timeline
-        slot=${e ? "fs-timeline" : b}
+        slot=${e ? "fs-timeline" : g}
         ?mirror=${e}
         .zoomUi=${!0}
         .gutter=${e ? this._fsGutter() : 0}
@@ -7238,7 +7241,7 @@ let ut = 0, $e = "", k = class extends j {
     `;
   }
   render() {
-    if (!this._config) return b;
+    if (!this._config) return g;
     if (this._isMulti && !this._drill) return this._renderMulti();
     if (!this._domain) return d`<ha-card><div class="header">Loading…</div></ha-card>`;
     if (!this._nvrId)
@@ -7263,7 +7266,7 @@ let ut = 0, $e = "", k = class extends j {
     const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, o = this._isStacked(), r = this._config.fs_timeline_width ?? (o ? 120 : 165), a = this._fsPad(), n = this._fsGutter(), l = this._config.fs_timeline_grab_width ?? 0, p = this._config.fs_timeline_scrim ?? 0.88, u = this._config.fs_timeline_scrim_extend ?? (o ? 130 : 170), h = At({
       month: "short",
       day: "numeric"
-    }).format(new Date(M(this._domain, this._phFrac()))), f = this._isStacked(), g = this._config.tablet_events_thumbnail_size ?? 145, x = this._config.list_text_size ?? 12, F = Math.max(1, x - 1), W = g + 168, G = (f ? "" : `flex-basis:${W}px;min-width:${W}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, $ = this._cameraEntries(), V = $.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", Y = this._config.video_ratio ?? 0.45, yt = Math.max(15, Math.min(85, Y > 1 ? Y : Y * 100)), ct = `height:${this._config.height || (f ? "100dvh" : "80vh")}`, N = f ? `--upc-video-frac:${yt}%` : "", S = this._config.list_divider_color || i, R = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), q = f && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", K = ($.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
+    }).format(new Date(M(this._domain, this._phFrac()))), f = this._isStacked(), b = this._config.tablet_events_thumbnail_size ?? 145, x = this._config.list_text_size ?? 12, F = Math.max(1, x - 1), W = b + 168, G = (f ? "" : `flex-basis:${W}px;min-width:${W}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, $ = this._cameraEntries(), V = $.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", Y = this._config.video_ratio ?? 0.45, yt = Math.max(15, Math.min(85, Y > 1 ? Y : Y * 100)), ct = `height:${this._config.height || (f ? "100dvh" : "80vh")}`, N = f ? `--upc-video-frac:${yt}%` : "", S = this._config.list_divider_color || i, R = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), q = f && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", K = ($.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
     return d`
       <ha-card style=${ct}>
         <div class="header" style=${K}>
@@ -7274,7 +7277,7 @@ let ut = 0, $e = "", k = class extends j {
                 @click=${this._goBack}
               >
                 <ha-icon icon="mdi:chevron-left"></ha-icon>
-              </button>` : b}
+              </button>` : g}
           <span class="title-text">${V}</span>
           ${$.length ? d`<button
                 class="strip-toggle"
@@ -7284,17 +7287,17 @@ let ut = 0, $e = "", k = class extends j {
                 <ha-icon
                   icon=${this._galleryOpen ? "mdi:chevron-up" : "mdi:chevron-down"}
                 ></ha-icon>
-              </button>` : b}
+              </button>` : g}
         </div>
 
         ${$.length ? d`<div
               class="cam-strip ${this._galleryOpen ? "open" : ""}"
-              style="--upc-cam-tile-w:${g}px"
+              style="--upc-cam-tile-w:${b}px"
             >
               <div class="cam-strip-inner">
                 ${$.map((We) => this._renderCamTile(We, e))}
               </div>
-            </div>` : b}
+            </div>` : g}
 
         <div class="row ${f ? "stacked" : ""}" style=${N}>
           <div class="timeline-col" style=${G}>
@@ -7323,7 +7326,7 @@ let ut = 0, $e = "", k = class extends j {
                       .textColor=${this._config.list_text_color ?? ""}
                       .durationSize=${F}
                       .durationColor=${this._config.list_duration_color ?? ""}
-                      .thumbWidth=${g}
+                      .thumbWidth=${b}
                       .line1White=${!0}
                       .activeTextSize=${this._config.list_active_text_size ?? 12}
                       .activeTextColor=${this._config.list_active_text_color ?? "#000"}
@@ -7343,10 +7346,10 @@ let ut = 0, $e = "", k = class extends j {
               <ha-icon icon="mdi:calendar-month-outline"></ha-icon>
               <span>${h}</span>
             </button>
-            ${this._calOpen ? this._renderCalendar() : b}
+            ${this._calOpen ? this._renderCalendar() : g}
             ${this._mode === "timeline" && !this._liveMode ? d`<button class="live-arrow" @click=${this._onLive} title="Jump to live">
                   ↑
-                </button>` : b}
+                </button>` : g}
           </div>
 
           <div
@@ -7393,7 +7396,7 @@ let ut = 0, $e = "", k = class extends j {
               @fs-exit=${this._onMediaFsExit}
               @fs-change=${this._onPlayerFs}
             >
-              ${s && this._playerFs ? this._renderScrubber(!0) : b}
+              ${s && this._playerFs ? this._renderScrubber(!0) : g}
             </upc-media-view>
           </div>
         </div>

@@ -1037,12 +1037,15 @@ export class MediaView extends LitElement {
 
   // ---- hidden-but-not-unmounted teardown ----------------------------------
   private _visObserver?: IntersectionObserver;
-  private _hidden = false;
+  @state() private _hidden = false;
 
   private _onHostVisibility(visible: boolean): void {
     if (visible === !this._hidden) return; // no state change
     this._hidden = !visible;
-    if (this._hidden) this._muteAndPauseAll();
+    if (this._hidden) {
+      this._muteAndPauseAll();
+      if (this._liveStream) this._restartLivePlayer();
+    }
     else this._resumeAfterVisible();
   }
 
@@ -3355,17 +3358,19 @@ export class MediaView extends LitElement {
           @click=${this._onStageTap}
         >
           ${stateObj
-            ? html`${keyed(
-                  this._liveRestartKey,
-                  html`<ha-hls-player
-                    class="live-player"
-                    autoplay
-                    playsinline
-                    .entityid=${this.cameraId}
-                    .controls=${false}
-                    .muted=${false}
-                  ></ha-hls-player>`,
-                )}
+            ? html`${this._hidden
+                  ? nothing
+                  : keyed(
+                      this._liveRestartKey,
+                      html`<ha-hls-player
+                        class="live-player"
+                        autoplay
+                        playsinline
+                        .entityid=${this.cameraId}
+                        .controls=${false}
+                        .muted=${false}
+                      ></ha-hls-player>`,
+                    )}
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
         </div>
