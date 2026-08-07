@@ -31,6 +31,7 @@
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
 import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
 import { inGap } from './data/gaps';
@@ -232,6 +233,7 @@ export class MediaView extends LitElement {
   @state() private _liveMuted = true; // muted start permits reliable autoplay
   private _liveHealth = new LiveHealthTracker(LIVE_STABLE_MS, LIVE_STALL_MS);
   private _livePlayerGeneration = 0;
+  @state() private _liveRestartKey = 0;
   private _liveAudioAttempted = false;
   private _liveAudioTrying = false;
   private _liveAudioUserChoice?: 'muted' | 'unmuted';
@@ -1160,6 +1162,10 @@ export class MediaView extends LitElement {
       seeking: video.seeking,
       videoWidth: video.videoWidth,
     });
+    if (health.stalled && !video.paused && !this._livePausedState) {
+      this._restartLivePlayer();
+      return;
+    }
     if (
       shouldAttemptLiveAudio(
         this.liveAudioStart,
@@ -2945,6 +2951,18 @@ export class MediaView extends LitElement {
     this._liveHealth.reset();
   }
 
+  private _restartLivePlayer(): void {
+    const player = this.renderRoot.querySelector('.live-player');
+    this._livePlayerGeneration++;
+    releaseVideosIn(player);
+    this._liveRestartKey++;
+    this._liveMuted = true;
+    this._liveAudioAttempted = false;
+    this._liveAudioTrying = false;
+    this._lastLivePlaying = undefined;
+    this._liveHealth.reset();
+  }
+
   /** Leave the HA player audio-enabled, but mute its nested media element before
    * media arrives so visual autoplay never depends on audible policy. */
   private _armLivePlayer(): void {
@@ -3337,14 +3355,17 @@ export class MediaView extends LitElement {
           @click=${this._onStageTap}
         >
           ${stateObj
-            ? html`<ha-hls-player
-                  class="live-player"
-                  autoplay
-                  playsinline
-                  .entityid=${this.cameraId}
-                  .controls=${false}
-                  .muted=${false}
-                ></ha-hls-player>
+            ? html`${keyed(
+                  this._liveRestartKey,
+                  html`<ha-hls-player
+                    class="live-player"
+                    autoplay
+                    playsinline
+                    .entityid=${this.cameraId}
+                    .controls=${false}
+                    .muted=${false}
+                  ></ha-hls-player>`,
+                )}
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
         </div>
