@@ -17,6 +17,24 @@ export interface LiveHealthStatus {
   stalled: boolean;
 }
 
+interface VideoProgressSource {
+  currentTime: number;
+  getVideoPlaybackQuality?: () => { totalVideoFrames: number };
+  webkitDecodedFrameCount?: number;
+}
+
+export function liveProgressValue(video: VideoProgressSource, preferFrames: boolean): number {
+  if (!preferFrames) return video.currentTime;
+  const qualityFrames = video.getVideoPlaybackQuality?.().totalVideoFrames;
+  const webkitFrames = video.webkitDecodedFrameCount;
+  if (Number.isFinite(qualityFrames) && Number.isFinite(webkitFrames)) {
+    return Math.max(qualityFrames as number, webkitFrames as number);
+  }
+  if (Number.isFinite(qualityFrames)) return qualityFrames as number;
+  if (Number.isFinite(webkitFrames)) return webkitFrames as number;
+  return video.currentTime;
+}
+
 /** Tracks one video element's continuous progress without depending on the DOM. */
 export class LiveHealthTracker {
   private _identity?: object;

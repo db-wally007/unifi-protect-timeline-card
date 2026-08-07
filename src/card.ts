@@ -42,6 +42,7 @@ import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
 import { dateFmt } from './data/fmt'; // PERF-SCRUB-2026-08-03
+import { findMediumBridgeCamera } from './data/live-transport';
 import { swallowNextTap, type ScrubberTimeline } from './scrubber-timeline';
 import type { EventsList } from './events-list';
 import './events-list';
@@ -780,6 +781,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       chunk_seconds: 300,
       delay_seconds: 15,
       live_audio_start: 'auto',
+      live_transport: 'auto',
       scrub_settle_ms: 700,
       timeline_font_size: 12,
       timeline_font_color: '#d0d0d0',
@@ -1057,6 +1059,11 @@ export class UnifiProtectTimelineCard extends LitElement {
     return raw
       .map((c) => (typeof c === 'string' ? { camera: c } : c))
       .filter((c) => !!c?.camera);
+  }
+
+  private _liveBridgeCamera(cameraId: string): string {
+    const configured = this._cameraEntries().find((entry) => entry.camera === cameraId)?.live_camera;
+    return findMediumBridgeCamera(this.hass, cameraId, configured) ?? '';
   }
 
   /** Display name for a camera: config override -> friendly_name -> object_id. */
@@ -1939,6 +1946,8 @@ export class UnifiProtectTimelineCard extends LitElement {
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
               .liveAudioStart=${this._config.live_audio_start ?? 'auto'}
+              .liveTransport=${this._config.live_transport ?? 'auto'}
+              .liveBridgeCameraId=${this._liveBridgeCamera(cameraId)}
               .startFs=${this._drillFs}
               .fsTimeline=${fsTimeline}
               .fsTimelineWidth=${fsTimelineWidth}

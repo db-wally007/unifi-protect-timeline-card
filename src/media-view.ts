@@ -37,9 +37,11 @@ import { buildVideoUrl, signPath, startClipSession, endClipSession } from './dat
 import { inGap } from './data/gaps';
 import {
   LiveHealthTracker,
+  liveProgressValue,
   shouldAttemptLiveAudio,
   type LiveAudioStart,
 } from './data/live-health';
+import { shouldUseWebRtcLive, type LiveTransport } from './data/live-transport';
 import { ScrubPreviewLoader, type PreviewBlock } from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
 import { shadowVideo } from './data/live-video';
@@ -108,6 +110,7 @@ const LIVE_FREEZE_MAX_MS = 5_000;
 const HISTORICAL_FREEZE_MAX_MS = 15_000;
 const LIVE_STABLE_MS = 750;
 const LIVE_STALL_MS = 750;
+const LIVE_WEBRTC_STALL_MS = 1_500;
 const LIVE_AUDIO_VERIFY_MS = 350;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
@@ -157,6 +160,8 @@ export class MediaView extends LitElement {
   // floor is ~12s; values below that are clamped. Each chunk is ~ (delay − 8)s.
   @property({ type: Number }) delaySeconds = 15;
   @property() liveAudioStart: LiveAudioStart = 'auto';
+  @property() liveTransport: LiveTransport = 'auto';
+  @property() liveBridgeCameraId = '';
   // True when the host card is in its stacked (phone) layout — turns on the
   // mobile control bar (full-width seek row) and the rotate-to-landscape
   // fullscreen. Passed down from the card's _isStacked().
@@ -234,6 +239,7 @@ export class MediaView extends LitElement {
   private _liveHealth = new LiveHealthTracker(LIVE_STABLE_MS, LIVE_STALL_MS);
   private _livePlayerGeneration = 0;
   @state() private _liveRestartKey = 0;
+  @state() private _highLiveReady = false;
   private _liveAudioAttempted = false;
   private _liveAudioTrying = false;
   private _liveAudioUserChoice?: 'muted' | 'unmuted';
@@ -454,7 +460,8 @@ export class MediaView extends LitElement {
        The flex centring is belt-and-braces for any future player that ends up
        auto-height; measured a no-op for both current ones. */
     ha-web-rtc-player.live-player,
-    ha-hls-player.live-player {
+    ha-hls-player.live-player,
+    ha-camera-stream.live-bridge {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -464,6 +471,12 @@ export class MediaView extends LitElement {
       justify-content: center;
       background: #000;
       --video-max-height: 100%;
+    }
+    .live-player {
+      z-index: 1;
+    }
+    .live-bridge {
+      z-index: 2;
     }
     /* Clip/scrub/idle overlay drawn ON TOP of the always-mounted live element,
        so live is never torn down (that's what dropped HLS audio on return). */
@@ -906,15 +919,23 @@ export class MediaView extends LitElement {
     this._visObserver.observe(this);
     // HA's player elements are defined lazily; loading card helpers pulls in
     // the camera stream module and its HLS/WebRTC player dependencies.
-    if (customElements.get('ha-hls-player')) {
+    const playersReady = (): boolean =>
+      !!customElements.get('ha-hls-player') &&
+      !!customElements.get('ha-web-rtc-player') &&
+      !!customElements.get('ha-camera-stream');
+    if (playersReady()) {
       this._streamReady = true;
     } else {
       const load = (window as unknown as { loadCardHelpers?: () => Promise<unknown> })
         .loadCardHelpers;
       load?.().then(() => {
-        this._streamReady = !!customElements.get('ha-hls-player');
+        this._streamReady = playersReady();
       });
-      customElements.whenDefined('ha-hls-player').then(() => {
+      Promise.all([
+        customElements.whenDefined('ha-hls-player'),
+        customElements.whenDefined('ha-web-rtc-player'),
+        customElements.whenDefined('ha-camera-stream'),
+      ]).then(() => {
         this._streamReady = true;
       });
     }
@@ -946,7 +967,14 @@ export class MediaView extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     // Start the actual media element muted while keeping the outer WebRTC
     // player audio-enabled so it retains the incoming Opus track.
-    if (this.live && (changed.has('live') || changed.has('_streamReady'))) {
+    if (
+      this.live &&
+      (changed.has('live') ||
+        changed.has('_streamReady') ||
+        changed.has('cameraId') ||
+        changed.has('liveTransport') ||
+        changed.has('liveBridgeCameraId'))
+    ) {
       this._resetLiveSession();
     }
     // HOLDFRAME-2026-08-05c: CAPTURE THE HELD FRAME FIRST — before anything
@@ -983,7 +1011,7 @@ export class MediaView extends LitElement {
     // with. On iOS that competition is what left the stage black.
     if ((changed.has('live') && !this.live) || changed.has('cameraId')) {
       this._livePlayerGeneration++;
-      releaseVideosIn(this.renderRoot?.querySelector('.live-player'));
+      releaseVideosIn(this.renderRoot?.querySelector('.live-stage'));
     }
     // A new camera at the SAME timestamp is still a new load: the dedup below
     // keys only on the time, so without this the switch showed nothing.
@@ -1053,14 +1081,16 @@ export class MediaView extends LitElement {
    *  preview) so nothing plays audio while the card is hidden. */
   private _muteAndPauseAll(): void {
     this._stopLivePoll();
-    const vids = [
+    const vids = new Set([
       this._liveVideo(),
+      this._highLiveVideo(),
+      this._bridgeLiveVideo(),
       this._video,
       this._followVidA,
       this._followVidB,
       this._previewVidA,
       this._previewVidB,
-    ];
+    ]);
     for (const v of vids) {
       if (!v) continue;
       v.muted = true;
@@ -1138,7 +1168,7 @@ export class MediaView extends LitElement {
 
   private _startLivePoll(): void {
     this._stopLivePoll();
-    this._liveHealth.reset();
+    this._resetLiveHealth();
     this._lastLivePlaying = undefined; // fresh mount -> re-report initial state
     // 250ms: cheap (trivial DOM reads), catches a frozen live HLS pipeline
     // quickly, and freezes the card's 1s playhead before it can step ahead.
@@ -1154,18 +1184,27 @@ export class MediaView extends LitElement {
   private _pollLive(): void {
     const video = this._liveVideo();
     if (!video) return; // not ready yet — keep last known state, try again next tick
-    if (video.muted !== this._liveMuted) video.muted = this._liveMuted;
+    const highVideo = this._highLiveVideo();
+    const waitingForHigh = this._useWebRtcLive && !this._highLiveReady;
+    const desiredMuted = waitingForHigh ? true : this._liveMuted;
+    if (video.muted !== desiredMuted) video.muted = desiredMuted;
     this._reportLivePlaying(!video.paused);
+    const monitoredVideo = this._useWebRtcLive ? highVideo : video;
+    if (!monitoredVideo) return;
     const health = this._liveHealth.sample({
-      identity: video,
+      identity: monitoredVideo,
       nowMs: performance.now(),
-      currentTime: video.currentTime,
-      readyState: video.readyState,
-      paused: video.paused,
-      seeking: video.seeking,
-      videoWidth: video.videoWidth,
+      currentTime: liveProgressValue(monitoredVideo, this._useWebRtcLive),
+      readyState: monitoredVideo.readyState,
+      paused: monitoredVideo.paused,
+      seeking: monitoredVideo.seeking,
+      videoWidth: monitoredVideo.videoWidth,
     });
-    if (health.stalled && !video.paused && !this._livePausedState) {
+    if (this._useWebRtcLive && health.stable && !this._highLiveReady) {
+      releaseVideosIn(this.renderRoot.querySelector('.live-bridge'));
+      this._highLiveReady = true;
+    }
+    if (health.stalled && !monitoredVideo.paused && !this._livePausedState) {
       this._restartLivePlayer();
       return;
     }
@@ -1177,7 +1216,7 @@ export class MediaView extends LitElement {
         health.stable,
       )
     ) {
-      void this._tryAutoLiveAudio(video);
+      void this._tryAutoLiveAudio(monitoredVideo);
     }
   }
 
@@ -1196,6 +1235,14 @@ export class MediaView extends LitElement {
 
   private get _liveStream(): boolean {
     return this.live && this._streamReady;
+  }
+
+  private get _useWebRtcLive(): boolean {
+    return shouldUseWebRtcLive(this.liveTransport, {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      maxTouchPoints: navigator.maxTouchPoints,
+    });
   }
 
   protected firstUpdated(): void {
@@ -2941,37 +2988,54 @@ export class MediaView extends LitElement {
   // ---- LIVE custom controls (native controls off; same bar as delayed-follow) --
 
   private _liveVideo(): HTMLVideoElement | null {
+    const high = this._highLiveVideo();
+    if (!this._useWebRtcLive || this._highLiveReady) return high;
+    return this._bridgeLiveVideo() ?? high;
+  }
+
+  private _highLiveVideo(): HTMLVideoElement | null {
     const player = this.renderRoot.querySelector('.live-player');
     return player ? shadowVideo(player) : null;
+  }
+
+  private _bridgeLiveVideo(): HTMLVideoElement | null {
+    const bridge = this.renderRoot.querySelector('.live-bridge');
+    return bridge ? shadowVideo(bridge) : null;
+  }
+
+  private _resetLiveHealth(): void {
+    this._liveHealth = new LiveHealthTracker(
+      LIVE_STABLE_MS,
+      this._useWebRtcLive ? LIVE_WEBRTC_STALL_MS : LIVE_STALL_MS,
+    );
   }
 
   private _resetLiveSession(): void {
     this._livePlayerGeneration++;
     this._livePausedState = false;
     this._liveMuted = true;
+    this._highLiveReady = false;
     this._liveAudioAttempted = false;
     this._liveAudioTrying = false;
-    this._liveHealth.reset();
+    this._resetLiveHealth();
   }
 
   private _restartLivePlayer(): void {
-    const player = this.renderRoot.querySelector('.live-player');
     this._livePlayerGeneration++;
-    releaseVideosIn(player);
+    releaseVideosIn(this.renderRoot.querySelector('.live-stage'));
+    this._highLiveReady = false;
     this._liveRestartKey++;
     this._liveMuted = true;
     this._liveAudioAttempted = false;
     this._liveAudioTrying = false;
     this._lastLivePlaying = undefined;
-    this._liveHealth.reset();
+    this._resetLiveHealth();
   }
 
   /** Leave the HA player audio-enabled, but mute its nested media element before
    * media arrives so visual autoplay never depends on audible policy. */
   private _armLivePlayer(): void {
-    const player = this.renderRoot.querySelector(
-      'ha-hls-player.live-player',
-    ) as HaLivePlayerElement | null;
+    const player = this.renderRoot.querySelector('.live-player') as HaLivePlayerElement | null;
     if (!player) return;
     const generation = this._livePlayerGeneration;
     void (player.updateComplete ?? Promise.resolve()).then(() => {
@@ -2983,6 +3047,17 @@ export class MediaView extends LitElement {
         video.play().catch(() => undefined);
       }
     });
+    const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
+    if (bridge) {
+      bridge.muted = true;
+      void (bridge.updateComplete ?? Promise.resolve()).then(() => {
+        if (!this.live || generation !== this._livePlayerGeneration) return;
+        const video = shadowVideo(bridge);
+        if (!video) return;
+        video.muted = true;
+        if (!this._livePausedState && video.paused) video.play().catch(() => undefined);
+      });
+    }
   }
 
   private async _tryAutoLiveAudio(video: HTMLVideoElement): Promise<void> {
@@ -3038,10 +3113,14 @@ export class MediaView extends LitElement {
     if (!v) return;
     if (v.paused) {
       this._livePausedState = false;
-      v.play().catch(() => {});
+      for (const video of new Set([v, this._highLiveVideo(), this._bridgeLiveVideo()])) {
+        video?.play().catch(() => {});
+      }
     } else {
       this._livePausedState = true;
-      v.pause();
+      for (const video of new Set([v, this._highLiveVideo(), this._bridgeLiveVideo()])) {
+        video?.pause();
+      }
     }
     this._showFollowCtrl();
   };
@@ -3051,6 +3130,11 @@ export class MediaView extends LitElement {
     const v = this._liveVideo();
     const muted = !this._liveMuted;
     this._liveAudioUserChoice = muted ? 'muted' : 'unmuted';
+    if (this._useWebRtcLive && !this._highLiveReady && !muted) {
+      this._liveAudioAttempted = false;
+      this._showFollowCtrl();
+      return;
+    }
     this._liveAudioAttempted = true;
     this._liveMuted = muted;
     if (v) {
@@ -3344,11 +3428,13 @@ export class MediaView extends LitElement {
       return html`<div class="stage"><div class="msg error">Missing camera / nvr_id.</div></div>`;
     }
 
-    // LIVE: one explicit high-resolution HLS transport. This keeps HA's warm
-    // high-quality worker but removes ha-camera-stream's concurrent HLS/WebRTC
-    // negotiation. _armLivePlayer mutes the nested video before media arrives.
+    // LIVE: non-Apple clients keep the explicit high HLS player. Apple mobile
+    // gets a smooth medium bridge while explicit high WebRTC negotiates; after
+    // verified high motion the bridge is released and unmounted.
     if (this._liveStream) {
       const stateObj = this.hass.states[this.cameraId];
+      const bridgeStateObj = this.hass.states[this.liveBridgeCameraId];
+      const useWebRtc = this._useWebRtcLive;
       return html`
         <div
           class="stage live-stage"
@@ -3362,14 +3448,33 @@ export class MediaView extends LitElement {
                   ? nothing
                   : keyed(
                       this._liveRestartKey,
-                      html`<ha-hls-player
-                        class="live-player"
-                        autoplay
-                        playsinline
-                        .entityid=${this.cameraId}
-                        .controls=${false}
-                        .muted=${false}
-                      ></ha-hls-player>`,
+                      useWebRtc
+                        ? html`<ha-web-rtc-player
+                              class="live-player live-high"
+                              autoplay
+                              playsinline
+                              .entityid=${this.cameraId}
+                              .controls=${false}
+                              .muted=${false}
+                            ></ha-web-rtc-player>
+                            ${!this._highLiveReady && bridgeStateObj
+                              ? html`<ha-camera-stream
+                                  class="live-bridge"
+                                  .hass=${this.hass}
+                                  .stateObj=${bridgeStateObj}
+                                  .controls=${false}
+                                  .muted=${true}
+                                  allow-exoplayer
+                                ></ha-camera-stream>`
+                              : nothing}`
+                        : html`<ha-hls-player
+                            class="live-player"
+                            autoplay
+                            playsinline
+                            .entityid=${this.cameraId}
+                            .controls=${false}
+                            .muted=${false}
+                          ></ha-hls-player>`,
                     )}
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
