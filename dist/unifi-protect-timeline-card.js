@@ -3270,13 +3270,13 @@ let _ = class extends j {
     if (super.connectedCallback(), document.addEventListener("fullscreenchange", this._onFsChange), this.addEventListener("pointerdown", this._keepCtrlAlive, !0), this.addEventListener("pointermove", this._keepCtrlAlive, !0), this._visObserver = new IntersectionObserver(
       (e) => this._onHostVisibility(e[e.length - 1].isIntersecting),
       { threshold: 0 }
-    ), this._visObserver.observe(this), customElements.get("ha-web-rtc-player"))
+    ), this._visObserver.observe(this), customElements.get("ha-hls-player"))
       this._streamReady = !0;
     else {
       const e = window.loadCardHelpers;
       e?.().then(() => {
-        this._streamReady = !!customElements.get("ha-web-rtc-player");
-      }), customElements.whenDefined("ha-web-rtc-player").then(() => {
+        this._streamReady = !!customElements.get("ha-hls-player");
+      }), customElements.whenDefined("ha-hls-player").then(() => {
         this._streamReady = !0;
       });
     }
@@ -4110,10 +4110,10 @@ let _ = class extends j {
     this._livePlayerGeneration++, this._livePausedState = !1, this._liveMuted = !0, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._liveHealth.reset();
   }
   /** Leave the HA player audio-enabled, but mute its nested media element before
-   * remote tracks arrive so visual autoplay never depends on audible policy. */
+   * media arrives so visual autoplay never depends on audible policy. */
   _armLivePlayer() {
     const e = this.renderRoot.querySelector(
-      "ha-web-rtc-player.live-player"
+      "ha-hls-player.live-player"
     );
     if (!e) return;
     const t = this._livePlayerGeneration;
@@ -4291,14 +4291,14 @@ let _ = class extends j {
           @pointerdown=${this._onStagePress}
           @click=${this._onStageTap}
         >
-          ${e ? d`<ha-web-rtc-player
+          ${e ? d`<ha-hls-player
                   class="live-player"
                   autoplay
                   playsinline
                   .entityid=${this.cameraId}
                   .controls=${!1}
                   .muted=${!1}
-                ></ha-web-rtc-player>
+                ></ha-hls-player>
                 ${this._renderCtrlBar("live")}` : d`<div class="msg error">Camera entity not found.</div>`}
         </div>
       `;
