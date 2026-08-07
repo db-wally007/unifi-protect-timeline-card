@@ -3264,14 +3264,20 @@ let p = class extends j {
       }
     }, this._toggleLiveMute = (e) => {
       e.stopPropagation();
-      const t = this._liveVideo(), i = !this._liveMuted;
-      if (this._liveAudioUserChoice = i ? "muted" : "unmuted", this._useWebRtcLive && !this._highLiveReady && !i) {
-        this._liveAudioAttempted = !1, this._showFollowCtrl();
-        return;
-      }
-      this._liveAudioAttempted = !0, this._liveMuted = i, t && (t.muted = i, i || t.play().catch(() => {
-        t.muted = !0, this._liveMuted = !0;
-      })), this._showFollowCtrl();
+      const t = !this._liveMuted;
+      this._liveAudioUserChoice = t ? "muted" : "unmuted", this._liveAudioAttempted = !0, this._liveMuted = t;
+      const i = this._liveVideo(), s = /* @__PURE__ */ new Set([i, this._highLiveVideo(), this._bridgeLiveVideo()]), o = this.renderRoot.querySelector(".live-bridge");
+      o && (o.muted = t);
+      for (const r of s)
+        if (r && (r.muted = t, !t)) {
+          r.volume = 1;
+          const a = r.srcObject;
+          if (a instanceof MediaStream)
+            for (const n of a.getAudioTracks()) n.enabled = !0;
+        }
+      !t && i && i.play().catch(() => {
+        i === this._liveVideo() && !this._liveMuted && (i.muted = !0, this._liveMuted = !0);
+      }), this._showFollowCtrl();
     }, this._clipSkipBack = (e) => {
       e.stopPropagation();
       const t = this._video;
@@ -3416,20 +3422,20 @@ let p = class extends j {
   _pollLive() {
     const e = this._liveVideo();
     if (!e) return;
-    const t = this._highLiveVideo(), s = this._useWebRtcLive && !this._highLiveReady ? !0 : this._liveMuted;
-    e.muted !== s && (e.muted = s), this._reportLivePlaying(!e.paused);
-    const o = this._useWebRtcLive ? t : e;
-    if (!o) return;
-    const r = this._liveHealth.sample({
-      identity: o,
+    const t = this._highLiveVideo();
+    e.muted !== this._liveMuted && (e.muted = this._liveMuted), this._reportLivePlaying(!e.paused);
+    const i = this._useWebRtcLive ? t : e;
+    if (!i) return;
+    const s = this._liveHealth.sample({
+      identity: i,
       nowMs: performance.now(),
-      currentTime: gs(o, this._useWebRtcLive),
-      readyState: o.readyState,
-      paused: o.paused,
-      seeking: o.seeking,
-      videoWidth: o.videoWidth
+      currentTime: gs(i, this._useWebRtcLive),
+      readyState: i.readyState,
+      paused: i.paused,
+      seeking: i.seeking,
+      videoWidth: i.videoWidth
     });
-    if (this._useWebRtcLive && r.stable && !this._highLiveReady && (nt(this.renderRoot.querySelector(".live-bridge")), this._highLiveReady = !0), r.stalled && !o.paused && !this._livePausedState) {
+    if (this._useWebRtcLive && s.stable && !this._highLiveReady && (nt(this.renderRoot.querySelector(".live-bridge")), this._highLiveReady = !0), s.stalled && !i.paused && !this._livePausedState) {
       this._restartLivePlayer();
       return;
     }
@@ -3437,8 +3443,8 @@ let p = class extends j {
       this.liveAudioStart,
       this._liveAudioUserChoice,
       this._liveAudioAttempted,
-      r.stable
-    ) && this._tryAutoLiveAudio(o);
+      s.stable
+    ) && this._tryAutoLiveAudio(i);
   }
   _reportLivePlaying(e) {
     e !== this._lastLivePlaying && (this._lastLivePlaying = e, this._livePausedState = !e, this.dispatchEvent(
@@ -4211,10 +4217,10 @@ let p = class extends j {
       }));
     });
     const i = this.renderRoot.querySelector(".live-bridge");
-    i && (i.muted = !0, (i.updateComplete ?? Promise.resolve()).then(() => {
+    i && (i.muted = this._liveMuted, (i.updateComplete ?? Promise.resolve()).then(() => {
       if (!this.live || t !== this._livePlayerGeneration) return;
       const s = mt(i);
-      s && (s.muted = !0, !this._livePausedState && s.paused && s.play().catch(() => {
+      s && (s.muted = this._liveMuted, !this._livePausedState && s.paused && s.play().catch(() => {
       }));
     }));
   }
@@ -4400,7 +4406,7 @@ let p = class extends j {
                                   .hass=${this.hass}
                                   .stateObj=${t}
                                   .controls=${!1}
-                                  .muted=${!0}
+                                  .muted=${this._liveMuted}
                                   allow-exoplayer
                                 ></ha-camera-stream>` : g}` : d`<ha-hls-player
                             class="live-player"

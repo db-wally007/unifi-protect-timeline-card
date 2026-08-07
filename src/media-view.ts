@@ -1185,9 +1185,7 @@ export class MediaView extends LitElement {
     const video = this._liveVideo();
     if (!video) return; // not ready yet — keep last known state, try again next tick
     const highVideo = this._highLiveVideo();
-    const waitingForHigh = this._useWebRtcLive && !this._highLiveReady;
-    const desiredMuted = waitingForHigh ? true : this._liveMuted;
-    if (video.muted !== desiredMuted) video.muted = desiredMuted;
+    if (video.muted !== this._liveMuted) video.muted = this._liveMuted;
     this._reportLivePlaying(!video.paused);
     const monitoredVideo = this._useWebRtcLive ? highVideo : video;
     if (!monitoredVideo) return;
@@ -3049,12 +3047,12 @@ export class MediaView extends LitElement {
     });
     const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
     if (bridge) {
-      bridge.muted = true;
+      bridge.muted = this._liveMuted;
       void (bridge.updateComplete ?? Promise.resolve()).then(() => {
         if (!this.live || generation !== this._livePlayerGeneration) return;
         const video = shadowVideo(bridge);
         if (!video) return;
-        video.muted = true;
+        video.muted = this._liveMuted;
         if (!this._livePausedState && video.paused) video.play().catch(() => undefined);
       });
     }
@@ -3127,24 +3125,33 @@ export class MediaView extends LitElement {
 
   private _toggleLiveMute = (e: Event): void => {
     e.stopPropagation();
-    const v = this._liveVideo();
     const muted = !this._liveMuted;
     this._liveAudioUserChoice = muted ? 'muted' : 'unmuted';
-    if (this._useWebRtcLive && !this._highLiveReady && !muted) {
-      this._liveAudioAttempted = false;
-      this._showFollowCtrl();
-      return;
-    }
     this._liveAudioAttempted = true;
     this._liveMuted = muted;
-    if (v) {
-      v.muted = muted;
+
+    const activeVideo = this._liveVideo();
+    const videos = new Set([activeVideo, this._highLiveVideo(), this._bridgeLiveVideo()]);
+    const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
+    if (bridge) bridge.muted = muted;
+    for (const video of videos) {
+      if (!video) continue;
+      video.muted = muted;
       if (!muted) {
-        v.play().catch(() => {
-          v.muted = true;
-          this._liveMuted = true;
-        });
+        video.volume = 1;
+        const stream = video.srcObject;
+        if (stream instanceof MediaStream) {
+          for (const track of stream.getAudioTracks()) track.enabled = true;
+        }
       }
+    }
+    if (!muted && activeVideo) {
+      activeVideo.play().catch(() => {
+        if (activeVideo === this._liveVideo() && !this._liveMuted) {
+          activeVideo.muted = true;
+          this._liveMuted = true;
+        }
+      });
     }
     this._showFollowCtrl();
   };
@@ -3463,7 +3470,7 @@ export class MediaView extends LitElement {
                                   .hass=${this.hass}
                                   .stateObj=${bridgeStateObj}
                                   .controls=${false}
-                                  .muted=${true}
+                                  .muted=${this._liveMuted}
                                   allow-exoplayer
                                 ></ha-camera-stream>`
                               : nothing}`
