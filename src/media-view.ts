@@ -903,16 +903,16 @@ export class MediaView extends LitElement {
     );
     this._visObserver.observe(this);
     // HA's player elements are defined lazily; loading card helpers pulls in
-    // the camera stream module and its WebRTC/HLS player dependencies.
-    if (customElements.get('ha-web-rtc-player')) {
+    // the camera stream module and its HLS/WebRTC player dependencies.
+    if (customElements.get('ha-hls-player')) {
       this._streamReady = true;
     } else {
       const load = (window as unknown as { loadCardHelpers?: () => Promise<unknown> })
         .loadCardHelpers;
       load?.().then(() => {
-        this._streamReady = !!customElements.get('ha-web-rtc-player');
+        this._streamReady = !!customElements.get('ha-hls-player');
       });
-      customElements.whenDefined('ha-web-rtc-player').then(() => {
+      customElements.whenDefined('ha-hls-player').then(() => {
         this._streamReady = true;
       });
     }
@@ -2946,10 +2946,10 @@ export class MediaView extends LitElement {
   }
 
   /** Leave the HA player audio-enabled, but mute its nested media element before
-   * remote tracks arrive so visual autoplay never depends on audible policy. */
+   * media arrives so visual autoplay never depends on audible policy. */
   private _armLivePlayer(): void {
     const player = this.renderRoot.querySelector(
-      'ha-web-rtc-player.live-player',
+      'ha-hls-player.live-player',
     ) as HaLivePlayerElement | null;
     if (!player) return;
     const generation = this._livePlayerGeneration;
@@ -3323,9 +3323,9 @@ export class MediaView extends LitElement {
       return html`<div class="stage"><div class="msg error">Missing camera / nvr_id.</div></div>`;
     }
 
-    // LIVE: one explicit high-resolution WebRTC transport. The HA player stays
-    // audio-enabled so it retains Opus; _armLivePlayer mutes the nested video
-    // before remote tracks arrive for reliable visual autoplay.
+    // LIVE: one explicit high-resolution HLS transport. This keeps HA's warm
+    // high-quality worker but removes ha-camera-stream's concurrent HLS/WebRTC
+    // negotiation. _armLivePlayer mutes the nested video before media arrives.
     if (this._liveStream) {
       const stateObj = this.hass.states[this.cameraId];
       return html`
@@ -3337,14 +3337,14 @@ export class MediaView extends LitElement {
           @click=${this._onStageTap}
         >
           ${stateObj
-            ? html`<ha-web-rtc-player
+            ? html`<ha-hls-player
                   class="live-player"
                   autoplay
                   playsinline
                   .entityid=${this.cameraId}
                   .controls=${false}
                   .muted=${false}
-                ></ha-web-rtc-player>
+                ></ha-hls-player>
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
         </div>
