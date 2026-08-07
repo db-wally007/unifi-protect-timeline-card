@@ -34,9 +34,19 @@ import { customElement, property, query, state } from 'lit/decorators.js';
 import type { FootageGap, HomeAssistant } from './data/types';
 import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
 import { inGap } from './data/gaps';
+import {
+  LiveHealthTracker,
+  shouldAttemptLiveAudio,
+  type LiveAudioStart,
+} from './data/live-health';
 import { ScrubPreviewLoader, type PreviewBlock } from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
-import { visibleLiveVideo } from './data/live-video';
+import { shadowVideo } from './data/live-video';
+
+interface HaLivePlayerElement extends HTMLElement {
+  muted: boolean;
+  updateComplete?: Promise<unknown>;
+}
 
 // Cut playback chunks at recording-tier boundaries. Only needed under ADAPTIVE
 // recording, where one export could straddle the high-res event tier and the low-res
@@ -95,6 +105,9 @@ const SEEK_SAMPLE_MAX = 15;
 // NVR exports may genuinely need longer, but both paths remain finite.
 const LIVE_FREEZE_MAX_MS = 5_000;
 const HISTORICAL_FREEZE_MAX_MS = 15_000;
+const LIVE_STABLE_MS = 750;
+const LIVE_STALL_MS = 1_500;
+const LIVE_AUDIO_VERIFY_MS = 350;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
@@ -142,6 +155,7 @@ export class MediaView extends LitElement {
   // playback holds. The recording export can't serve the last ~8s, so the true
   // floor is ~12s; values below that are clamped. Each chunk is ~ (delay − 8)s.
   @property({ type: Number }) delaySeconds = 15;
+  @property() liveAudioStart: LiveAudioStart = 'auto';
   // True when the host card is in its stacked (phone) layout — turns on the
   // mobile control bar (full-width seek row) and the rotate-to-landscape
   // fullscreen. Passed down from the card's _isStacked().
@@ -177,7 +191,7 @@ export class MediaView extends LitElement {
   @state() private _videoSrc?: string;
   @state() private _loadingVideo = false;
   @state() private _error?: string;
-  // True once HA's <ha-camera-stream> element is defined (high-quality live).
+  // True once HA's explicit WebRTC player element is available.
   @state() private _streamReady = false;
 
   @query('.fs-wrap') private _fsDlg?: HTMLDialogElement;
@@ -216,6 +230,11 @@ export class MediaView extends LitElement {
   @state() private _nearLive = false; // within ~16s of live (disables speed)
   @state() private _livePausedState = false; // live inner <video> paused (for the icon)
   @state() private _liveMuted = true; // muted start permits reliable autoplay
+  private _liveHealth = new LiveHealthTracker(LIVE_STABLE_MS, LIVE_STALL_MS);
+  private _livePlayerGeneration = 0;
+  private _liveAudioAttempted = false;
+  private _liveAudioTrying = false;
+  private _liveAudioUserChoice?: 'muted' | 'unmuted';
   @state() private _clipPaused = false; // bounded event clip paused
   @state() private _clipMuted = false; // bounded event clip muted
   @state() private _clipRate = 1; // bounded event clip speed (1, 2 or 4)
@@ -432,7 +451,8 @@ export class MediaView extends LitElement {
        100vh - 97px, so the cap never binds.
        The flex centring is belt-and-braces for any future player that ends up
        auto-height; measured a no-op for both current ones. */
-    ha-camera-stream {
+    ha-web-rtc-player.live-player,
+    ha-hls-player.live-player {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -882,18 +902,17 @@ export class MediaView extends LitElement {
       { threshold: 0 },
     );
     this._visObserver.observe(this);
-    // High-quality live needs HA's <ha-camera-stream>. It's defined lazily; load
-    // the card helpers to pull it in, then flip _streamReady to render it.
-    if (customElements.get('ha-camera-stream')) {
+    // HA's player elements are defined lazily; loading card helpers pulls in
+    // the camera stream module and its WebRTC/HLS player dependencies.
+    if (customElements.get('ha-web-rtc-player')) {
       this._streamReady = true;
     } else {
       const load = (window as unknown as { loadCardHelpers?: () => Promise<unknown> })
         .loadCardHelpers;
       load?.().then(() => {
-        this._streamReady = !!customElements.get('ha-camera-stream');
+        this._streamReady = !!customElements.get('ha-web-rtc-player');
       });
-      // Also resolve when it appears on its own.
-      customElements.whenDefined('ha-camera-stream').then(() => {
+      customElements.whenDefined('ha-web-rtc-player').then(() => {
         this._streamReady = true;
       });
     }
@@ -923,12 +942,10 @@ export class MediaView extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
-    // Set this before render mounts HA's player. Starting unmuted makes async
-    // WebRTC negotiation lose the opening gesture and leaves a decoded video
-    // paused by autoplay policy; the user can enable audio once live is moving.
+    // Start the actual media element muted while keeping the outer WebRTC
+    // player audio-enabled so it retains the incoming Opus track.
     if (this.live && (changed.has('live') || changed.has('_streamReady'))) {
-      this._livePausedState = false;
-      this._liveMuted = true;
+      this._resetLiveSession();
     }
     // HOLDFRAME-2026-08-05c: CAPTURE THE HELD FRAME FIRST — before anything
     // below tears the outgoing player down. `releaseVideosIn` sets srcObject to
@@ -957,13 +974,14 @@ export class MediaView extends LitElement {
       // and left the first scrub with nothing to show but black.
       this._holdFrame(leavingScrub, !leavingScrub);
     }
-    // Leaving live (or switching camera) unmounts <ha-camera-stream>. Release
+    // Leaving live (or switching camera) unmounts the explicit player. Release
     // it HERE, while it is still in the tree — by updated() Lit has already
     // dropped the element and the live pipeline would be stranded, holding a
     // decoder that the scrub preview and clip playback then have to compete
     // with. On iOS that competition is what left the stage black.
     if ((changed.has('live') && !this.live) || changed.has('cameraId')) {
-      releaseVideosIn(this.renderRoot?.querySelector('ha-camera-stream'));
+      this._livePlayerGeneration++;
+      releaseVideosIn(this.renderRoot?.querySelector('.live-player'));
     }
     // A new camera at the SAME timestamp is still a new load: the dedup below
     // keys only on the time, so without this the switch showed nothing.
@@ -1115,6 +1133,7 @@ export class MediaView extends LitElement {
 
   private _startLivePoll(): void {
     this._stopLivePoll();
+    this._liveHealth.reset();
     this._lastLivePlaying = undefined; // fresh mount -> re-report initial state
     // 500ms: cheap (trivial DOM reads) and comfortably beats the card's 1s
     // playhead tick, so a pause freezes the playhead before it can step ahead.
@@ -1130,7 +1149,27 @@ export class MediaView extends LitElement {
   private _pollLive(): void {
     const video = this._liveVideo();
     if (!video) return; // not ready yet — keep last known state, try again next tick
+    if (video.muted !== this._liveMuted) video.muted = this._liveMuted;
     this._reportLivePlaying(!video.paused);
+    const health = this._liveHealth.sample({
+      identity: video,
+      nowMs: performance.now(),
+      currentTime: video.currentTime,
+      readyState: video.readyState,
+      paused: video.paused,
+      seeking: video.seeking,
+      videoWidth: video.videoWidth,
+    });
+    if (
+      shouldAttemptLiveAudio(
+        this.liveAudioStart,
+        this._liveAudioUserChoice,
+        this._liveAudioAttempted,
+        health.stable,
+      )
+    ) {
+      void this._tryAutoLiveAudio(video);
+    }
   }
 
   private _reportLivePlaying(playing: boolean): void {
@@ -1167,6 +1206,7 @@ export class MediaView extends LitElement {
   }
 
   protected updated(changed: PropertyValues): void {
+    if (this._liveStream) this._armLivePlayer();
     // While hidden, <ha-camera-stream> can re-assert its own autoplay on any
     // re-render (a hass tick) — keep re-silencing it so no audio leaks behind a
     // closed popup until we're visible again.
@@ -2892,8 +2932,66 @@ export class MediaView extends LitElement {
   // ---- LIVE custom controls (native controls off; same bar as delayed-follow) --
 
   private _liveVideo(): HTMLVideoElement | null {
-    const stream = this.renderRoot.querySelector('ha-camera-stream');
-    return stream ? visibleLiveVideo(stream) : null;
+    const player = this.renderRoot.querySelector('.live-player');
+    return player ? shadowVideo(player) : null;
+  }
+
+  private _resetLiveSession(): void {
+    this._livePlayerGeneration++;
+    this._livePausedState = false;
+    this._liveMuted = true;
+    this._liveAudioAttempted = false;
+    this._liveAudioTrying = false;
+    this._liveHealth.reset();
+  }
+
+  /** Leave the HA player audio-enabled, but mute its nested media element before
+   * remote tracks arrive so visual autoplay never depends on audible policy. */
+  private _armLivePlayer(): void {
+    const player = this.renderRoot.querySelector(
+      'ha-web-rtc-player.live-player',
+    ) as HaLivePlayerElement | null;
+    if (!player) return;
+    const generation = this._livePlayerGeneration;
+    void (player.updateComplete ?? Promise.resolve()).then(() => {
+      if (!this.live || generation !== this._livePlayerGeneration) return;
+      const video = shadowVideo(player);
+      if (!video) return;
+      video.muted = this._liveMuted;
+      if (!this._livePausedState && video.paused) {
+        video.play().catch(() => undefined);
+      }
+    });
+  }
+
+  private async _tryAutoLiveAudio(video: HTMLVideoElement): Promise<void> {
+    if (this._liveAudioTrying || this._liveAudioAttempted) return;
+    this._liveAudioAttempted = true;
+    this._liveAudioTrying = true;
+    const generation = this._livePlayerGeneration;
+    const before = video.currentTime;
+    try {
+      video.muted = false;
+      await video.play();
+      await new Promise<void>((resolve) => setTimeout(resolve, LIVE_AUDIO_VERIFY_MS));
+      if (
+        generation !== this._livePlayerGeneration ||
+        video !== this._liveVideo() ||
+        video.paused ||
+        video.currentTime <= before + 0.01
+      ) {
+        throw new Error('audible autoplay did not remain active');
+      }
+      this._liveMuted = false;
+    } catch {
+      if (generation === this._livePlayerGeneration && video === this._liveVideo()) {
+        video.muted = true;
+        this._liveMuted = true;
+        await video.play().catch(() => undefined);
+      }
+    } finally {
+      this._liveAudioTrying = false;
+    }
   }
 
   /** Rewind 15s off live -> the card drops out of live into delayed-follow. */
@@ -2929,13 +3027,20 @@ export class MediaView extends LitElement {
 
   private _toggleLiveMute = (e: Event): void => {
     e.stopPropagation();
-    this._liveMuted = !this._liveMuted;
-    const stream = this.renderRoot.querySelector('ha-camera-stream') as
-      | (HTMLElement & { muted: boolean })
-      | null;
-    if (stream) stream.muted = this._liveMuted;
     const v = this._liveVideo();
-    if (v) v.muted = this._liveMuted;
+    const muted = !this._liveMuted;
+    this._liveAudioUserChoice = muted ? 'muted' : 'unmuted';
+    this._liveAudioAttempted = true;
+    this._liveMuted = muted;
+    if (v) {
+      v.muted = muted;
+      if (!muted) {
+        v.play().catch(() => {
+          v.muted = true;
+          this._liveMuted = true;
+        });
+      }
+    }
     this._showFollowCtrl();
   };
 
@@ -3218,11 +3323,9 @@ export class MediaView extends LitElement {
       return html`<div class="stage"><div class="msg error">Missing camera / nvr_id.</div></div>`;
     }
 
-    // LIVE: mount <ha-camera-stream> ONLY while actually viewing live. It's a
-    // black box that re-asserts its own autoplay, so the only reliable way to
-    // stop its decode + audio when you leave live is to UNMOUNT it (pausing it
-    // doesn't hold — it resumes itself on its next render). On return it's
-    // remounted muted for reliable autoplay (see _hideLiveTimeline).
+    // LIVE: one explicit high-resolution WebRTC transport. The HA player stays
+    // audio-enabled so it retains Opus; _armLivePlayer mutes the nested video
+    // before remote tracks arrive for reliable visual autoplay.
     if (this._liveStream) {
       const stateObj = this.hass.states[this.cameraId];
       return html`
@@ -3234,13 +3337,14 @@ export class MediaView extends LitElement {
           @click=${this._onStageTap}
         >
           ${stateObj
-            ? html`<ha-camera-stream
-                  .hass=${this.hass}
-                  .stateObj=${stateObj}
+            ? html`<ha-web-rtc-player
+                  class="live-player"
+                  autoplay
+                  playsinline
+                  .entityid=${this.cameraId}
                   .controls=${false}
-                    .muted=${this._liveMuted}
-                  allow-exoplayer
-                ></ha-camera-stream>
+                  .muted=${false}
+                ></ha-web-rtc-player>
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
         </div>
