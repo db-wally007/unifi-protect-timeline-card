@@ -3129,7 +3129,7 @@ var As = Object.defineProperty, Ms = Object.getOwnPropertyDescriptor, v = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && As(t, i, o), o;
 };
-const we = 5 * 6e4, Ps = 400, Es = 1200, Cs = 400, zs = 40, Fs = 5, Rs = 15, Ls = 5e3, Ds = 15e3, Os = 750, Is = 1500, Bs = 350, Vs = 1e4;
+const we = 5 * 6e4, Ps = 400, Es = 1200, Cs = 400, zs = 40, Fs = 5, Rs = 15, Ls = 5e3, Ds = 15e3, Os = 750, Is = 750, Bs = 350, Vs = 1e4;
 function ye(e) {
   return e?.name === "NotAllowedError";
 }
@@ -3366,7 +3366,7 @@ let _ = class extends j {
     e < 12 && (this._hideTimer = setTimeout(() => this._hideLiveTimeline(e + 1), 250));
   }
   _startLivePoll() {
-    this._stopLivePoll(), this._liveHealth.reset(), this._lastLivePlaying = void 0, this._livePollTimer = setInterval(() => this._pollLive(), 500), this._pollLive();
+    this._stopLivePoll(), this._liveHealth.reset(), this._lastLivePlaying = void 0, this._livePollTimer = setInterval(() => this._pollLive(), 250), this._pollLive();
   }
   _stopLivePoll() {
     clearInterval(this._livePollTimer), this._livePollTimer = void 0;

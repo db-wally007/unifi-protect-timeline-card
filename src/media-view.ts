@@ -107,7 +107,7 @@ const SEEK_SAMPLE_MAX = 15;
 const LIVE_FREEZE_MAX_MS = 5_000;
 const HISTORICAL_FREEZE_MAX_MS = 15_000;
 const LIVE_STABLE_MS = 750;
-const LIVE_STALL_MS = 1_500;
+const LIVE_STALL_MS = 750;
 const LIVE_AUDIO_VERIFY_MS = 350;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
@@ -1137,9 +1137,9 @@ export class MediaView extends LitElement {
     this._stopLivePoll();
     this._liveHealth.reset();
     this._lastLivePlaying = undefined; // fresh mount -> re-report initial state
-    // 500ms: cheap (trivial DOM reads) and comfortably beats the card's 1s
-    // playhead tick, so a pause freezes the playhead before it can step ahead.
-    this._livePollTimer = setInterval(() => this._pollLive(), 500);
+    // 250ms: cheap (trivial DOM reads), catches a frozen live HLS pipeline
+    // quickly, and freezes the card's 1s playhead before it can step ahead.
+    this._livePollTimer = setInterval(() => this._pollLive(), 250);
     this._pollLive();
   }
 
