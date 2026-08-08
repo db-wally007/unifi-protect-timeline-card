@@ -780,7 +780,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       default_timeline_zoom: 100,
       chunk_seconds: 300,
       delay_seconds: 15,
-      live_audio_start: 'auto',
+      live_audio_start: 'muted',
       live_transport: 'auto',
       scrub_settle_ms: 700,
       timeline_font_size: 12,
@@ -1945,7 +1945,7 @@ export class UnifiProtectTimelineCard extends LitElement {
               .clipEndTime=${this._clipEnd}
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
-              .liveAudioStart=${this._config.live_audio_start ?? 'auto'}
+              .liveAudioStart=${this._config.live_audio_start ?? 'muted'}
               .liveTransport=${this._config.live_transport ?? 'auto'}
               .liveBridgeCameraId=${this._liveBridgeCamera(cameraId)}
               .startFs=${this._drillFs}

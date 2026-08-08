@@ -161,7 +161,7 @@ Single mode unless noted.
 |---|---|---|---|
 | `chunk_seconds` | number | `300` | Length of each exported clip segment. Longer = slower to start, fewer joins. Minimum 2. Both modes |
 | `delay_seconds` | number | `15` | How far behind live delayed-follow playback holds. Minimum 12 |
-| `live_audio_start` | `auto` \| `muted` | `auto` | `auto` makes one best-effort audible start after video is stable; browser autoplay policy can leave it muted. `muted` waits for the mute-button gesture |
+| `live_audio_start` | `auto` \| `muted` | `muted` | `muted` starts the card session silently. One explicit Unmute applies to LIVE, history, clips, and camera switches until the view closes. `auto` additionally permits a best-effort audible initial LIVE start |
 | `live_transport` | `auto` \| `hls` \| `webrtc` | `auto` | `auto` keeps high HLS on desktop/Android and uses a medium startup bridge followed by high WebRTC on Apple mobile. Explicit values force a transport for diagnosis or rollback |
 
 #### Reliable live startup
@@ -173,10 +173,10 @@ is released and unmounted; settled LIVE is the original high entity, not medium.
 `live_camera` entry wins, otherwise the card discovers an available same-device entity ending in
 `_medium_resolution_channel`. `live_transport: hls` restores the prior behavior immediately.
 
-Every transport starts its nested video muted so visual autoplay is reliable. With
-`live_audio_start: auto`, the card makes one audible attempt after high motion is stable and safely
-continues muted if browser policy rejects it. The mute button changes audio on that same settled
-player without switching transports.
+Every card session starts muted so visual autoplay is deterministic. One explicit Unmute applies to
+LIVE, delayed history, event clips, and subsequent camera switches until the card is hidden or
+unmounted. The preference survives player remounts and the Apple-mobile medium-to-high handoff.
+`live_audio_start: auto` remains available as an opt-in best-effort audible initial LIVE start.
 
 After stable playback, a genuine progress stall releases and remounts the player. Hiding the card
 also releases its network and decoder pipeline; showing it mounts a fresh muted player and reapplies

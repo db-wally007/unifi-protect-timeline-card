@@ -3148,13 +3148,13 @@ var Rs = Object.defineProperty, Fs = Object.getOwnPropertyDescriptor, v = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Rs(t, i, o), o;
 };
-const ye = 5 * 6e4, Ls = 400, Ds = 1200, Os = 400, Is = 40, Bs = 5, Vs = 15, Ns = 5e3, Us = 15e3, xe = 750, $e = 750, Ws = 1500, Hs = 350, js = 1e4;
+const ye = 5 * 6e4, Ls = 400, Ds = 1200, Os = 400, Is = 40, Bs = 5, Vs = 15, Ns = 5e3, Us = 15e3, xe = 750, $e = 3e3, Ws = 3e3, Hs = 350, js = 1e4;
 function ke(e) {
   return e?.name === "NotAllowedError";
 }
 let p = class extends j {
   constructor() {
-    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "auto", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new be(xe, $e), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !1, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._followToken = 0, this._followWatch = {
+    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new be(xe, $e), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._followToken = 0, this._followWatch = {
       a: void 0,
       b: void 0
     }, this._followWatchTries = { a: 0, b: 0 }, this._followMeta = {
@@ -3191,7 +3191,9 @@ let p = class extends j {
       this._loadingVideo = !1;
       const e = this._video;
       e && (e.playbackRate = this._clipRate, !this._autoplayDone && (this._autoplayDone = !0, e.muted = this._clipMuted, e.play().catch(() => {
-        this._clipMuted = !0, e.muted = !0, e.play().catch(() => {
+        e.muted = !0, e.play().then(() => {
+          this._audioUserChoice === "unmuted" && (e.volume = 1, e.muted = !1);
+        }).catch(() => {
         });
       })));
     }, this._onVideoError = () => {
@@ -3222,9 +3224,9 @@ let p = class extends j {
       this._followPaused ? t?.pause() : t?.play().catch(() => {
       }), this._showFollowCtrl();
     }, this._toggleFollowMute = (e) => {
-      e.stopPropagation(), this._followMuted = !this._followMuted, [this._followVidA, this._followVidB].forEach((t) => {
-        t && (t.muted = this._followMuted);
-      }), this._showFollowCtrl();
+      e.stopPropagation();
+      const t = this._followActive ? this._followVideo(this._followActive) : void 0;
+      this._setSessionMuted(!this._followMuted, t), this._showFollowCtrl();
     }, this._toggleFs = (e) => {
       if (e.stopPropagation(), this.stacked) {
         const t = !this._isFs;
@@ -3265,19 +3267,7 @@ let p = class extends j {
     }, this._toggleLiveMute = (e) => {
       e.stopPropagation();
       const t = !this._liveMuted;
-      this._liveAudioUserChoice = t ? "muted" : "unmuted", this._liveAudioAttempted = !0, this._liveMuted = t;
-      const i = this._liveVideo(), s = /* @__PURE__ */ new Set([i, this._highLiveVideo(), this._bridgeLiveVideo()]), o = this.renderRoot.querySelector(".live-bridge");
-      o && (o.muted = t);
-      for (const r of s)
-        if (r && (r.muted = t, !t)) {
-          r.volume = 1;
-          const a = r.srcObject;
-          if (a instanceof MediaStream)
-            for (const n of a.getAudioTracks()) n.enabled = !0;
-        }
-      !t && i && i.play().catch(() => {
-        i === this._liveVideo() && !this._liveMuted && (i.muted = !0, this._liveMuted = !0);
-      }), this._showFollowCtrl();
+      this._setSessionMuted(t, this._liveVideo()), this._showFollowCtrl();
     }, this._clipSkipBack = (e) => {
       e.stopPropagation();
       const t = this._video;
@@ -3294,7 +3284,7 @@ let p = class extends j {
     }, this._toggleClipMute = (e) => {
       e.stopPropagation();
       const t = this._video;
-      t && (this._clipMuted = !t.muted, t.muted = this._clipMuted, this._showFollowCtrl());
+      t && (this._setSessionMuted(!this._clipMuted, t), this._showFollowCtrl());
     }, this._toggleClipRate = (e) => {
       e.stopPropagation(), this._clipRate = this._clipRate === 1 ? 2 : this._clipRate === 2 ? 4 : 1;
       const t = this._video;
@@ -3344,7 +3334,7 @@ let p = class extends j {
     }
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), clearTimeout(this._hideTimer), clearTimeout(this._followCtrlTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this._visObserver?.disconnect(), this._visObserver = void 0, this._stopLivePoll(), this._cancelLoad(), this._stopFollow(), this._setClipSrc(), this._resetPreviewSlots(), this._preview.destroy(), nt(this.renderRoot);
+    super.disconnectedCallback(), this._resetAudioSession(), clearTimeout(this._hideTimer), clearTimeout(this._followCtrlTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this._visObserver?.disconnect(), this._visObserver = void 0, this._stopLivePoll(), this._cancelLoad(), this._stopFollow(), this._setClipSrc(), this._resetPreviewSlots(), this._preview.destroy(), nt(this.renderRoot);
   }
   willUpdate(e) {
     if (this.live && (e.has("live") || e.has("_streamReady") || e.has("cameraId") || e.has("liveTransport") || e.has("liveBridgeCameraId")) && this._resetLiveSession(), e.has("scrubbing") || e.has("live") || e.has("cameraId") || e.has("targetTime") && !this.scrubbing && !this.live) {
@@ -3357,7 +3347,7 @@ let p = class extends j {
     }
   }
   _onHostVisibility(e) {
-    e !== !this._hidden && (this._hidden = !e, this._hidden ? (this._muteAndPauseAll(), this._liveStream && this._restartLivePlayer()) : this._resumeAfterVisible());
+    e !== !this._hidden && (this._hidden = !e, this._hidden ? (this._resetAudioSession(), this._muteAndPauseAll(), this._liveStream && this._restartLivePlayer()) : this._resumeAfterVisible());
   }
   /** Silence + pause EVERY player (live stream's inner <video>, clip, follow,
    *  preview) so nothing plays audio while the card is hidden. */
@@ -3441,7 +3431,7 @@ let p = class extends j {
     }
     bs(
       this.liveAudioStart,
-      this._liveAudioUserChoice,
+      this._audioUserChoice,
       this._liveAudioAttempted,
       s.stable
     ) && this._tryAutoLiveAudio(i);
@@ -3926,7 +3916,7 @@ let p = class extends j {
       this._tapToPlay = !1;
     }).catch((t) => {
       ke(t) && (e.muted = !0, e.play().then(() => {
-        this._followMuted = !0, this._tapToPlay = !1;
+        this._tapToPlay = !1, this._audioUserChoice === "unmuted" && (e.volume = 1, e.muted = !1);
       }).catch((i) => {
         ke(i) && (this._tapToPlay = !0, this._loadingVideo = !1);
       }));
@@ -4192,6 +4182,40 @@ let p = class extends j {
     const e = this.renderRoot.querySelector(".live-bridge");
     return e ? mt(e) : null;
   }
+  _setSessionMuted(e, t) {
+    this._audioUserChoice = e ? "muted" : "unmuted", this._liveMuted = e, this._followMuted = e, this._clipMuted = e, this._liveAudioAttempted = !0;
+    const i = /* @__PURE__ */ new Set([
+      this._liveVideo(),
+      this._highLiveVideo(),
+      this._bridgeLiveVideo(),
+      this._video,
+      this._followVidA,
+      this._followVidB
+    ]), s = this.renderRoot.querySelector(".live-bridge");
+    s && (s.muted = e);
+    for (const o of i)
+      if (o && (o.muted = e, !e)) {
+        o.volume = 1;
+        const r = o.srcObject;
+        if (r instanceof MediaStream)
+          for (const a of r.getAudioTracks()) a.enabled = !0;
+      }
+    !e && t && t.play().catch(() => {
+    });
+  }
+  _resetAudioSession() {
+    this._audioUserChoice = void 0, this._liveMuted = !0, this._followMuted = !0, this._clipMuted = !0, this._liveAudioAttempted = !1, this._liveAudioTrying = !1;
+    const e = /* @__PURE__ */ new Set([
+      this._liveVideo(),
+      this._highLiveVideo(),
+      this._bridgeLiveVideo(),
+      this._video,
+      this._followVidA,
+      this._followVidB
+    ]), t = this.renderRoot.querySelector(".live-bridge");
+    t && (t.muted = !0);
+    for (const i of e) i && (i.muted = !0);
+  }
   _resetLiveHealth() {
     this._liveHealth = new be(
       xe,
@@ -4199,10 +4223,10 @@ let p = class extends j {
     );
   }
   _resetLiveSession() {
-    this._livePlayerGeneration++, this._livePausedState = !1, this._liveMuted = !0, this._highLiveReady = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._resetLiveHealth();
+    this._livePlayerGeneration++, this._livePausedState = !1, this._liveMuted = this._audioUserChoice !== "unmuted", this._highLiveReady = !1, this._liveAudioAttempted = this._audioUserChoice !== void 0, this._liveAudioTrying = !1, this._resetLiveHealth();
   }
   _restartLivePlayer() {
-    this._livePlayerGeneration++, nt(this.renderRoot.querySelector(".live-stage")), this._highLiveReady = !1, this._liveRestartKey++, this._liveMuted = !0, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._lastLivePlaying = void 0, this._resetLiveHealth();
+    this._livePlayerGeneration++, nt(this.renderRoot.querySelector(".live-stage")), this._highLiveReady = !1, this._liveRestartKey++, this._liveMuted = this._audioUserChoice !== "unmuted", this._liveAudioAttempted = this._audioUserChoice !== void 0, this._liveAudioTrying = !1, this._lastLivePlaying = void 0, this._resetLiveHealth();
   }
   /** Leave the HA player audio-enabled, but mute its nested media element before
    * media arrives so visual autoplay never depends on audible policy. */
@@ -4233,8 +4257,8 @@ let p = class extends j {
         throw new Error("audible autoplay did not remain active");
       this._liveMuted = !1;
     } catch {
-      t === this._livePlayerGeneration && e === this._liveVideo() && (e.muted = !0, this._liveMuted = !0, await e.play().catch(() => {
-      }));
+      t === this._livePlayerGeneration && e === this._liveVideo() && (this._audioUserChoice === "unmuted" ? e.muted = !1 : (e.muted = !0, this._liveMuted = !0, await e.play().catch(() => {
+      })));
     } finally {
       this._liveAudioTrying = !1;
     }
@@ -4526,6 +4550,7 @@ let p = class extends j {
           autoplay
           playsinline
           preload="auto"
+          .muted=${this._clipMuted}
           .src=${this._videoSrc}
           @timeupdate=${this._onTimeUpdate}
           @ended=${this._onEnded}
@@ -6906,7 +6931,7 @@ let _t = 0, Te = "", k = class extends j {
       default_timeline_zoom: 100,
       chunk_seconds: 300,
       delay_seconds: 15,
-      live_audio_start: "auto",
+      live_audio_start: "muted",
       live_transport: "auto",
       scrub_settle_ms: 700,
       timeline_font_size: 12,
@@ -7490,7 +7515,7 @@ let _t = 0, Te = "", k = class extends j {
               .clipEndTime=${this._clipEnd}
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
-              .liveAudioStart=${this._config.live_audio_start ?? "auto"}
+              .liveAudioStart=${this._config.live_audio_start ?? "muted"}
               .liveTransport=${this._config.live_transport ?? "auto"}
               .liveBridgeCameraId=${this._liveBridgeCamera(e)}
               .startFs=${this._drillFs}
