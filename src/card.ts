@@ -43,6 +43,7 @@ import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
 import { dateFmt } from './data/fmt'; // PERF-SCRUB-2026-08-03
 import { findMediumBridgeCamera } from './data/live-transport';
+import { LatestValueScheduler } from './data/latest-value-scheduler';
 import { swallowNextTap, type ScrubberTimeline } from './scrubber-timeline';
 import type { EventsList } from './events-list';
 import './events-list';
@@ -63,6 +64,7 @@ const SKIP_GLIDE_MIN_MS = 2_000;
 // How long the pill stays big when jumping to LIVE. Longer than the glide, so
 // the swollen "LIVE" is readable for a beat after the ruler arrives.
 const LIVE_GLIDE_HOLD_MS = 1_000;
+const SCRUB_PREVIEW_INTERVAL_MS = 50;
 // The fullscreen overlay ruler is read at arm's length on a wall tablet, so its
 // labels are scaled up from the card's timeline_font_size. A phone is held much
 // closer and its rotated ruler is short, so it takes a gentler bump.
@@ -831,6 +833,12 @@ export class UnifiProtectTimelineCard extends LitElement {
 
   // page_background bookkeeping (see connectedCallback).
   private _pageBgApplied = false;
+  private _scrubPreviewScheduler = new LatestValueScheduler<number>(
+    SCRUB_PREVIEW_INTERVAL_MS,
+    (time) => {
+      this._targetTime = time;
+    },
+  );
 
   /** page_background: pin the page canvas (<html>) to the configured color for
    *  this card's lifetime. The canvas is what shows through while HA's
@@ -893,6 +901,7 @@ export class UnifiProtectTimelineCard extends LitElement {
     clearInterval(this._bandInterval);
     clearTimeout(this._syncRefetchTimer);
     clearTimeout(this._scrubSettleTimer);
+    this._scrubPreviewScheduler.reset();
     this._hostRo?.disconnect();
     window.removeEventListener('pointerdown', this._outsideCalClose, true);
     this._loader.cancelAll(); // nothing will consume in-flight snapshots anymore
@@ -1311,6 +1320,7 @@ export class UnifiProtectTimelineCard extends LitElement {
 
   private _onScrubStart = (): void => {
     clearTimeout(this._scrubSettleTimer); // new gesture supersedes a pending settle
+    this._scrubPreviewScheduler.reset();
     this._scrubbing = true;
     // Deliberately does NOT leave live: merely grabbing the timeline must not
     // interrupt live playback — a gesture that only pushes against the live
@@ -1322,6 +1332,7 @@ export class UnifiProtectTimelineCard extends LitElement {
    *  scrubbed, live playback was never interrupted — just drop the scrub flag. */
   private _onScrubCancel = (): void => {
     clearTimeout(this._scrubSettleTimer);
+    this._scrubPreviewScheduler.reset();
     this._scrubbing = false;
   };
 
@@ -1331,7 +1342,7 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._liveMode = false; // any scrub motion (incl. wheel/trackpad) leaves live now
     this._playingBand = undefined;
     this._clipEnd = 0;
-    this._targetTime = e.detail.time;
+    this._scrubPreviewScheduler.push(e.detail.time);
   };
 
   // Scrub settle: after a drag/flick release, wait a beat before starting the
@@ -1340,7 +1351,7 @@ export class UnifiProtectTimelineCard extends LitElement {
   private _scrubSettleTimer?: ReturnType<typeof setTimeout>;
 
   private _onScrubEnd = (e: CustomEvent<{ time: number }>): void => {
-    this._targetTime = e.detail.time;
+    this._scrubPreviewScheduler.flush(e.detail.time);
     this._playingBand = undefined;
     clearTimeout(this._scrubSettleTimer);
     const commit = (): void => {
@@ -1364,6 +1375,7 @@ export class UnifiProtectTimelineCard extends LitElement {
 
   private _onLive = (): void => {
     if (!this._domain) return;
+    this._scrubPreviewScheduler.reset();
     clearTimeout(this._scrubSettleTimer); // jump-to-live overrides a pending settle
     this._now = Date.now();
     const from = this._domain;
@@ -1384,6 +1396,7 @@ export class UnifiProtectTimelineCard extends LitElement {
   // the given time (mirrors a deliberate scrub-tap to that moment).
   private _onRewind = (e: CustomEvent<{ time: number }>): void => {
     if (!this._domain) return;
+    this._scrubPreviewScheduler.reset();
     clearTimeout(this._scrubSettleTimer);
     this._liveMode = false;
     this._livePaused = false;
@@ -1451,6 +1464,7 @@ export class UnifiProtectTimelineCard extends LitElement {
    *  keeps playing the continuous footage. */
   private _playBand(band: DetectionBand): void {
     if (!this._domain) return;
+    this._scrubPreviewScheduler.reset();
     clearTimeout(this._scrubSettleTimer); // playing an event overrides a pending settle
     this._scrubbing = false;
     this._liveMode = false;

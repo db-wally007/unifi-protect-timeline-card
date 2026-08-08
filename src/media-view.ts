@@ -324,6 +324,7 @@ export class MediaView extends LitElement {
   // PERF-SCRUB-2026-08-03: scrub velocity + the latched coarse-tier decision.
   private _scrubVelPrev?: { t: number; at: number };
   private _coarseScrub = false;
+  private _scrubFineTimer?: ReturnType<typeof setTimeout>;
   // +1 = dragging toward newer footage, -1 = older. Drives sheet prefetching.
   private _scrubDir = 1;
   // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ----
@@ -952,6 +953,7 @@ export class MediaView extends LitElement {
     this._resetAudioSession();
     clearTimeout(this._hideTimer);
     clearTimeout(this._followCtrlTimer);
+    clearTimeout(this._scrubFineTimer);
     this._releaseFrame(); // stop the held-frame watcher's rAF loop
     document.removeEventListener('fullscreenchange', this._onFsChange);
     this.removeEventListener('pointerdown', this._keepCtrlAlive, true);
@@ -1322,6 +1324,8 @@ export class MediaView extends LitElement {
     // all, so an already-armed timer would fire mid-gesture and take the
     // controls — and the timeline being scrubbed — with it.
     if (changed.has('scrubbing')) {
+      clearTimeout(this._scrubFineTimer);
+      this._scrubFineTimer = undefined;
       if (!this.scrubbing) {
         // SPRITE-PREVIEW-2026-08-04: kill the sheet download tail the moment the
         // gesture ends. A fast drag queues tens of MB of sheets and they kept
@@ -1377,6 +1381,8 @@ export class MediaView extends LitElement {
       // bogus velocity across the gap between two gestures).
       this._scrubVelPrev = undefined;
       this._coarseScrub = false;
+      clearTimeout(this._scrubFineTimer);
+      this._scrubFineTimer = undefined;
       // SPRITE-PREVIEW-2026-08-04: the canvas is rebuilt (and therefore blank)
       // for each gesture, so hide it until it holds a frame — otherwise the
       // first moments of a scrub would show black instead of the held still.
@@ -1498,6 +1504,16 @@ export class MediaView extends LitElement {
     this._coarseScrub = this._coarseScrub
       ? vel > blockMs / COARSE_EXIT_MS
       : vel > blockMs / COARSE_ENTER_MS;
+  }
+
+  private _scheduleFineScrubUpgrade(): void {
+    clearTimeout(this._scrubFineTimer);
+    this._scrubFineTimer = undefined;
+    if (!this._coarseScrub || !this.scrubbing) return;
+    this._scrubFineTimer = setTimeout(() => {
+      this._scrubFineTimer = undefined;
+      if (this.scrubbing) void this._updatePreview();
+    }, SCRUB_VEL_STALE_MS + 25);
   }
 
   private async _resolvePlayable(t: number): Promise<PreviewBlock | undefined> {
@@ -1821,6 +1837,7 @@ export class MediaView extends LitElement {
     // PERF-SCRUB-2026-08-03: latch the coarse/fine decision once per retarget,
     // before either _resolvePlayable call reads it.
     this._updateScrubSpeed(this.targetTime);
+    this._scheduleFineScrubUpgrade();
     // Dragging leaves the current hour long before it leaves the current
     // block, so keep the overview neighbours warm on every retarget — that is
     // what makes a long fast drag keep showing frames instead of freezing.
