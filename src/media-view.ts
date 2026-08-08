@@ -156,6 +156,7 @@ export class MediaView extends LitElement {
   @property() previewDir = '';
   // SPRITE-PREVIEW-2026-08-04: 'video' | 'sprites' | 'auto' — see CardConfig.
   @property() previewMode: 'auto' | 'sprites' | 'video' = 'sprites';
+  @property() fastPreview: 'always' | 'speed' | 'off' = 'always';
   // EXPERIMENTAL (card config `scrub_tip`): ask the NVR for a real-time clip of
   // the newest ~minute when a scrub starts near live. Off = the cron head only.
   @property({ type: Boolean }) tipEnabled = false;
@@ -251,6 +252,8 @@ export class MediaView extends LitElement {
   @state() private _highLiveReady = false;
   private _liveMountedAt = 0;
   private _liveStartupAttempts = 0;
+  private _livePreviewWarmTimer?: ReturnType<typeof setTimeout>;
+  private _livePreviewWarmed = false;
   private _liveAudioAttempted = false;
   private _liveAudioTrying = false;
   private _audioUserChoice?: 'muted' | 'unmuted';
@@ -959,6 +962,7 @@ export class MediaView extends LitElement {
     clearTimeout(this._hideTimer);
     clearTimeout(this._followCtrlTimer);
     clearTimeout(this._scrubFineTimer);
+    clearTimeout(this._livePreviewWarmTimer);
     this._releaseFrame(); // stop the held-frame watcher's rAF loop
     document.removeEventListener('fullscreenchange', this._onFsChange);
     this.removeEventListener('pointerdown', this._keepCtrlAlive, true);
@@ -1231,6 +1235,7 @@ export class MediaView extends LitElement {
       this._highLiveReady = true;
     }
     if (health.stable) this._liveStartupAttempts = 0;
+    if (health.stable) this._scheduleLivePreviewWarm();
     if (health.stalled && !monitoredVideo.paused && !this._livePausedState) {
       this._restartLivePlayer();
       return;
@@ -1519,6 +1524,14 @@ export class MediaView extends LitElement {
     // Direction of travel, held across a pause (a still finger keeps the last
     // heading rather than resetting the prefetch to "forward").
     if (prev && t !== prev.t) this._scrubDir = t > prev.t ? 1 : -1;
+    if (this.fastPreview === 'off') {
+      this._coarseScrub = false;
+      return;
+    }
+    if (this.fastPreview === 'always') {
+      this._coarseScrub = !!prev && t !== prev.t && dw > 0 && dw <= SCRUB_VEL_STALE_MS;
+      return;
+    }
     const blockMs = this._preview.blockMs();
     this._coarseScrub = this._coarseScrub
       ? vel > blockMs / COARSE_EXIT_MS
@@ -1833,6 +1846,29 @@ export class MediaView extends LitElement {
     for (const at of [t, t - hour, t + hour]) {
       const o = this._preview.overviewBlockFor(at);
       if (o) this._prefetchUnit(o); // SPRITE-PREVIEW-2026-08-04: mode-aware
+    }
+  }
+
+  private _scheduleLivePreviewWarm(): void {
+    if (this._livePreviewWarmed || this._livePreviewWarmTimer !== undefined) return;
+    this._livePreviewWarmTimer = setTimeout(() => {
+      this._livePreviewWarmTimer = undefined;
+      if (!this.live || this._hidden || this.scrubbing) return;
+      this._livePreviewWarmed = true;
+      void this._warmLiveFastPreview();
+    }, 500);
+  }
+
+  private async _warmLiveFastPreview(): Promise<void> {
+    if (!this.previewDir || !this.hass) return;
+    this._preview.configure(this.hass, this.previewDir);
+    await this._preview.ensureIndex(this.now);
+    const block = await this._resolveFine(this.now);
+    if (!block || !this._preview.hasFastSprites(block)) return;
+    const set = await this._preview.getFastSprite(block);
+    const tile = set ? this._preview.tileFor(block, set, this.now) : undefined;
+    if (tile && !this._preview.hasSheet(tile.sheet)) {
+      await this._preview.getSheet(tile.sheet);
     }
   }
 
@@ -3149,6 +3185,9 @@ export class MediaView extends LitElement {
     this._highLiveReady = false;
     this._liveMountedAt = performance.now();
     this._liveStartupAttempts = 0;
+    clearTimeout(this._livePreviewWarmTimer);
+    this._livePreviewWarmTimer = undefined;
+    this._livePreviewWarmed = false;
     this._liveAudioAttempted = this._audioUserChoice !== undefined;
     this._liveAudioTrying = false;
     this._resetLiveHealth();
