@@ -301,10 +301,13 @@ MAX_SPRITE_PER_RUN = 60
 SPRITE_SUFFIX = ".sprite.json"  # sidecar; its presence means "sheets complete"
 
 # Dedicated FAST-SCRUB atlas. The ordinary 640x360 sheets remain the fine tier
-# when movement slows; this overview-only tier trades detail for predictable
-# cadence during multi-hour swipes. The source overview carries ~300 frames per
-# hour. Keeping every fifth frame gives one frame/minute, and 5x5 packing turns
-# an hour from 19 requests / ~11-15 MB into 3 requests / ~1 MB.
+# when movement slows; this compact tier trades detail for predictable cadence.
+# It covers completed overview hours, completed 10-minute blocks in the newest
+# incomplete hour, and the current rolling head. The source overview carries
+# ~300 frames/hour, so keeping every fifth frame gives one frame/minute and 5x5
+# packing turns an hour from 19 requests / ~11-15 MB into 3 requests / ~1 MB.
+# Fine blocks and heads retain their denser source cadence after decimation so
+# current-hour motion remains responsive without fetching their fine sheets.
 FAST_SPRITES_ENABLED = True
 FAST_SPRITE_TILE_W = 480
 FAST_SPRITE_TILE_H = 270
@@ -323,10 +326,9 @@ MAX_FAST_SPRITE_PER_RUN = 12
 # for FINE blocks the existing expired-block sweep (which deletes every name
 # whose leading dot-segment is an expired block start) already removes them. The
 # overview sweep matches "o<start>.mp4" explicitly and is extended below.
-# NOT generated for the head/tip tiers: the head is re-exported every minute, so
-# sheets for it would cost ~11 files a minute per camera to cover a few minutes
-# of footage. Near-live scrubbing stays on the video path (i.e. exactly today's
-# behaviour) until that proves worth solving separately.
+# The rolling head gets one compact atlas per immutable generation; _reap_heads
+# removes its old sheets with the old MP4s. On-demand tips stay on the video path
+# because generating an atlas after the gesture starts cannot improve first paint.
 
 # ---- tip tier (EXPERIMENTAL) ------------------------------------------------
 # On-demand real-time clip of the newest TIP_S seconds, exported when the user

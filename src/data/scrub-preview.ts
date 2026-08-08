@@ -245,16 +245,16 @@ export class ScrubPreviewLoader {
 
   // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ------------------------------
 
-  /** Whether this unit was also published as JPEG mosaics. Only whole fine
-   *  blocks and overview hours are: the head is re-exported every minute and
-   *  the tip is on demand, so neither has sheets and both stay on the video
-   *  path (near-live scrubbing is unchanged by this tier). */
+  /** Whether this unit was also published in the 640x360 fine JPEG tier.
+   *  Only completed blocks and overview hours have fine sheets. */
   hasSprites(b: PreviewBlock): boolean {
     if (b.head || b.tip || b.part) return false;
     if (b.overview) return this._spriteOverview.has(b.start);
     return this._spriteBlocks.has(b.start);
   }
 
+  /** Compact 480x270 coverage also includes each immutable rolling-head
+   *  generation, allowing LIVE to prewarm first-scrub pixels without its MP4. */
   hasFastSprites(b: PreviewBlock): boolean {
     if (b.fastSprite) return true;
     if (b.overview) return this._fastSpriteOverview.has(b.start);

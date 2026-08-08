@@ -153,14 +153,17 @@ Single mode unless noted.
 | `scrub_preview` | boolean | `true` | Show cached footage frames while scrubbing instead of a black stage. Needs the [scrub cache](#scrub-preview--protect_scrubpy) |
 | `scrub_preview_dir` | string | `/protect_scrub/<camera object_id>` | Where that cache lives |
 | `scrub_tip` | boolean | `true` | Near the live edge, fetch an on-demand real-time clip of the newest ~60 s so the last minute scrubs frame by frame. `false` = cron cache only |
-| `scrub_preview_mode` | string | `sprites` | How the scrub preview paints. `sprites` uses compact 480×270, one-frame/minute atlases during fast movement, then repaints the same canvas from the 640×360 fine tier after motion slows. Preview targets are coalesced to 20 Hz while the ruler remains display-rate. `video` seeks cached MP4s. `auto` measures MP4 seek latency and switches slow devices to sprites. Near-live head/tip units have no atlases and always use video |
+| `scrub_preview_mode` | string | `sprites` | How the scrub preview paints. `sprites` draws JPEG atlases, `video` seeks cached MP4s, and `auto` measures MP4 seek latency before switching slow devices to sprites |
+| `scrub_fast_preview` | `always` \| `speed` \| `off` | `always` | Compact-tier policy. `always` temporarily enables 480×270 motion previews on every client, `speed` uses the velocity threshold, and `off` keeps the 640×360 fine tier |
 
-Fast atlases are additive and begin at the first completed overview hour after the updated
-`protect_scrub.py` starts. Older hours continue through their existing sprite/MP4 representations;
-there is no historical backfill. Each fast hour keeps roughly one frame per minute in three
-480×270 JPEG sheets (about 1 MB/hour/camera), while slow movement still uses the existing 640×360
-fine tier. The compact-to-fine handoff redraws one persistent canvas, so it does not remount a media
-element or flash black.
+Fast atlases are additive and begin when the updated `protect_scrub.py` starts; older footage keeps
+its existing sprite/MP4 representation with no historical backfill. Completed overview hours keep
+roughly one frame per minute in three 480×270 JPEG sheets (about 1 MB/hour/camera). Compact copies
+of completed 10-minute blocks and the immutable rolling head cover the newest incomplete hour.
+After LIVE is stable, the card preloads only the current compact head sidecar and one JPEG sheet,
+not the head MP4. Preview targets are coalesced to 30 Hz while the ruler remains display-rate.
+Holding still for about 425 ms redraws the same canvas from the 640×360 fine tier where available,
+without remounting a media element or flashing black. On-demand tips remain on the video path.
 
 ### Playback
 
@@ -294,10 +297,10 @@ incrementally every minute from a persisted cursor and keeps a rolling 7-day win
 
 Exports the NVR's own low-resolution timelapse in fixed 10-minute blocks to
 `/config/.cache/protect_scrub/<slug>/`, so dragging the timeline shows real footage. It also keeps a
-rolling head block for the current minutes, an hourly overview tier for fast drags, and — when
-`scrub_tip` is on — on-demand real-time clips of the newest ~60 s.
+rolling head block for the current minutes, compact atlases for the head/new blocks/hourly overview,
+and — when `scrub_tip` is on — on-demand real-time clips of the newest ~60 s.
 
-Disk: roughly **0.5–0.8 GB per day per camera**, so 4–6 GB per camera at the default 7-day window.
+Disk: roughly **0.7–1.0 GB per day per camera**, so 5–7 GB per camera at the default 7-day window.
 Lower `RETENTION_HOURS` to shrink it.
 
 ### Installing and configuring the two pyscript jobs

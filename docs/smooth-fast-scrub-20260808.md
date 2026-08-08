@@ -14,12 +14,15 @@ credentials or camera tokens.
 - Dual-atlas client commit: `d95bd14`
 - Latest-target/fine-upgrade commit: `118d89c`
 - Transient LIVE startup retry commit: `cb469fd`
+- Newest-block/head atlas commit: `44f6a91`
+- All-client compact/prewarm commit: `e08b0b0`
+- 30 Hz compact cadence commit: `b208e16`
 
 ## Active Installation
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
-- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-live-retry-13c0ac763c9d`
-- Bundle SHA-256 prefix: `13c0ac763c9d`
+- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-30hz-1e3a039a6bfe`
+- Bundle SHA-256 prefix: `1e3a039a6bfe`
 - Active Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card-live-experiment/pyscript/protect_scrub.py`
 - Previous Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card/pyscript/protect_scrub.py`
 
@@ -36,14 +39,19 @@ At initial activation each camera had one completed compact hour:
 - 3 JPEG sheets/hour
 - 0.92-1.64 MiB/hour depending on scene complexity
 
-Future completed overview hours are generated automatically. Existing historical fine/overview
-files are left in place only to keep rollback immediate; they are not regenerated.
+Future completed overview hours are generated automatically. From the updated generator activation,
+completed 10-minute blocks and each rolling-head generation also receive compact atlases. At the
+first manual run all three cameras published 29 compact blocks through 11:40 UTC and compact heads
+covering the current 11:50 block. Existing pre-activation files are left in place for rollback and
+are not regenerated.
 
 ## Behavior
 
 - The timeline/ruler still updates at display rate.
-- Expensive preview work is latest-value coalesced to 20 Hz.
-- Fast movement uses the compact atlas where available.
+- Expensive preview work is latest-value coalesced to 30 Hz.
+- `scrub_fast_preview: always` temporarily uses compact motion previews on every client.
+- Stable LIVE preloads one current-head compact sheet without fetching the head MP4.
+- Fast movement uses compact overview, completed-block, and rolling-head atlases where available.
 - Holding/slowing for about 425 ms re-resolves the same target from the existing 640x360 fine tier.
 - Both quality levels draw into the same canvas, so the upgrade has no DOM/player swap or black gap.
 - Releasing the gesture flushes the exact final timestamp before historical playback starts.
@@ -55,7 +63,7 @@ files are left in place only to keep rollback immediate; they are not regenerate
 
 - Python syntax: passed
 - Actual fast renderer on a real overview MP4: 61 frames, 3 sheets, 0.99 MiB
-- Automated tests: 74/74 passed
+- Automated tests: 76/76 passed
 - TypeScript typecheck: passed
 - Production build: passed
 - Source diagnostics: no errors in TypeScript/test files
@@ -81,6 +89,18 @@ Fast-to-fine transition benchmark:
 - No canvas/player replacement
 - 3 compact JPEG requests
 - 2.65 MiB total including the fine upgrade
+
+Newest-hour/all-client benchmark after compact block/head activation:
+
+- A clean-profile first movement painted at 480x270 in 6 ms; no preview MP4 was fetched
+- A real switch to an uncached second camera painted its first movement in 27 ms with zero
+   gesture-time preview requests; high LIVE was ready in 1014 ms and prewarm completed 1375 ms later
+- 61 source updates over a cold 50-minute covered-hour fling became 34 preview jobs
+- 28 compact frames painted during the one-second motion
+- Worst paint gap improved from 88 ms at 20 Hz to 56 ms at 30 Hz
+- Worst painted time jump improved from 2.71 minutes to 1.67 minutes
+- The same canvas upgraded to 640x360 after 492 ms held still
+- No preview MP4 was fetched; 2688x1512 LIVE returned in 888 ms
 
 ## Rollback
 

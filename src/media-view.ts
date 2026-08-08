@@ -1666,8 +1666,8 @@ export class MediaView extends LitElement {
   }
 
   /** Paint the frame for `t` from the sprite sheets. Returns false when this
-   *  unit has no sheets (head/tip, or a block the job hasn't reached yet), so
-   *  the caller can fall back to the video path for it. */
+   *  unit has no atlas (tip, mapped part, or a block the job hasn't reached),
+   *  so the caller can fall back to the video path for it. */
   private async _drawSprite(b: PreviewBlock, t: number): Promise<boolean> {
     const preferred = await this._preferredSprite(b);
     if (!preferred) return false;
@@ -1911,8 +1911,8 @@ export class MediaView extends LitElement {
     if (this._useSprites()) {
       void this._warmSprites(b, this.targetTime);
       if (await this._drawSprite(b, this.targetTime)) return;
-      // This unit has NO sheets (the head/tip tiers never do), so the video
-      // tiers own the stage from here — which means the canvas has to get out
+      // This unit has NO usable sheet (for example a tip or pre-activation
+      // block), so the video tiers own the stage — the canvas has to get out
       // of the way. It sits above the preview <video>s and is opaque, so
       // leaving it up pinned the picture to the newest SPRITED frame while the
       // correct near-live footage rendered invisibly underneath. The newest
