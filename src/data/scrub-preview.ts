@@ -97,6 +97,7 @@ export interface PreviewBlock {
   // hours have sprite sheets, and their stems differ, so the tier has to be
   // distinguishable from the unit alone.
   overview?: boolean;
+  fastSprite?: boolean;
 }
 
 /** SPRITE-PREVIEW-2026-08-04. The decoder-free form of a unit: its frames as
@@ -150,7 +151,13 @@ export class ScrubPreviewLoader {
   // Rolling head coverage. `file` is the immutable name of the generation that
   // covers exactly [start, end]; a head without one comes from a pre-immutable
   // sync job and is IGNORED (see blockFor).
-  private _head?: { start: number; end: number; map?: boolean; file?: string };
+  private _head?: {
+    start: number;
+    end: number;
+    map?: boolean;
+    file?: string;
+    fastSprite?: boolean;
+  };
   private _mapped = new Set<number>(); // block starts with a .map.json sidecar
   private _indexAt = 0; // when the index was last (re)fetched
   private _indexLoading?: Promise<void>;
@@ -173,6 +180,7 @@ export class ScrubPreviewLoader {
   // before. Six covers the on-screen sheet plus its neighbours either side.
   private _spriteBlocks = new Set<number>();
   private _spriteOverview = new Set<number>();
+  private _fastSpriteBlocks = new Set<number>();
   private _fastSpriteOverview = new Set<number>();
   private _sprites = new Map<string, SpriteSet | null>(); // unit key -> sidecar (null = none)
   private _spriteLoading = new Map<string, Promise<SpriteSet | undefined>>();
@@ -231,6 +239,7 @@ export class ScrubPreviewLoader {
     this._fastSpriteLoading.clear();
     this._spriteBlocks.clear();
     this._spriteOverview.clear();
+    this._fastSpriteBlocks.clear();
     this._fastSpriteOverview.clear();
   }
 
@@ -247,7 +256,9 @@ export class ScrubPreviewLoader {
   }
 
   hasFastSprites(b: PreviewBlock): boolean {
-    return !!b.overview && this._fastSpriteOverview.has(b.start);
+    if (b.fastSprite) return true;
+    if (b.overview) return this._fastSpriteOverview.has(b.start);
+    return this._fastSpriteBlocks.has(b.start);
   }
 
   /** The sidecar if it is already in hand (synchronous — for "can I paint this
@@ -485,11 +496,18 @@ export class ScrubPreviewLoader {
           maps?: number[];
           overview_block_ms?: number;
           overview?: number[];
-          head?: { start?: number; end?: number; map?: boolean; file?: string } | null;
+          head?: {
+            start?: number;
+            end?: number;
+            map?: boolean;
+            file?: string;
+            fast_sprite?: boolean;
+          } | null;
           // SPRITE-PREVIEW-2026-08-04 (absent on an older sync job -> the sets
           // stay empty and every unit simply resolves to its mp4, as before).
           sprites?: number[];
           osprites?: number[];
+          fast_sprites?: number[];
           fast_osprites?: number[];
         };
         if (Array.isArray(data.blocks)) {
@@ -502,6 +520,7 @@ export class ScrubPreviewLoader {
           this._overview = new Set(data.overview ?? []);
           this._spriteBlocks = new Set(data.sprites ?? []); // SPRITE-PREVIEW-2026-08-04
           this._spriteOverview = new Set(data.osprites ?? []);
+          this._fastSpriteBlocks = new Set(data.fast_sprites ?? []);
           this._fastSpriteOverview = new Set(data.fast_osprites ?? []);
           if (data.overview_block_ms && data.overview_block_ms > 0) {
             this._overviewMs = data.overview_block_ms;
@@ -509,7 +528,13 @@ export class ScrubPreviewLoader {
           const h = data.head;
           this._head =
             h && typeof h.start === 'number' && typeof h.end === 'number' && h.end > h.start
-              ? { start: h.start, end: h.end, map: !!h.map, file: h.file }
+              ? {
+                  start: h.start,
+                  end: h.end,
+                  map: !!h.map,
+                  file: h.file,
+                  fastSprite: !!h.fast_sprite,
+                }
               : undefined;
           if (this._head && !this._head.file && !this._warnedNoHeadFile) {
             this._warnedNoHeadFile = true;
@@ -557,6 +582,7 @@ export class ScrubPreviewLoader {
         end: start + this._blockMs,
         url: `${this._dir}/${start}.mp4`,
         mapped: this._mapped.has(start),
+        fastSprite: this._fastSpriteBlocks.has(start),
       };
     }
     const h = this._head;
@@ -584,6 +610,7 @@ export class ScrubPreviewLoader {
         url: `${this._dir}/${h.file}`,
         head: true,
         mapped: !!h.map,
+        fastSprite: !!h.fastSprite,
       };
     }
     return undefined;

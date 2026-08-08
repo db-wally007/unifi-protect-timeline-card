@@ -821,6 +821,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       scrub_preview_dir: '',
       scrub_tip: true,
       scrub_preview_mode: 'sprites', // SPRITE-PREVIEW-2026-08-04 (temp; 'auto' long-term)
+      scrub_fast_preview: 'always',
       fs_timeline: true,
       fs_timeline_width: 165,
       fs_timeline_grab_width: 0,
@@ -1954,6 +1955,7 @@ export class UnifiProtectTimelineCard extends LitElement {
               .previewDir=${this._scrubDir()}
               .tipEnabled=${this._config.scrub_tip !== false}
               .previewMode=${this._config.scrub_preview_mode ?? 'sprites'}
+              .fastPreview=${this._config.scrub_fast_preview ?? 'always'}
               .footageSpans=${this._footageSpans}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}

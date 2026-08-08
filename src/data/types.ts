@@ -245,6 +245,10 @@ export interface CardConfig {
   // every device at once; the intended long-term default is 'auto'. One word to
   // change, in getStubConfig and in card.ts's render().
   scrub_preview_mode?: 'auto' | 'sprites' | 'video';
+  // Compact-atlas activation. `always` (temporary test default) uses low quality
+  // whenever the target changes on every client, then upgrades after it rests.
+  // `speed` uses the velocity threshold; `off` always prefers the fine tier.
+  scrub_fast_preview?: 'always' | 'speed' | 'off';
   // UniFi-app-style scrubber overlaid on the RIGHT edge of the FULLSCREEN
   // player (mobile + tablet), fading in and out with the video controls
   // (default true), and its width in px (default 110). A reduced timeline: no
