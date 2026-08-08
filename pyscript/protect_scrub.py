@@ -299,6 +299,26 @@ SPRITE_SIG = "%sx%s:%sx%s:q%s" % (
 # 20 if HA ever feels sluggish while the cache is filling.
 MAX_SPRITE_PER_RUN = 60
 SPRITE_SUFFIX = ".sprite.json"  # sidecar; its presence means "sheets complete"
+
+# Dedicated FAST-SCRUB atlas. The ordinary 640x360 sheets remain the fine tier
+# when movement slows; this overview-only tier trades detail for predictable
+# cadence during multi-hour swipes. The source overview carries ~300 frames per
+# hour. Keeping every fifth frame gives one frame/minute, and 5x5 packing turns
+# an hour from 19 requests / ~11-15 MB into 3 requests / ~1 MB.
+FAST_SPRITES_ENABLED = True
+FAST_SPRITE_TILE_W = 480
+FAST_SPRITE_TILE_H = 270
+FAST_SPRITE_COLS = 5
+FAST_SPRITE_ROWS = 5
+FAST_SPRITE_QUALITY = 6
+FAST_SPRITE_STRIDE = 5
+FAST_SPRITE_VERSION = 1
+FAST_SPRITE_SUFFIX = ".fast-sprite.json"
+FAST_SPRITE_SIG = "%sx%s:%sx%s:q%s:stride%s" % (
+    FAST_SPRITE_TILE_W, FAST_SPRITE_TILE_H,
+    FAST_SPRITE_COLS, FAST_SPRITE_ROWS,
+    FAST_SPRITE_QUALITY, FAST_SPRITE_STRIDE)
+MAX_FAST_SPRITE_PER_RUN = 12
 # PURGING: sheets are "<stem>.s<i>.jpg" and the sidecar "<stem>.sprite.json", so
 # for FINE blocks the existing expired-block sweep (which deletes every name
 # whose leading dot-segment is an expired block start) already removes them. The
@@ -536,6 +556,55 @@ def _sprite_sheets(cam_dir, stem):
     return True
 
 
+def _fast_sprite_sheets(cam_dir, stem):
+    """Render one decimated, compact overview atlas plus its sidecar."""
+    src = os.path.join(cam_dir, stem + ".mp4")
+    if not os.path.exists(src):
+        return False
+    source_count = _probe_frame_count(src)
+    if source_count <= 0:
+        return False
+    count = (source_count + FAST_SPRITE_STRIDE - 1) // FAST_SPRITE_STRIDE
+    per = FAST_SPRITE_COLS * FAST_SPRITE_ROWS
+    n_sheets = (count + per - 1) // per
+    pattern = os.path.join(cam_dir, stem + ".f%d.jpg")
+    vf = "select='not(mod(n,%s))',scale=%s:%s,tile=%sx%s" % (
+        FAST_SPRITE_STRIDE,
+        FAST_SPRITE_TILE_W, FAST_SPRITE_TILE_H,
+        FAST_SPRITE_COLS, FAST_SPRITE_ROWS)
+    try:
+        res = task.executor(
+            subprocess.run,
+            ["ffmpeg", "-y", "-v", "error", "-i", src,
+             "-vf", vf, "-vsync", "0",
+             "-q:v", str(FAST_SPRITE_QUALITY), pattern],
+            capture_output=True, timeout=180,
+        )
+        ok = res.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    if not ok:
+        log.warning("protect_scrub: fast sprite render failed for %s", stem)
+        return False
+    sheets = []
+    for i in range(1, n_sheets + 1):
+        nm = "%s.f%s.jpg" % (stem, i)
+        if not os.path.exists(os.path.join(cam_dir, nm)):
+            log.warning("protect_scrub: fast sprite sheet %s missing", nm)
+            return False
+        sheets.append(nm)
+    _write_json(os.path.join(cam_dir, stem + FAST_SPRITE_SUFFIX), {
+        "version": FAST_SPRITE_VERSION,
+        "tile_w": FAST_SPRITE_TILE_W,
+        "tile_h": FAST_SPRITE_TILE_H,
+        "cols": FAST_SPRITE_COLS,
+        "rows": FAST_SPRITE_ROWS,
+        "count": count,
+        "sheets": sheets,
+    })
+    return True
+
+
 def _purge_sprites(cam_dir, names, stems):
     """Delete sheets + sidecars belonging to `stems` (used for the overview
     tier, whose names the digit-led block sweep never matches).
@@ -548,6 +617,25 @@ def _purge_sprites(cam_dir, names, stems):
             if nm == stem + SPRITE_SUFFIX:
                 hit = True
             elif nm.startswith(stem + ".s") and nm.endswith(".jpg"):
+                hit = True
+        if not hit:
+            continue
+        try:
+            os.remove(os.path.join(cam_dir, nm))
+        except OSError:
+            pass
+
+
+def _purge_fast_sprites(cam_dir, names, stems):
+    """Delete fast-atlas sheets + sidecars for supplied overview stems."""
+    if not stems:
+        return
+    for nm in names:
+        hit = False
+        for stem in stems:
+            if nm == stem + FAST_SPRITE_SUFFIX:
+                hit = True
+            elif nm.startswith(stem + ".f") and nm.endswith(".jpg"):
                 hit = True
         if not hit:
             continue
@@ -795,7 +883,8 @@ def _get_api():
 
 
 def _write_index(cam_dir, blocks, maps, head, now_ms, overview,
-                 sprites=None, o_sprites=None):
+                 sprites=None, o_sprites=None, fast_o_sprites=None,
+                 fast_sprite_started=None):
     _write_json(os.path.join(cam_dir, "index.json"), {
         "version": INDEX_VERSION,
         "generated": now_ms,
@@ -831,6 +920,17 @@ def _write_index(cam_dir, blocks, maps, head, now_ms, overview,
         } if SPRITES_ENABLED else None,
         "sprites": sorted(sprites or []),
         "osprites": sorted(o_sprites or []),
+        "fast_sprite_meta": {
+            "version": FAST_SPRITE_VERSION,
+            "tile_w": FAST_SPRITE_TILE_W,
+            "tile_h": FAST_SPRITE_TILE_H,
+            "cols": FAST_SPRITE_COLS,
+            "rows": FAST_SPRITE_ROWS,
+            "stride": FAST_SPRITE_STRIDE,
+            "suffix": FAST_SPRITE_SUFFIX,
+        } if FAST_SPRITES_ENABLED else None,
+        "fast_osprites": sorted(fast_o_sprites or []),
+        "fast_sprite_started": fast_sprite_started,
     })
 
 
@@ -940,6 +1040,8 @@ def protect_scrub_sync():
     # Oldest block start in the window (aligned), newest completed block start.
     first_start = ((cutoff_ms + block_ms - 1) // block_ms) * block_ms
     last_start = ((now_ms - SAFETY_LAG_S * 1000) // block_ms - 1) * block_ms
+    over_ms = OVERVIEW_BLOCK_S * 1000
+    last_o = ((now_ms - SAFETY_LAG_S * 1000) // over_ms - 1) * over_ms
 
     # Per camera: what's on disk, what's expired, what's missing.
     cams = {}
@@ -964,8 +1066,30 @@ def protect_scrub_sync():
         sprites = set()
         o_sprites = set()
         sprite_stale = SPRITES_ENABLED and state.get("sprite_sig") != SPRITE_SIG
+        fast_o_sprites = set()
+        fast_sprite_stale = (
+            FAST_SPRITES_ENABLED
+            and state.get("fast_sprite_sig") != FAST_SPRITE_SIG)
+        fast_sprite_started = int(
+            state.get("fast_sprite_started") or last_o)
+        if fast_sprite_stale:
+            fast_sprite_started = last_o
         for nm in names:
-            if nm.endswith(SPRITE_SUFFIX) or (".s" in nm and nm.endswith(".jpg")):
+            if (nm.endswith(FAST_SPRITE_SUFFIX)
+                    or (".f" in nm and nm.endswith(".jpg"))):
+                if fast_sprite_stale:
+                    try:
+                        os.remove(os.path.join(cam_dir, nm))
+                    except OSError:
+                        pass
+                    continue
+                if not nm.endswith(FAST_SPRITE_SUFFIX):
+                    continue
+                stem = nm[: -len(FAST_SPRITE_SUFFIX)]
+                if (stem.startswith(OVERVIEW_PREFIX)
+                        and stem[len(OVERVIEW_PREFIX):].isdigit()):
+                    fast_o_sprites.add(int(stem[len(OVERVIEW_PREFIX):]))
+            elif nm.endswith(SPRITE_SUFFIX) or (".s" in nm and nm.endswith(".jpg")):
                 if sprite_stale:
                     # Built at a different geometry/quality — drop it so this
                     # unit is re-rendered at the current setting.
@@ -1024,8 +1148,11 @@ def protect_scrub_sync():
         # digit-led sweep above only matches the FINE tier's names).
         _purge_sprites(cam_dir, names,
                        [f"{OVERVIEW_PREFIX}{b}" for b in o_expired])
+        _purge_fast_sprites(cam_dir, names,
+                    [f"{OVERVIEW_PREFIX}{b}" for b in o_expired])
         overview -= o_expired
         o_sprites -= o_expired
+        fast_o_sprites -= o_expired
         sprites -= expired
 
         head = state.get("head")
@@ -1046,6 +1173,12 @@ def protect_scrub_sync():
             "overview": overview,
             "sprites": sprites,          # SPRITE-PREVIEW-2026-08-04
             "o_sprites": o_sprites,
+            "fast_o_sprites": fast_o_sprites,
+            "fast_sprite_started": fast_sprite_started,
+            "fast_s_attempts": {
+                int(k): v for k, v in (
+                    {} if fast_sprite_stale
+                    else (state.get("fast_s_attempts") or {})).items()},
             "s_attempts": {int(k): v for k, v in (state.get("s_attempts") or {}).items()},
             "o_attempts": {int(k): v for k, v in (state.get("o_attempts") or {}).items()},
             "attempts": attempts,
@@ -1129,9 +1262,7 @@ def protect_scrub_sync():
     # OVERVIEW TIER, on its own small budget so a fine-block backfill can't
     # starve it. Only hours that are fully complete (same safety lag) are
     # exported; the current partial hour is covered by the fine blocks + head.
-    over_ms = OVERVIEW_BLOCK_S * 1000
     first_o = ((cutoff_ms + over_ms - 1) // over_ms) * over_ms
-    last_o = ((now_ms - SAFETY_LAG_S * 1000) // over_ms - 1) * over_ms
     missing_over = []
     for cam_id, c in cams.items():
         o_start = last_o
@@ -1153,23 +1284,51 @@ def protect_scrub_sync():
         else:
             c["o_attempts"][o_start] = c["o_attempts"].get(o_start, 0) + 1
 
-    # SPRITE TIER (SPRITE-PREVIEW-2026-08-04). Runs LAST and reads only files
+    # FAST-SCRUB ATLAS. Additive and overview-only: start at the latest complete
+    # hour recorded on the first run, never backfill the seven-day cache.
+    if FAST_SPRITES_ENABLED:
+        fast_pending = []
+        for cam_id, c in cams.items():
+            missing_fast = c["overview"] - c["fast_o_sprites"]
+            for b in sorted(missing_fast, reverse=True):
+                if b >= c["fast_sprite_started"]:
+                    fast_pending.append((b, cam_id))
+        fast_pending.sort(key=lambda p: p[0], reverse=True)
+        fast_budget = MAX_FAST_SPRITE_PER_RUN
+        fast_made = 0
+        for b, cam_id in fast_pending:
+            if fast_budget <= 0:
+                break
+            c = cams[cam_id]
+            if c["fast_s_attempts"].get(b, 0) >= EXPORT_MAX_ATTEMPTS:
+                continue
+            fast_budget -= 1
+            stem = f"{OVERVIEW_PREFIX}{b}"
+            if _fast_sprite_sheets(c["dir"], stem):
+                c["fast_o_sprites"].add(b)
+                c["fast_s_attempts"].pop(b, None)
+                fast_made += 1
+            else:
+                c["fast_s_attempts"][b] = c["fast_s_attempts"].get(b, 0) + 1
+        if fast_made:
+            log.info("protect_scrub: fast atlases +%s (pending %s)",
+                     fast_made, max(0, len(fast_pending) - MAX_FAST_SPRITE_PER_RUN))
+
+    # FINE SPRITE TIER (SPRITE-PREVIEW-2026-08-04). Runs LAST and reads only files
     # already on disk — no NVR call, no network — so it can never delay or
     # compete with the exports above; if the budget runs out the units simply
     # get their sheets on a later run and the card keeps using the video tier
-    # for them meanwhile. Newest first, and the OVERVIEW tier is done before the
-    # fine blocks: it is what a fast drag shows, so it is the tier a slow device
-    # needs first. Split blocks are skipped — their playable units are the part
+    # for them meanwhile. New overview units use the compact fast atlas above;
+    # these high-quality sheets are only for slow 10-minute fine blocks. Split
+    # blocks are skipped — their playable units are the part
     # files, not <start>.mp4 (SPLIT_AT_EVENTS is off, so this is dormant).
     if SPRITES_ENABLED:
         s_budget = MAX_SPRITE_PER_RUN
         pending = []
         for cam_id, c in cams.items():
-            for b in sorted(c["overview"] - c["o_sprites"], reverse=True):
-                pending.append((1, b, cam_id, f"{OVERVIEW_PREFIX}{b}", "o_sprites"))
             for b in sorted(c["blocks"] - c["sprites"] - c["maps"], reverse=True):
                 pending.append((0, b, cam_id, str(b), "sprites"))
-        # overview (tier 1) first, then newest blocks
+        # newest fine blocks first
         pending.sort(key=lambda p: (p[0], p[1]), reverse=True)
         made = 0
         for tier, b, cam_id, stem, key in pending:
@@ -1194,14 +1353,21 @@ def protect_scrub_sync():
     for cam_id, c in cams.items():
         _write_index(c["dir"], c["blocks"], c["maps"] & c["blocks"], c["head"], now_ms,
                      c["overview"], c["sprites"] & c["blocks"],
-                     c["o_sprites"] & c["overview"])
+                     c["o_sprites"] & c["overview"],
+                     c["fast_o_sprites"] & c["overview"],
+                     c["fast_sprite_started"])
         _write_json(os.path.join(c["dir"], "state.json"), {
             "attempts": {str(k): v for k, v in c["attempts"].items() if k >= first_start},
             "o_attempts": {str(k): v for k, v in c["o_attempts"].items() if k >= first_start},
             "s_attempts": {str(k): v for k, v in c["s_attempts"].items() if k >= first_start},
+            "fast_s_attempts": {
+                str(k): v for k, v in c["fast_s_attempts"].items()
+                if k >= c["fast_sprite_started"]},
             # SPRITE-PREVIEW-2026-08-04: recorded so the next run can tell that
             # the tile geometry/quality changed and rebuild the sheets.
             "sprite_sig": SPRITE_SIG if SPRITES_ENABLED else None,
+            "fast_sprite_sig": FAST_SPRITE_SIG if FAST_SPRITES_ENABLED else None,
+            "fast_sprite_started": c["fast_sprite_started"],
             "head": c["head"],
         })
         if c["added"] or c["purged"]:
