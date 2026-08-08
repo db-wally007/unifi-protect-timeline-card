@@ -13,12 +13,13 @@ credentials or camera tokens.
 - Generator/index commit: `4fb3f61`
 - Dual-atlas client commit: `d95bd14`
 - Latest-target/fine-upgrade commit: `118d89c`
+- Transient LIVE startup retry commit: `cb469fd`
 
 ## Active Installation
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
-- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-fast-scrub-9ae1eaa5d142`
-- Bundle SHA-256 prefix: `9ae1eaa5d142`
+- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-live-retry-13c0ac763c9d`
+- Bundle SHA-256 prefix: `13c0ac763c9d`
 - Active Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card-live-experiment/pyscript/protect_scrub.py`
 - Previous Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card/pyscript/protect_scrub.py`
 
@@ -47,6 +48,8 @@ files are left in place only to keep rollback immediate; they are not regenerate
 - Both quality levels draw into the same canvas, so the upgrade has no DOM/player swap or black gap.
 - Releasing the gesture flushes the exact final timestamp before historical playback starts.
 - Hours before the coverage start use the prior sprite/MP4 behavior.
+- A nonfatal Home Assistant LIVE startup error automatically remounts the player up to three times
+   (750 ms, 1.5 s, then 3 s). Stable motion clears the retry budget.
 
 ## Validation
 
@@ -57,6 +60,10 @@ files are left in place only to keep rollback immediate; they are not regenerate
 - Production build: passed
 - Source diagnostics: no errors in TypeScript/test files
 - Five LIVE startup regressions: 600-1125 ms, all 2688x1512
+- Ten fast-scrub -> LIVE transitions before the retry change: all succeeded in 366-1115 ms
+- Injected exact `Stream never started` state: remounted in 781 ms, restored 2688x1512 motion in
+   1917 ms, released the old decoder, preserved audio choice, and removed the alert
+- Five fast-scrub -> LIVE transitions after retry: all succeeded; maximum 3314 ms
 
 Active-hour browser benchmark (50-minute fast scrub in about one second):
 
