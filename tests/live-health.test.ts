@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LiveHealthTracker,
   liveProgressValue,
+  shouldRetryLiveStartup,
   shouldAttemptLiveAudio,
   type LiveHealthSample,
 } from '../src/data/live-health';
@@ -107,5 +108,21 @@ describe('liveProgressValue', () => {
         true,
       ),
     ).toBe(42);
+  });
+});
+
+describe('shouldRetryLiveStartup', () => {
+  it('retries nonfatal player errors on bounded backoff', () => {
+    expect(shouldRetryLiveStartup('Stream never started', false, 0, 749)).toBe(false);
+    expect(shouldRetryLiveStartup('Stream never started', false, 0, 750)).toBe(true);
+    expect(shouldRetryLiveStartup('Stream never started', false, 1, 1_499)).toBe(false);
+    expect(shouldRetryLiveStartup('Stream never started', false, 1, 1_500)).toBe(true);
+    expect(shouldRetryLiveStartup('Stream never started', false, 2, 3_000)).toBe(true);
+  });
+
+  it('does not retry fatal, absent, or exhausted errors', () => {
+    expect(shouldRetryLiveStartup(undefined, false, 0, 10_000)).toBe(false);
+    expect(shouldRetryLiveStartup('Unsupported', true, 0, 10_000)).toBe(false);
+    expect(shouldRetryLiveStartup('Stream never started', false, 3, 10_000)).toBe(false);
   });
 });

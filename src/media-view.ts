@@ -39,6 +39,7 @@ import {
   LiveHealthTracker,
   liveProgressValue,
   shouldAttemptLiveAudio,
+  shouldRetryLiveStartup,
   type LiveAudioStart,
 } from './data/live-health';
 import { shouldUseWebRtcLive, type LiveTransport } from './data/live-transport';
@@ -55,6 +56,8 @@ import { shadowVideo } from './data/live-video';
 interface HaLivePlayerElement extends HTMLElement {
   muted: boolean;
   updateComplete?: Promise<unknown>;
+  _error?: unknown;
+  _errorIsFatal?: boolean;
 }
 
 // Cut playback chunks at recording-tier boundaries. Only needed under ADAPTIVE
@@ -246,6 +249,8 @@ export class MediaView extends LitElement {
   private _livePlayerGeneration = 0;
   @state() private _liveRestartKey = 0;
   @state() private _highLiveReady = false;
+  private _liveMountedAt = 0;
+  private _liveStartupAttempts = 0;
   private _liveAudioAttempted = false;
   private _liveAudioTrying = false;
   private _audioUserChoice?: 'muted' | 'unmuted';
@@ -1192,6 +1197,19 @@ export class MediaView extends LitElement {
   }
 
   private _pollLive(): void {
+    const player = this.renderRoot.querySelector('.live-player') as HaLivePlayerElement | null;
+    if (
+      player &&
+      shouldRetryLiveStartup(
+        player._error,
+        !!player._errorIsFatal,
+        this._liveStartupAttempts,
+        performance.now() - this._liveMountedAt,
+      )
+    ) {
+      this._restartLivePlayer(true);
+      return;
+    }
     const video = this._liveVideo();
     if (!video) return; // not ready yet — keep last known state, try again next tick
     const highVideo = this._highLiveVideo();
@@ -1212,6 +1230,7 @@ export class MediaView extends LitElement {
       releaseVideosIn(this.renderRoot.querySelector('.live-bridge'));
       this._highLiveReady = true;
     }
+    if (health.stable) this._liveStartupAttempts = 0;
     if (health.stalled && !monitoredVideo.paused && !this._livePausedState) {
       this._restartLivePlayer();
       return;
@@ -3128,16 +3147,20 @@ export class MediaView extends LitElement {
     this._livePausedState = false;
     this._liveMuted = this._audioUserChoice !== 'unmuted';
     this._highLiveReady = false;
+    this._liveMountedAt = performance.now();
+    this._liveStartupAttempts = 0;
     this._liveAudioAttempted = this._audioUserChoice !== undefined;
     this._liveAudioTrying = false;
     this._resetLiveHealth();
   }
 
-  private _restartLivePlayer(): void {
+  private _restartLivePlayer(startupFailure = false): void {
     this._livePlayerGeneration++;
     releaseVideosIn(this.renderRoot.querySelector('.live-stage'));
     this._highLiveReady = false;
     this._liveRestartKey++;
+    this._liveMountedAt = performance.now();
+    this._liveStartupAttempts = startupFailure ? this._liveStartupAttempts + 1 : 0;
     this._liveMuted = this._audioUserChoice !== 'unmuted';
     this._liveAudioAttempted = this._audioUserChoice !== undefined;
     this._liveAudioTrying = false;
