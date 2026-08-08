@@ -1,5 +1,22 @@
 export type LiveAudioStart = 'auto' | 'muted';
 
+export const LIVE_STARTUP_RETRY_DELAYS_MS = [750, 1_500, 3_000] as const;
+
+export function shouldRetryLiveStartup(
+  error: unknown,
+  fatal: boolean,
+  attempts: number,
+  elapsedMs: number,
+): boolean {
+  return (
+    typeof error === 'string' &&
+    error.length > 0 &&
+    !fatal &&
+    attempts < LIVE_STARTUP_RETRY_DELAYS_MS.length &&
+    elapsedMs >= LIVE_STARTUP_RETRY_DELAYS_MS[attempts]
+  );
+}
+
 export interface LiveHealthSample {
   identity: object;
   nowMs: number;
