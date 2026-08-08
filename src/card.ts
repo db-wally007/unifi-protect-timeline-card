@@ -64,7 +64,7 @@ const SKIP_GLIDE_MIN_MS = 2_000;
 // How long the pill stays big when jumping to LIVE. Longer than the glide, so
 // the swollen "LIVE" is readable for a beat after the ruler arrives.
 const LIVE_GLIDE_HOLD_MS = 1_000;
-const SCRUB_PREVIEW_INTERVAL_MS = 50;
+const SCRUB_PREVIEW_INTERVAL_MS = 33;
 // The fullscreen overlay ruler is read at arm's length on a wall tablet, so its
 // labels are scaled up from the card's timeline_font_size. A phone is held much
 // closer and its rotated ruler is short, so it takes a gentler bump.
