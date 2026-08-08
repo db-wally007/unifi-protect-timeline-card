@@ -17,6 +17,7 @@ credentials or camera tokens.
 - Newest-block/head atlas commit: `44f6a91`
 - All-client compact/prewarm commit: `e08b0b0`
 - 30 Hz compact cadence commit: `b208e16`
+- Tested final tag: `snapshot/smooth-fast-scrub-newest-20260808`
 
 ## Active Installation
 
@@ -103,6 +104,24 @@ Newest-hour/all-client benchmark after compact block/head activation:
 - No preview MP4 was fetched; 2688x1512 LIVE returned in 888 ms
 
 ## Rollback
+
+To remove only the newest block/head, prewarm, all-client, and 30 Hz changes while retaining the
+previous tested compact-overview and LIVE-retry candidate:
+
+1. In the experiment worktree, run
+   `git switch --detach snapshot/smooth-fast-scrub-live-retry-20260808`. This restores both the
+   bundle and generator bytes; changing only a mutable resource URL's query string is not a rollback.
+2. Restore resource ID `5eb9580c5c0844319ad12cf76ef286ff` to
+   `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-live-retry-13c0ac763c9d`.
+3. Call `pyscript.reload`.
+4. Open a fresh browser tab or force-quit/reopen the Companion app.
+
+To restore this tested candidate, switch the worktree back to `fix/smooth-fast-scrub-20260808`, set
+the resource URL to the active `smooth-scrub-30hz-1e3a039a6bfe` value above, reload Pyscript, and
+open a fresh client.
+
+For a full rollback to the pre-compact session-audio snapshot, restore the experiment worktree to
+`snapshot/scrub-session-audio-20260808`, then:
 
 1. Restore resource ID `5eb9580c5c0844319ad12cf76ef286ff` to
    `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=session-audio-18b0c444af1d`.
