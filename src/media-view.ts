@@ -109,8 +109,8 @@ const SEEK_SAMPLE_MAX = 15;
 const LIVE_FREEZE_MAX_MS = 5_000;
 const HISTORICAL_FREEZE_MAX_MS = 15_000;
 const LIVE_STABLE_MS = 750;
-const LIVE_STALL_MS = 750;
-const LIVE_WEBRTC_STALL_MS = 1_500;
+const LIVE_STALL_MS = 3_000;
+const LIVE_WEBRTC_STALL_MS = 3_000;
 const LIVE_AUDIO_VERIFY_MS = 350;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
@@ -159,7 +159,7 @@ export class MediaView extends LitElement {
   // playback holds. The recording export can't serve the last ~8s, so the true
   // floor is ~12s; values below that are clamped. Each chunk is ~ (delay − 8)s.
   @property({ type: Number }) delaySeconds = 15;
-  @property() liveAudioStart: LiveAudioStart = 'auto';
+  @property() liveAudioStart: LiveAudioStart = 'muted';
   @property() liveTransport: LiveTransport = 'auto';
   @property() liveBridgeCameraId = '';
   // True when the host card is in its stacked (phone) layout — turns on the
@@ -220,7 +220,7 @@ export class MediaView extends LitElement {
   // Custom controls for the delayed-follow stage (the two leap-frogging videos
   // can't use native controls: fullscreen would freeze at each chunk swap).
   @state() private _followPaused = false;
-  @state() private _followMuted = true; // starts muted (avoids audio pops at swaps)
+  @state() private _followMuted = true;
   // Playback was refused by the browser even muted (iOS Low Power Mode blocks
   // autoplay outright) — offer a one-tap start instead of leaving a frozen
   // first frame on screen with no explanation.
@@ -235,16 +235,16 @@ export class MediaView extends LitElement {
   @state() private _followRate = 1; // playback speed (1, 2 or 4)
   @state() private _nearLive = false; // within ~16s of live (disables speed)
   @state() private _livePausedState = false; // live inner <video> paused (for the icon)
-  @state() private _liveMuted = true; // muted start permits reliable autoplay
+  @state() private _liveMuted = true;
   private _liveHealth = new LiveHealthTracker(LIVE_STABLE_MS, LIVE_STALL_MS);
   private _livePlayerGeneration = 0;
   @state() private _liveRestartKey = 0;
   @state() private _highLiveReady = false;
   private _liveAudioAttempted = false;
   private _liveAudioTrying = false;
-  private _liveAudioUserChoice?: 'muted' | 'unmuted';
+  private _audioUserChoice?: 'muted' | 'unmuted';
   @state() private _clipPaused = false; // bounded event clip paused
-  @state() private _clipMuted = false; // bounded event clip muted
+  @state() private _clipMuted = true;
   @state() private _clipRate = 1; // bounded event clip speed (1, 2 or 4)
   @state() private _clipProgress = 0; // 0..1 playback position (seek bar + playhead)
   @state() private _clipTime = 0; // clip playhead (s) for the M:SS / M:SS readout
@@ -943,6 +943,7 @@ export class MediaView extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._resetAudioSession();
     clearTimeout(this._hideTimer);
     clearTimeout(this._followCtrlTimer);
     this._releaseFrame(); // stop the held-frame watcher's rAF loop
@@ -1071,6 +1072,7 @@ export class MediaView extends LitElement {
     if (visible === !this._hidden) return; // no state change
     this._hidden = !visible;
     if (this._hidden) {
+      this._resetAudioSession();
       this._muteAndPauseAll();
       if (this._liveStream) this._restartLivePlayer();
     }
@@ -1209,7 +1211,7 @@ export class MediaView extends LitElement {
     if (
       shouldAttemptLiveAudio(
         this.liveAudioStart,
-        this._liveAudioUserChoice,
+        this._audioUserChoice,
         this._liveAudioAttempted,
         health.stable,
       )
@@ -2176,11 +2178,17 @@ export class MediaView extends LitElement {
     // timeline tap) the browser allows sound; if blocked, fall back to muted.
     v.muted = this._clipMuted;
     v.play().catch(() => {
-      this._clipMuted = true;
       v.muted = true;
-      v.play().catch(() => {
-        /* give up; user can press play */
-      });
+      v.play()
+        .then(() => {
+          if (this._audioUserChoice === 'unmuted') {
+            v.volume = 1;
+            v.muted = false;
+          }
+        })
+        .catch(() => {
+          /* give up; user can press play */
+        });
     });
   };
 
@@ -2307,9 +2315,11 @@ export class MediaView extends LitElement {
         v.muted = true;
         v.play()
           .then(() => {
-            // Report the truth: playback is only running because we muted it.
-            this._followMuted = true;
             this._tapToPlay = false;
+            if (this._audioUserChoice === 'unmuted') {
+              v.volume = 1;
+              v.muted = false;
+            }
           })
           .catch((err2: unknown) => {
             if (!isBlockedByPolicy(err2)) return;
@@ -2910,11 +2920,8 @@ export class MediaView extends LitElement {
 
   private _toggleFollowMute = (e: Event): void => {
     e.stopPropagation();
-    this._followMuted = !this._followMuted;
-    // .muted is bound in render, but set it now too so it takes effect instantly.
-    [this._followVidA, this._followVidB].forEach((v) => {
-      if (v) v.muted = this._followMuted;
-    });
+    const active = this._followActive ? this._followVideo(this._followActive) : undefined;
+    this._setSessionMuted(!this._followMuted, active);
     this._showFollowCtrl();
   };
 
@@ -3001,6 +3008,58 @@ export class MediaView extends LitElement {
     return bridge ? shadowVideo(bridge) : null;
   }
 
+  private _setSessionMuted(muted: boolean, activeVideo?: HTMLVideoElement | null): void {
+    this._audioUserChoice = muted ? 'muted' : 'unmuted';
+    this._liveMuted = muted;
+    this._followMuted = muted;
+    this._clipMuted = muted;
+    this._liveAudioAttempted = true;
+
+    const videos = new Set([
+      this._liveVideo(),
+      this._highLiveVideo(),
+      this._bridgeLiveVideo(),
+      this._video,
+      this._followVidA,
+      this._followVidB,
+    ]);
+    const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
+    if (bridge) bridge.muted = muted;
+    for (const video of videos) {
+      if (!video) continue;
+      video.muted = muted;
+      if (!muted) {
+        video.volume = 1;
+        const stream = video.srcObject;
+        if (stream instanceof MediaStream) {
+          for (const track of stream.getAudioTracks()) track.enabled = true;
+        }
+      }
+    }
+    if (!muted && activeVideo) activeVideo.play().catch(() => undefined);
+  }
+
+  private _resetAudioSession(): void {
+    this._audioUserChoice = undefined;
+    this._liveMuted = true;
+    this._followMuted = true;
+    this._clipMuted = true;
+    this._liveAudioAttempted = false;
+    this._liveAudioTrying = false;
+
+    const videos = new Set([
+      this._liveVideo(),
+      this._highLiveVideo(),
+      this._bridgeLiveVideo(),
+      this._video,
+      this._followVidA,
+      this._followVidB,
+    ]);
+    const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
+    if (bridge) bridge.muted = true;
+    for (const video of videos) if (video) video.muted = true;
+  }
+
   private _resetLiveHealth(): void {
     this._liveHealth = new LiveHealthTracker(
       LIVE_STABLE_MS,
@@ -3011,9 +3070,9 @@ export class MediaView extends LitElement {
   private _resetLiveSession(): void {
     this._livePlayerGeneration++;
     this._livePausedState = false;
-    this._liveMuted = true;
+    this._liveMuted = this._audioUserChoice !== 'unmuted';
     this._highLiveReady = false;
-    this._liveAudioAttempted = false;
+    this._liveAudioAttempted = this._audioUserChoice !== undefined;
     this._liveAudioTrying = false;
     this._resetLiveHealth();
   }
@@ -3023,8 +3082,8 @@ export class MediaView extends LitElement {
     releaseVideosIn(this.renderRoot.querySelector('.live-stage'));
     this._highLiveReady = false;
     this._liveRestartKey++;
-    this._liveMuted = true;
-    this._liveAudioAttempted = false;
+    this._liveMuted = this._audioUserChoice !== 'unmuted';
+    this._liveAudioAttempted = this._audioUserChoice !== undefined;
     this._liveAudioTrying = false;
     this._lastLivePlaying = undefined;
     this._resetLiveHealth();
@@ -3079,9 +3138,13 @@ export class MediaView extends LitElement {
       this._liveMuted = false;
     } catch {
       if (generation === this._livePlayerGeneration && video === this._liveVideo()) {
-        video.muted = true;
-        this._liveMuted = true;
-        await video.play().catch(() => undefined);
+        if (this._audioUserChoice === 'unmuted') {
+          video.muted = false;
+        } else {
+          video.muted = true;
+          this._liveMuted = true;
+          await video.play().catch(() => undefined);
+        }
       }
     } finally {
       this._liveAudioTrying = false;
@@ -3126,33 +3189,7 @@ export class MediaView extends LitElement {
   private _toggleLiveMute = (e: Event): void => {
     e.stopPropagation();
     const muted = !this._liveMuted;
-    this._liveAudioUserChoice = muted ? 'muted' : 'unmuted';
-    this._liveAudioAttempted = true;
-    this._liveMuted = muted;
-
-    const activeVideo = this._liveVideo();
-    const videos = new Set([activeVideo, this._highLiveVideo(), this._bridgeLiveVideo()]);
-    const bridge = this.renderRoot.querySelector('.live-bridge') as HaLivePlayerElement | null;
-    if (bridge) bridge.muted = muted;
-    for (const video of videos) {
-      if (!video) continue;
-      video.muted = muted;
-      if (!muted) {
-        video.volume = 1;
-        const stream = video.srcObject;
-        if (stream instanceof MediaStream) {
-          for (const track of stream.getAudioTracks()) track.enabled = true;
-        }
-      }
-    }
-    if (!muted && activeVideo) {
-      activeVideo.play().catch(() => {
-        if (activeVideo === this._liveVideo() && !this._liveMuted) {
-          activeVideo.muted = true;
-          this._liveMuted = true;
-        }
-      });
-    }
+    this._setSessionMuted(muted, this._liveVideo());
     this._showFollowCtrl();
   };
 
@@ -3188,8 +3225,7 @@ export class MediaView extends LitElement {
     e.stopPropagation();
     const v = this._video;
     if (!v) return;
-    this._clipMuted = !v.muted;
-    v.muted = this._clipMuted;
+    this._setSessionMuted(!this._clipMuted, v);
     this._showFollowCtrl();
   };
   private _toggleClipRate = (e: Event): void => {
@@ -3628,6 +3664,7 @@ export class MediaView extends LitElement {
           autoplay
           playsinline
           preload="auto"
+          .muted=${this._clipMuted}
           .src=${this._videoSrc}
           @timeupdate=${this._onTimeUpdate}
           @ended=${this._onEnded}
