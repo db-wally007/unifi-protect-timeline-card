@@ -2754,13 +2754,13 @@ class Is {
     this._sheets.clear(), this._sheetLoading.clear(), this._sprites.clear(), this._spriteLoading.clear(), this._fastSprites.clear(), this._fastSpriteLoading.clear(), this._spriteBlocks.clear(), this._spriteOverview.clear(), this._fastSpriteBlocks.clear(), this._fastSpriteOverview.clear();
   }
   // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ------------------------------
-  /** Whether this unit was also published as JPEG mosaics. Only whole fine
-   *  blocks and overview hours are: the head is re-exported every minute and
-   *  the tip is on demand, so neither has sheets and both stay on the video
-   *  path (near-live scrubbing is unchanged by this tier). */
+  /** Whether this unit was also published in the 640x360 fine JPEG tier.
+   *  Only completed blocks and overview hours have fine sheets. */
   hasSprites(t) {
     return t.head || t.tip || t.part ? !1 : t.overview ? this._spriteOverview.has(t.start) : this._spriteBlocks.has(t.start);
   }
+  /** Compact 480x270 coverage also includes each immutable rolling-head
+   *  generation, allowing LIVE to prewarm first-scrub pixels without its MP4. */
   hasFastSprites(t) {
     return t.fastSprite ? !0 : t.overview ? this._fastSpriteOverview.has(t.start) : this._fastSpriteBlocks.has(t.start);
   }
@@ -3671,8 +3671,8 @@ let p = class extends j {
     t[Math.floor(t.length / 2)] > Us && (this._autoSprites = !0, this.requestUpdate());
   }
   /** Paint the frame for `t` from the sprite sheets. Returns false when this
-   *  unit has no sheets (head/tip, or a block the job hasn't reached yet), so
-   *  the caller can fall back to the video path for it. */
+   *  unit has no atlas (tip, mapped part, or a block the job hasn't reached),
+   *  so the caller can fall back to the video path for it. */
   async _drawSprite(e, t) {
     const i = await this._preferredSprite(e);
     if (!i) return !1;
