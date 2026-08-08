@@ -17,13 +17,14 @@ credentials or camera tokens.
 - Newest-block/head atlas commit: `44f6a91`
 - All-client compact/prewarm commit: `e08b0b0`
 - 30 Hz compact cadence commit: `b208e16`
-- Tested final tag: `snapshot/smooth-fast-scrub-newest-20260808`
+- Slow-scrub policy correction commit: `eb41b9f`
+- Tested final tag: `snapshot/smooth-fast-scrub-speed-policy-20260808`
 
 ## Active Installation
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
-- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-30hz-1e3a039a6bfe`
-- Bundle SHA-256 prefix: `1e3a039a6bfe`
+- Resource URL: `/local/unifi-protect-timeline-card-live-experiment/dist/unifi-protect-timeline-card.js?v=smooth-scrub-speed-d75bf3dd0610`
+- Bundle SHA-256 prefix: `d75bf3dd0610`
 - Active Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card-live-experiment/pyscript/protect_scrub.py`
 - Previous Pyscript symlink: `pyscript/protect_scrub.py -> ../www/unifi-protect-timeline-card/pyscript/protect_scrub.py`
 
@@ -50,7 +51,10 @@ are not regenerated.
 
 - The timeline/ruler still updates at display rate.
 - Expensive preview work is latest-value coalesced to 30 Hz.
-- `scrub_fast_preview: always` temporarily uses compact motion previews on every client.
+- `scrub_fast_preview: speed` makes the compact tier available on every client but selects it only
+   when the measured scrub velocity outruns the fine tier.
+- Slow continuous movement stays on the 640x360 fine atlas. `always` remains only as an explicit
+   diagnostic override because it deliberately uses temporally decimated frames during all motion.
 - Stable LIVE preloads one current-head compact sheet without fetching the head MP4.
 - Fast movement uses compact overview, completed-block, and rolling-head atlases where available.
 - Holding/slowing for about 425 ms re-resolves the same target from the existing 640x360 fine tier.
@@ -103,6 +107,16 @@ Newest-hour/all-client benchmark after compact block/head activation:
 - The same canvas upgraded to 640x360 after 492 ms held still
 - No preview MP4 was fetched; 2688x1512 LIVE returned in 888 ms
 
+Slow-versus-fast policy correction:
+
+- Root cause: the temporary `always` default treated every nonzero movement as fast, so completed
+   overview hours showed their roughly one-frame-per-minute compact atlas even during a slow drag
+- A 30-second drag over 6.12 seconds painted 62/62 frames from the 640x360 fine tier
+- Fine source-frame spacing and maximum displayed timestamp step were both 2.39 seconds
+- The same test painted zero compact frames and never entered coarse mode
+- A 50-minute fling over one second still painted 31/31 motion frames from the compact tier
+- The fast fling fetched no preview MP4, settled back to fine, and restored 2688x1512 LIVE in 631 ms
+
 ## Rollback
 
 To remove only the newest block/head, prewarm, all-client, and 30 Hz changes while retaining the
@@ -117,7 +131,7 @@ previous tested compact-overview and LIVE-retry candidate:
 4. Open a fresh browser tab or force-quit/reopen the Companion app.
 
 To restore this tested candidate, switch the worktree back to `fix/smooth-fast-scrub-20260808`, set
-the resource URL to the active `smooth-scrub-30hz-1e3a039a6bfe` value above, reload Pyscript, and
+the resource URL to the active `smooth-scrub-speed-d75bf3dd0610` value above, reload Pyscript, and
 open a fresh client.
 
 For a full rollback to the pre-compact session-audio snapshot, restore the experiment worktree to

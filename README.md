@@ -154,7 +154,7 @@ Single mode unless noted.
 | `scrub_preview_dir` | string | `/protect_scrub/<camera object_id>` | Where that cache lives |
 | `scrub_tip` | boolean | `true` | Near the live edge, fetch an on-demand real-time clip of the newest ~60 s so the last minute scrubs frame by frame. `false` = cron cache only |
 | `scrub_preview_mode` | string | `sprites` | How the scrub preview paints. `sprites` draws JPEG atlases, `video` seeks cached MP4s, and `auto` measures MP4 seek latency before switching slow devices to sprites |
-| `scrub_fast_preview` | `always` \| `speed` \| `off` | `always` | Compact-tier policy. `always` temporarily enables 480×270 motion previews on every client, `speed` uses the velocity threshold, and `off` keeps the 640×360 fine tier |
+| `scrub_fast_preview` | `always` \| `speed` \| `off` | `speed` | Compact-tier policy. `speed` enables compact previews on every client only when motion outruns the fine tier. `always` is a diagnostic override that forces temporally decimated compact frames during any movement. `off` keeps the 640×360 fine tier |
 
 Fast atlases are additive and begin when the updated `protect_scrub.py` starts; older footage keeps
 its existing sprite/MP4 representation with no historical backfill. Completed overview hours keep
@@ -162,7 +162,8 @@ roughly one frame per minute in three 480×270 JPEG sheets (about 1 MB/hour/came
 of completed 10-minute blocks and the immutable rolling head cover the newest incomplete hour.
 After LIVE is stable, the card preloads only the current compact head sidecar and one JPEG sheet,
 not the head MP4. Preview targets are coalesced to 30 Hz while the ruler remains display-rate.
-Holding still for about 425 ms redraws the same canvas from the 640×360 fine tier where available,
+Slow movement stays on the roughly 2.4-second 640×360 fine frames. Fast movement uses the compact
+tier, then holding still for about 425 ms redraws the same canvas from the fine tier where available,
 without remounting a media element or flashing black. On-demand tips remain on the video path.
 
 ### Playback
