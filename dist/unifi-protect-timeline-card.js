@@ -3209,7 +3209,7 @@ function Te(e) {
 }
 let p = class extends j {
   constructor() {
-    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "always", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new ye(ke, Se), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveMountedAt = 0, this._liveStartupAttempts = 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._followToken = 0, this._followWatch = {
+    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new ye(ke, Se), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveMountedAt = 0, this._liveStartupAttempts = 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._followToken = 0, this._followWatch = {
       a: void 0,
       b: void 0
     }, this._followWatchTries = { a: 0, b: 0 }, this._followMeta = {
@@ -7091,7 +7091,7 @@ let _t = 0, Pe = "", k = class extends j {
       scrub_tip: !0,
       scrub_preview_mode: "sprites",
       // SPRITE-PREVIEW-2026-08-04 (temp; 'auto' long-term)
-      scrub_fast_preview: "always",
+      scrub_fast_preview: "speed",
       fs_timeline: !0,
       fs_timeline_width: 165,
       fs_timeline_grab_width: 0,
@@ -7631,7 +7631,7 @@ let _t = 0, Pe = "", k = class extends j {
               .previewDir=${this._scrubDir()}
               .tipEnabled=${this._config.scrub_tip !== !1}
               .previewMode=${this._config.scrub_preview_mode ?? "sprites"}
-              .fastPreview=${this._config.scrub_fast_preview ?? "always"}
+              .fastPreview=${this._config.scrub_fast_preview ?? "speed"}
               .footageSpans=${this._footageSpans}
               .accent=${i}
               .clipEndTime=${this._clipEnd}

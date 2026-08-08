@@ -156,7 +156,7 @@ export class MediaView extends LitElement {
   @property() previewDir = '';
   // SPRITE-PREVIEW-2026-08-04: 'video' | 'sprites' | 'auto' — see CardConfig.
   @property() previewMode: 'auto' | 'sprites' | 'video' = 'sprites';
-  @property() fastPreview: 'always' | 'speed' | 'off' = 'always';
+  @property() fastPreview: 'always' | 'speed' | 'off' = 'speed';
   // EXPERIMENTAL (card config `scrub_tip`): ask the NVR for a real-time clip of
   // the newest ~minute when a scrub starts near live. Off = the cron head only.
   @property({ type: Boolean }) tipEnabled = false;
