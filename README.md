@@ -188,7 +188,8 @@ unmounted. The preference survives player remounts and the Apple-mobile medium-t
 After stable playback, a genuine progress stall releases and remounts the player. Hiding the card
 also releases its network and decoder pipeline; showing it mounts a fresh muted player and reapplies
 the audio policy. This prevents a closed popup or cached dashboard view from decoding in the
-background.
+background. A nonfatal Home Assistant startup rejection (for example, `Stream never started`) is
+also retried with bounded backoff instead of leaving the player on a permanent error screen.
 
 For consistently fast high-resolution startup, enable **Preload stream** in Home Assistant's camera
 preferences for each entity used by a timeline, and align LL-HLS with UniFi Protect's five-second
