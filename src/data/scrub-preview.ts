@@ -116,6 +116,21 @@ export interface SpriteSet {
   sheets: string[];
 }
 
+export type SpriteVariant = 'fine' | 'fast';
+
+export function spriteVariantOrder(
+  coarse: boolean,
+  hasFine: boolean,
+  hasFast: boolean,
+): SpriteVariant[] {
+  if (coarse) return [hasFast ? 'fast' : undefined, hasFine ? 'fine' : undefined].filter(
+    (variant): variant is SpriteVariant => !!variant,
+  );
+  return [hasFine ? 'fine' : undefined, hasFast ? 'fast' : undefined].filter(
+    (variant): variant is SpriteVariant => !!variant,
+  );
+}
+
 /** One sidecar map entry: real range [s, e] is the standalone part file `f`. */
 export interface PreviewSegment {
   s: number;
@@ -158,8 +173,11 @@ export class ScrubPreviewLoader {
   // before. Six covers the on-screen sheet plus its neighbours either side.
   private _spriteBlocks = new Set<number>();
   private _spriteOverview = new Set<number>();
+  private _fastSpriteOverview = new Set<number>();
   private _sprites = new Map<string, SpriteSet | null>(); // unit key -> sidecar (null = none)
   private _spriteLoading = new Map<string, Promise<SpriteSet | undefined>>();
+  private _fastSprites = new Map<string, SpriteSet | null>();
+  private _fastSpriteLoading = new Map<string, Promise<SpriteSet | undefined>>();
   private _sheets = new Map<string, ImageBitmap>();
   private _sheetLoading = new Map<string, Promise<ImageBitmap | undefined>>();
   private _sheetAborts = new Map<string, AbortController>();
@@ -209,8 +227,11 @@ export class ScrubPreviewLoader {
     this._sheetLoading.clear();
     this._sprites.clear();
     this._spriteLoading.clear();
+    this._fastSprites.clear();
+    this._fastSpriteLoading.clear();
     this._spriteBlocks.clear();
     this._spriteOverview.clear();
+    this._fastSpriteOverview.clear();
   }
 
   // ---- sprite tier (SPRITE-PREVIEW-2026-08-04) ------------------------------
@@ -225,10 +246,18 @@ export class ScrubPreviewLoader {
     return this._spriteBlocks.has(b.start);
   }
 
+  hasFastSprites(b: PreviewBlock): boolean {
+    return !!b.overview && this._fastSpriteOverview.has(b.start);
+  }
+
   /** The sidecar if it is already in hand (synchronous — for "can I paint this
    *  unit right now?" checks that must not await). */
   spriteIfLoaded(b: PreviewBlock): SpriteSet | undefined {
     return this._sprites.get(b.key) ?? undefined;
+  }
+
+  fastSpriteIfLoaded(b: PreviewBlock): SpriteSet | undefined {
+    return this._fastSprites.get(b.key) ?? undefined;
   }
 
   /** The sidecar for a unit — cached + deduped, exactly like getMap(). */
@@ -244,10 +273,24 @@ export class ScrubPreviewLoader {
     return p;
   }
 
-  private async _fetchSprite(b: PreviewBlock): Promise<SpriteSet | undefined> {
+  async getFastSprite(b: PreviewBlock): Promise<SpriteSet | undefined> {
+    if (!this.hasFastSprites(b)) return undefined;
+    const hit = this._fastSprites.get(b.key);
+    if (hit !== undefined) return hit ?? undefined;
+    let p = this._fastSpriteLoading.get(b.key);
+    if (!p) {
+      p = this._fetchSprite(b, true).finally(() => this._fastSpriteLoading.delete(b.key));
+      this._fastSpriteLoading.set(b.key, p);
+    }
+    return p;
+  }
+
+  private async _fetchSprite(b: PreviewBlock, fast = false): Promise<SpriteSet | undefined> {
+    const store = fast ? this._fastSprites : this._sprites;
+    const suffix = fast ? '.fast-sprite.json' : '.sprite.json';
     try {
       // Sits beside its unit under the same stem, like the .map.json sidecar.
-      const res = await fetch(b.url.replace(/\.mp4$/, '.sprite.json'));
+      const res = await fetch(b.url.replace(/\.mp4$/, suffix));
       const d = res.ok
         ? ((await res.json()) as {
             version?: number;
@@ -279,10 +322,10 @@ export class ScrubPreviewLoader {
           sheets: d.sheets,
         };
       }
-      this._sprites.set(b.key, set);
+      store.set(b.key, set);
       return set ?? undefined;
     } catch {
-      this._sprites.set(b.key, null);
+      store.set(b.key, null);
       return undefined;
     }
   }
@@ -447,6 +490,7 @@ export class ScrubPreviewLoader {
           // stay empty and every unit simply resolves to its mp4, as before).
           sprites?: number[];
           osprites?: number[];
+          fast_osprites?: number[];
         };
         if (Array.isArray(data.blocks)) {
           ok = true;
@@ -458,6 +502,7 @@ export class ScrubPreviewLoader {
           this._overview = new Set(data.overview ?? []);
           this._spriteBlocks = new Set(data.sprites ?? []); // SPRITE-PREVIEW-2026-08-04
           this._spriteOverview = new Set(data.osprites ?? []);
+          this._fastSpriteOverview = new Set(data.fast_osprites ?? []);
           if (data.overview_block_ms && data.overview_block_ms > 0) {
             this._overviewMs = data.overview_block_ms;
           }

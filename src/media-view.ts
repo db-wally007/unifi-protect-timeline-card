@@ -42,7 +42,13 @@ import {
   type LiveAudioStart,
 } from './data/live-health';
 import { shouldUseWebRtcLive, type LiveTransport } from './data/live-transport';
-import { ScrubPreviewLoader, type PreviewBlock } from './data/scrub-preview';
+import {
+  ScrubPreviewLoader,
+  spriteVariantOrder,
+  type PreviewBlock,
+  type SpriteSet,
+  type SpriteVariant,
+} from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
 import { shadowVideo } from './data/live-video';
 
@@ -1562,6 +1568,34 @@ export class MediaView extends LitElement {
     return this._autoSprites;
   }
 
+  private _spriteVariants(b: PreviewBlock): SpriteVariant[] {
+    return spriteVariantOrder(
+      this._coarseScrub,
+      this._preview.hasSprites(b),
+      this._preview.hasFastSprites(b),
+    );
+  }
+
+  private _spriteIfLoaded(b: PreviewBlock, variant: SpriteVariant): SpriteSet | undefined {
+    return variant === 'fast'
+      ? this._preview.fastSpriteIfLoaded(b)
+      : this._preview.spriteIfLoaded(b);
+  }
+
+  private _getSprite(b: PreviewBlock, variant: SpriteVariant): Promise<SpriteSet | undefined> {
+    return variant === 'fast' ? this._preview.getFastSprite(b) : this._preview.getSprite(b);
+  }
+
+  private async _preferredSprite(
+    b: PreviewBlock,
+  ): Promise<{ set: SpriteSet; variant: SpriteVariant } | undefined> {
+    for (const variant of this._spriteVariants(b)) {
+      const set = await this._getSprite(b, variant);
+      if (set) return { set, variant };
+    }
+    return undefined;
+  }
+
   /** Feed one observed seek latency into the 'auto' decision.
    *
    *  Measuring beats sniffing here: the Android tablet this tier exists for
@@ -1587,8 +1621,9 @@ export class MediaView extends LitElement {
    *  unit has no sheets (head/tip, or a block the job hasn't reached yet), so
    *  the caller can fall back to the video path for it. */
   private async _drawSprite(b: PreviewBlock, t: number): Promise<boolean> {
-    const set = await this._preview.getSprite(b);
-    if (!set) return false;
+    const preferred = await this._preferredSprite(b);
+    if (!preferred) return false;
+    const { set } = preferred;
     const per = set.cols * set.rows;
     const token = this._spriteToken; // bumped only on camera change / reset
     let idx = this._preview.tileIndexFor(b, set, t);
@@ -1646,8 +1681,9 @@ export class MediaView extends LitElement {
    *  dragging doesn't stall on a fetch. Fire-and-forget; the loader dedups and
    *  its LRU bounds the memory. */
   private async _warmSprites(b: PreviewBlock, t: number): Promise<void> {
-    const set = await this._preview.getSprite(b);
-    if (!set) return;
+    const preferred = await this._preferredSprite(b);
+    if (!preferred) return;
+    const { set } = preferred;
     const per = set.cols * set.rows;
     const span = b.end - b.start;
     if (span <= 0) return;
@@ -1680,7 +1716,7 @@ export class MediaView extends LitElement {
    *  screen, and on the tablet the staging that comes with them is exactly the
    *  decoder work this tier exists to avoid. */
   private _prefetchUnit(b: PreviewBlock): void {
-    if (this._useSprites() && this._preview.hasSprites(b)) {
+    if (this._useSprites() && this._spriteVariants(b).length) {
       void this._warmSprites(b, this.targetTime);
       return;
     }
@@ -1691,11 +1727,14 @@ export class MediaView extends LitElement {
    *  choice in _resolvePlayable is about what can be shown WITHOUT waiting, and
    *  in sprite mode that is a decoded sheet, not an mp4 blob. */
   private _unitReady(b: PreviewBlock): boolean {
-    if (this._useSprites() && this._preview.hasSprites(b)) {
-      const set = this._preview.spriteIfLoaded(b);
-      if (!set) return false;
-      const tile = this._preview.tileFor(b, set, this.targetTime);
-      return !!tile && this._preview.hasSheet(tile.sheet);
+    if (this._useSprites() && this._spriteVariants(b).length) {
+      for (const variant of this._spriteVariants(b)) {
+        const set = this._spriteIfLoaded(b, variant);
+        if (!set) continue;
+        const tile = this._preview.tileFor(b, set, this.targetTime);
+        if (tile && this._preview.hasSheet(tile.sheet)) return true;
+      }
+      return false;
     }
     return this._preview.isCached(b);
   }
