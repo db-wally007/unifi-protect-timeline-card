@@ -12,6 +12,8 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Watchdog/session cleanup: `2fb33a5`
 - Watchdog ownership tests: `d388a9a`
 - Active-source event isolation: `832f32b`
+- Transparent buffering spinner: `f456227`
+- Delayed buffering indicator: `19c7719`
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
@@ -22,8 +24,9 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
   feeding an internal seek back as a new playback request.
 - Single-card playback inherited the global LIVE/history held frame. That z-index-3 still covered
   the truthful `Preparing clip` overlay and could remain during same-source seeking while audio
-  advanced. Bounded clips now release unrelated holds and own an opaque status layer:
-  `Preparing clip`, `Loading clip`, or `Buffering clip`.
+  advanced. Bounded clips now release unrelated holds. `Preparing clip` and `Loading clip` remain
+  opaque status screens; seek buffering keeps the video visible and reveals only an animated
+  accent-colored spinner after a 1.2-second grace period, with no text or black insert.
 - Clip video events now include loadeddata/canplay/playing/seeking/seeked/waiting/stalled. A bounded
   watchdog starts immediately when the prepared URL is assigned, even if a WebView emits no events.
   It requires a presented frame through requestVideoFrameCallback where available; older WebViews
@@ -42,8 +45,8 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
 - Resource URL:
-  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-f7dd85362237`
-- Bundle SHA-256 prefix: `f7dd85362237`
+  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-delayed-spinner-78f229d90133`
+- Bundle SHA-256 prefix: `78f229d90133`
 - Pyscript remains the restored scrub generator and is unrelated to this clip-only candidate.
 
 ## Validation
@@ -67,6 +70,12 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
   about five seconds, no timer leak, and later events could not reopen buffering
 - Replacement clip with twelve injected stale events from the released old video: old video was
   NETWORK_EMPTY/disconnected; replacement session/source/timer/state stayed unchanged and recovered
+- Warm seek completed in 379ms with buffering-spinner opacity remaining zero for the entire seek
+- Throttled cold seek showed the spinner only after 1.2s; overlay background was fully transparent,
+  contained no text, video opacity stayed 1, and both active spinner arcs exactly matched the seek
+  fill (`rgb(252, 157, 243)` in the tested card)
+- Spinner transform changed between 180ms samples under animation `upc-spin`, confirming it is a
+  real rotating CSS indicator rather than a static image
 - Native versus prepared Range test: native export ignored `Range` and returned full HTTP 200 with
   `ftyp -> mdat -> moov`; prepared session returned exact HTTP 206 bytes with
   `ftyp -> moov`, proving faststart materialization remains necessary
