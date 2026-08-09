@@ -4051,7 +4051,11 @@ let p = class extends j {
         }
       });
     };
-    s ? o() : requestAnimationFrame(() => requestAnimationFrame(i)), this._clipFrameTimer = setTimeout(() => {
+    s ? o() : requestAnimationFrame(
+      () => requestAnimationFrame(() => {
+        t !== this._clipFrameGeneration || e !== this._video || e.seeking || e.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || i();
+      })
+    ), this._clipFrameTimer = setTimeout(() => {
       if (t !== this._clipFrameGeneration || e !== this._video) return;
       this._clipFrameTimer = void 0;
       const r = xs({

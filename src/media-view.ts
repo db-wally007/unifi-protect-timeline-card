@@ -2454,7 +2454,19 @@ export class MediaView extends LitElement {
     if (requestFrameCallback) {
       requestFrame();
     } else {
-      requestAnimationFrame(() => requestAnimationFrame(finish));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (
+            generation !== this._clipFrameGeneration ||
+            v !== this._video ||
+            v.seeking ||
+            v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+          ) {
+            return;
+          }
+          finish();
+        }),
+      );
     }
     this._clipFrameTimer = setTimeout(() => {
       if (generation !== this._clipFrameGeneration || v !== this._video) return;
