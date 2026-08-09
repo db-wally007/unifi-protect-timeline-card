@@ -20,11 +20,19 @@ export function isPresentedClipFrame(options: {
 export function clipWatchdogAction(options: {
   recoveryAttempts: number;
   hasFrameCallback: boolean;
+  allowReadyStateFallback: boolean;
   seeking: boolean;
   readyState: number;
 }): ClipWatchdogAction {
+  if (
+    options.allowReadyStateFallback &&
+    !options.hasFrameCallback &&
+    !options.seeking &&
+    options.readyState >= 2
+  ) {
+    return 'finish';
+  }
   if (options.recoveryAttempts === 0) return 'recover';
-  if (!options.hasFrameCallback && !options.seeking && options.readyState >= 2) return 'finish';
   return 'fail';
 }
 

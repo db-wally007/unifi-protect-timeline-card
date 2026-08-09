@@ -16,6 +16,7 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Delayed buffering indicator: `19c7719`
 - Presented-frame rewind fix: `c42fffd`
 - No-rVFC readiness correction: `c0a03cd`
+- Final no-rVFC lifecycle review fixes: pending final commit
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
@@ -41,6 +42,13 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
   browser has not yet flipped `seeking` to false. Stale pre-seek frames remain rejected. Trailing
   `seeked`/`canplay`/`playing` events cannot rearm a completed watch, preventing the watchdog from
   rewinding already-playing footage back to the original seek target.
+- Without rVFC, a completed seek with current frame data now wins before first-expiry recovery, so
+  ready playback is never paused and reseeked just because the initial double-rAF sample was early.
+  Explicit retries clear prior terminal errors, and canceled watches release their outstanding
+  video-frame callback registration as well as their timeout.
+- The no-rVFC readiness shortcut is limited to source loading and explicit seeking. A normal
+  `waiting`/`stalled` watch cannot mistake retained `HAVE_CURRENT_DATA` for renewed playback; it
+  still receives one bounded recovery attempt and then a terminal failure if no ready event arrives.
 - Every media event verifies current element, load token, session ID, and normalized source URL.
   Outgoing videos are forced to NETWORK_EMPTY before replacement, so detached old players cannot
   cancel, pause, error, or delete the new session.
@@ -51,16 +59,16 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
 - Resource URL:
-  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-no-rewind-c25175c55eb3`
-- Bundle SHA-256 prefix: `c25175c55eb3`
+  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-no-rewind-43a37a096da0`
+- Bundle SHA-256 prefix: `43a37a096da0`
 - Pyscript remains the restored scrub generator and is unrelated to this clip-only candidate.
 
 ## Validation
 
-- Automated tests: 84/84 passed
+- Automated tests: 85/85 passed
 - TypeScript typecheck: passed
 - Production build: passed
-- Independent final review: no critical, high, or medium findings; deployment accepted
+- Independent final review: fallback findings corrected; closing re-review found no issues
 - Real 137-second single-card event: visible preparation with no held frame; +15 preserved media
   source, session, and parent target; buffering status was visible; playback continued from the
   requested position without re-export
@@ -90,6 +98,19 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Deterministic delayed-rVFC trace: spinner appeared at 1214ms and cleared at 1542ms on the
   presented target frame; playback advanced from 79.39s to 80.73s with zero watchdog calls and
   zero backward jumps.
+- Forced no-rVFC first-expiry trace: the initial readiness sample was deliberately made early;
+  current frame data then completed at 2516ms with zero pause/play recovery calls and no live timer.
+- Canceling an armed frame watch invoked `cancelVideoFrameCallback` for its registered callback and
+  cleared both registration and timeout. A prior terminal error cleared at retry start and remained
+  clear after no-rVFC readiness completion.
+- Permanently unresolved no-rVFC trace still performed exactly one recovery at 2500ms and reached
+  terminal failure at 5017ms with no live timer or callback registration.
+- No-rVFC `waiting` injected during an active seek immediately escalated the watch to `stall`; its
+  queued ready-state rAF could not finish it. Recovery-generated `seeking` kept the stall reason,
+  one recovery ran at 2501ms, and terminal failure followed at 5029ms with no live timer.
+- A no-rVFC watch completed by its watchdog advanced the generation before queued rAF work ran.
+  Starting a new stall watch and then flushing every old callback left that new watch, reason, and
+  timeout intact.
 - Native versus prepared Range test: native export ignored `Range` and returned full HTTP 200 with
   `ftyp -> mdat -> moov`; prepared session returned exact HTTP 206 bytes with
   `ftyp -> moov`, proving faststart materialization remains necessary
