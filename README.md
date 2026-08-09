@@ -9,6 +9,9 @@ Three optional server-side helpers (included in this repo) make it fast: they mi
 list and thumbnails locally, cache low-res footage so scrubbing shows real frames instead of a black
 stage, and stream historical clips with proper HTTP range support.
 
+Current release: **[v2.0.2](https://github.com/db-wally007/unifi-protect-timeline-card/releases/tag/v2.0.2)**.
+See [CHANGELOG.md](CHANGELOG.md) for release details.
+
 📸 **[Screenshots](screenshots/)** — tablet and phone, single- and multi-camera, timeline, events,
 scrubbing and fullscreen.
 
@@ -137,7 +140,7 @@ Single mode unless noted.
 | `list_active_bg` | string | `#fff` | Playing-row background |
 | `list_divider_color` | string | = `accent_color` | Day-divider line (single mode) |
 | `tablet_events_thumbnail_size` | number | `145` | Event thumbnail width in the wide layout. Also sets the events column width and the gallery tile width, in **both** modes |
-| `autoplay_next_event` | boolean | `true` | When a clip ends, step to the next newer event. `false` keeps playing timeline footage from where the clip ended |
+| `autoplay_next_event` | boolean | `true` | When a clip ends, play the immediately newer event. Single mode uses that camera's list and continues timeline playback after the newest clip. Multi mode uses the merged all-camera list and returns to the live grid after the newest clip. `false` disables event-to-event autoplay |
 
 ### Thumbnails and cache
 
@@ -234,7 +237,9 @@ each default is the phone (stacked) one.
 `card_version: multi` turns the card into an overview page: one event strip merged across every
 camera in `cameras:`, and a live grid below it. Tapping a clip plays it in the grid's place with the
 live streams unmounted, so only one stream decodes at a time. Tapping a live tile follows its
-`navigation_path`, or drills in place if it has none.
+`navigation_path`, or drills in place if it has none. When a clip ends, playback advances through
+the merged event order even when the next clip belongs to another camera. The newest clip returns
+to the live grid.
 
 ```yaml
 type: custom:unifi-protect-timeline-card
