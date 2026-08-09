@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 const At = globalThis, Wt = At.ShadowRoot && (At.ShadyCSS === void 0 || At.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Nt = Symbol(), Kt = /* @__PURE__ */ new WeakMap();
-let Ce = class {
+let Pe = class {
   constructor(t, i, s) {
     if (this._$cssResult$ = !0, s !== Nt) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = t, this.t = i;
@@ -22,13 +22,13 @@ let Ce = class {
     return this.cssText;
   }
 };
-const Ke = (e) => new Ce(typeof e == "string" ? e : e + "", void 0, Nt), st = (e, ...t) => {
+const Ke = (e) => new Pe(typeof e == "string" ? e : e + "", void 0, Nt), st = (e, ...t) => {
   const i = e.length === 1 ? e[0] : t.reduce((s, o, r) => s + ((a) => {
     if (a._$cssResult$ === !0) return a.cssText;
     if (typeof a == "number") return a;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + a + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(o) + e[r + 1], e[0]);
-  return new Ce(i, e, Nt);
+  return new Pe(i, e, Nt);
 }, Ze = (e, t) => {
   if (Wt) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
   else for (const i of t) {
@@ -663,14 +663,14 @@ async function Ie(e, t, i = 300) {
     return console.warn("[unifi-timeline] auth/sign_path failed, using raw path", s), t;
   }
 }
-const Ai = 3 * 6e4, Pi = {
+const Ai = 3 * 6e4, Ci = {
   motion: { label: "Motion", color: "#5c8aff" },
   person: { label: "Person", color: "#3ddc84" },
   vehicle: { label: "Vehicle", color: "#ffb300" },
   animal: { label: "Animal", color: "#ab47bc" }
 };
 function De(e) {
-  const t = Pi[e.kind] ?? {
+  const t = Ci[e.kind] ?? {
     label: e.kind ? e.kind[0].toUpperCase() + e.kind.slice(1) : "Event",
     color: "#5c8aff"
   };
@@ -705,20 +705,20 @@ async function Oe(e) {
   } catch {
   }
 }
-const Be = 1e3, it = 60 * Be, Ci = 60 * it, Vt = 4 * it, Ve = 60 * it, O = (() => {
+const Be = 1e3, it = 60 * Be, Pi = 60 * it, Vt = 4 * it, Ve = 60 * it, O = (() => {
   const t = Math.pow(Ve / Vt, 0.034482758620689655);
   return Array.from({ length: 30 }, (i, s) => Math.round(Vt * Math.pow(t, s)));
 })(), zt = 0.15, Mi = 0.179;
-function C(e) {
+function P(e) {
   return e.end - e.start;
 }
 function Ei(e) {
   return Math.min(Ve, Math.max(Vt, e));
 }
-function P(e, t = zt) {
-  return e.end - C(e) * t;
+function C(e, t = zt) {
+  return e.end - P(e) * t;
 }
-const Fi = it, Ri = 6 * Ci;
+const Fi = it, Ri = 6 * Pi;
 function N(e, t, i = zt) {
   const s = Math.min(Ri, Math.max(Fi, t)), o = e + s * i;
   return { start: o - s, end: o };
@@ -815,7 +815,7 @@ function We(e, t) {
   for (const i of e) if (t >= i.start && t <= i.end) return !0;
   return !1;
 }
-function Pt(e) {
+function Ct(e) {
   history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 }
 const ce = ["person", "vehicle", "animal", "package", "license plate"];
@@ -921,13 +921,13 @@ class He {
   }
 }
 const pe = /* @__PURE__ */ new Map();
-function Ct(e) {
+function Pt(e) {
   const t = JSON.stringify(e);
   let i = pe.get(t);
   return i || (i = new Intl.DateTimeFormat(void 0, e), pe.set(t, i)), i;
 }
 function lt(e, t) {
-  return Ct(t).format(new Date(e));
+  return Pt(t).format(new Date(e));
 }
 function Gi(e) {
   return /iPad|iPhone|iPod/.test(e.userAgent) || e.platform === "MacIntel" && (e.maxTouchPoints ?? 0) > 1;
@@ -1118,12 +1118,12 @@ let w = class extends j {
       const s = performance.now();
       for (this._velSamples.push({ t: s, y: t }); this._velSamples.length > 1 && s - this._velSamples[0].t > ms; )
         this._velSamples.shift();
-      const o = C(this._dragStartDomain), r = i / (this._height || 1) * o;
+      const o = P(this._dragStartDomain), r = i / (this._height || 1) * o;
       let a = {
         start: this._dragStartDomain.start + r,
         end: this._dragStartDomain.end + r
       };
-      const n = this._height || 1, l = P(a, this.playheadFrac) - this.now;
+      const n = this._height || 1, l = C(a, this.playheadFrac) - this.now;
       if (l > 0) {
         const _ = l / o * n, h = be * _ / (_ + be) / n * o, f = l - h;
         if (a = { start: a.start - f, end: a.end - f }, this._setDomain(a, h), !this._gestureScrubbed) return;
@@ -1131,7 +1131,7 @@ let w = class extends j {
         this._setDomain(a), this._gestureScrubbed = !0;
       this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(C(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
@@ -1159,7 +1159,7 @@ let w = class extends j {
           this._scrubOpen && this._emitScrubEnd(), this.dispatchEvent(new CustomEvent("tap-through", { bubbles: !0, composed: !0 }));
           return;
         }
-        if (P(this.domain, this.playheadFrac) > this.now && this._animateFrom({ ...this.domain }, this._applyDomain(N(this.now, C(this.domain), this.playheadFrac))), !this._gestureScrubbed) {
+        if (C(this.domain, this.playheadFrac) > this.now && this._animateFrom({ ...this.domain }, this._applyDomain(N(this.now, P(this.domain), this.playheadFrac))), !this._gestureScrubbed) {
           this._velSamples = [], this._scrubOpen = !1, this._syncPillBig(), this.dispatchEvent(new CustomEvent("scrub-cancel", { bubbles: !0, composed: !0 }));
           return;
         }
@@ -1174,10 +1174,10 @@ let w = class extends j {
       this._pointers.size === 0 && (this._clearHover(), this._hoverGap = void 0);
     }, this._onWheel = (e) => {
       e.preventDefault(), this._cancelMomentum(), this._cancelSeek();
-      const t = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY, i = P(this.domain, this.playheadFrac);
+      const t = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY, i = C(this.domain, this.playheadFrac);
       this._panByPixels(-t), !(t < 0 && i >= this.now - 50 && !this._scrubEndTimer) && (this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(C(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
@@ -1244,11 +1244,11 @@ let w = class extends j {
     return this._animDomain ?? this.domain;
   }
   _timeToY(e) {
-    const t = C(this._dd) || 1;
+    const t = P(this._dd) || 1;
     return (this._dd.end - e) / t * this._height;
   }
   _yToTime(e) {
-    const t = C(this._dd) || 1;
+    const t = P(this._dd) || 1;
     return this._dd.end - e / (this._height || 1) * t;
   }
   get _playheadY() {
@@ -1313,12 +1313,12 @@ let w = class extends j {
       const s = Math.min(0.1, (i - this._momentumLast) / 1e3);
       this._momentumLast = i, this._panByPixels(this._momentumV * s), this._draw(), this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: P(this.domain, this.playheadFrac) },
+          detail: { time: C(this.domain, this.playheadFrac) },
           bubbles: !0,
           composed: !0
         })
       ), this._momentumV *= Math.exp(-s / _s);
-      const o = this._momentumV > 0 && P(this.domain, this.playheadFrac) >= this.now - 250;
+      const o = this._momentumV > 0 && C(this.domain, this.playheadFrac) >= this.now - 250;
       if (Math.abs(this._momentumV) < fs || o) {
         this._momentumRaf = 0, this._emitScrubEnd();
         return;
@@ -1343,13 +1343,13 @@ let w = class extends j {
    *  momentum glide). */
   _seekTo(e) {
     this._cancelMomentum(), this._cancelSeek(), cancelAnimationFrame(this._animRaf), this._animDomain = void 0;
-    const t = P(this.domain, this.playheadFrac), i = Math.min(e, this.now);
+    const t = C(this.domain, this.playheadFrac), i = Math.min(e, this.now);
     this._scrubOpen = !0, this._syncPillBig(), this.dispatchEvent(new CustomEvent("scrub-start", { bubbles: !0, composed: !0 }));
     const s = performance.now(), o = (r) => {
       const a = Math.min(1, (r - s) / Tt), n = 1 - Math.pow(1 - a, 3);
-      if (this._applyDomain(N(t + (i - t) * n, C(this.domain), this.playheadFrac)), this._draw(), this.dispatchEvent(
+      if (this._applyDomain(N(t + (i - t) * n, P(this.domain), this.playheadFrac)), this._draw(), this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(C(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
@@ -1366,7 +1366,7 @@ let w = class extends j {
     this._seekRaf && (cancelAnimationFrame(this._seekRaf), this._seekRaf = 0);
   }
   _panByPixels(e) {
-    const t = C(this.domain), i = e / (this._height || 1) * t;
+    const t = P(this.domain), i = e / (this._height || 1) * t;
     this._setDomain({ start: this.domain.start + i, end: this.domain.end + i });
   }
   _debouncedScrubEnd() {
@@ -1404,12 +1404,12 @@ let w = class extends j {
     t ? this._hoverGap?.gap !== t.gap && (this._hoverGap = { gap: t.gap, y: (t.yTop + t.yBot) / 2 }) : this._hoverGap && (this._hoverGap = void 0);
   }
   _zoomStep(e) {
-    const t = zi(C(this.domain), e);
+    const t = zi(P(this.domain), e);
     this._setSpan(t);
   }
   _setSpan(e) {
     this.dispatchEvent(new CustomEvent("zoom-change", { bubbles: !0, composed: !0 })), this._cancelMomentum(), this._cancelSeek();
-    const t = this._animDomain ?? { ...this.domain }, i = this._applyDomain(N(P(this.domain, this.playheadFrac), e, this.playheadFrac));
+    const t = this._animDomain ?? { ...this.domain }, i = this._applyDomain(N(C(this.domain, this.playheadFrac), e, this.playheadFrac));
     this._animateFrom(t, i);
   }
   /** Glide the ruler between two domains without touching the scrub stream —
@@ -1433,7 +1433,7 @@ let w = class extends j {
   }
   // Slider value 0..N-1 maps 0=zoomed-out (widest span) -> N-1=zoomed-in.
   get _sliderValue() {
-    const e = C(this.domain);
+    const e = P(this.domain);
     let t = 0, i = 1 / 0;
     return O.forEach((s, o) => {
       const r = Math.abs(s - e);
@@ -1458,7 +1458,7 @@ let w = class extends j {
   /** Commit a domain (clamped so the playhead can't pass `now` — plus an
    *  optional allowance for the rubber-band overshoot); no redraw. */
   _applyDomain(e, t = 0) {
-    const i = P(e, this.playheadFrac);
+    const i = C(e, this.playheadFrac);
     if (i > this.now + t) {
       const s = i - (this.now + t);
       e = { start: e.start - s, end: e.end - s };
@@ -1474,7 +1474,7 @@ let w = class extends j {
   _emitScrubEnd() {
     this._scrubOpen = !1, this._syncPillBig(), this.dispatchEvent(
       new CustomEvent("scrub-end", {
-        detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+        detail: { time: Math.min(C(this.domain, this.playheadFrac), this.now) },
         bubbles: !0,
         composed: !0
       })
@@ -1488,7 +1488,7 @@ let w = class extends j {
     if (i < 1 || s < 1) return;
     const o = this._height;
     if (this._width = i, this._height = s, this._rect = t, this._dpr = window.devicePixelRatio || 1, performance.now() - this._setupTs > 500 && o > 0 && this.domain && Math.abs(s - o) > 0.5) {
-      const a = C(this.domain) * (s / o), l = P(this.domain, this.playheadFrac) + a * this.playheadFrac;
+      const a = P(this.domain) * (s / o), l = C(this.domain, this.playheadFrac) + a * this.playheadFrac;
       this._applyDomain({ start: l - a, end: l });
     }
     e.width = Math.max(1, Math.round(i * this._dpr)), e.height = Math.max(1, Math.round(s * this._dpr)), this._draw(), o !== this._height && this.requestUpdate();
@@ -1540,7 +1540,7 @@ let w = class extends j {
         }
       }
     }
-    const { major: x, minor: R } = gs(C(this._dd)), H = this.tickColor || r, q = Math.max(2, Math.min(this.tickSize, 16)), k = Math.max(2, Math.min(this.tickSize + 5, 18)), V = Math.max(1, Math.min(this.tickSize / 5, 2.5));
+    const { major: x, minor: R } = gs(P(this._dd)), H = this.tickColor || r, q = Math.max(2, Math.min(this.tickSize, 16)), k = Math.max(2, Math.min(this.tickSize + 5, 18)), V = Math.max(1, Math.min(this.tickSize / 5, 2.5));
     t.strokeStyle = H, t.lineWidth = V, t.globalAlpha = 0.7;
     for (const W of he(this._dd, R)) {
       const $ = this._timeToY(W);
@@ -1582,7 +1582,7 @@ let w = class extends j {
     return lt(e, t);
   }
   render() {
-    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = vs(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - P(this.domain, this.playheadFrac) < ps, o = !s && this.domain ? this._fmt(Math.min(P(this.domain, this.playheadFrac), this.now), {
+    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = vs(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - C(this.domain, this.playheadFrac) < ps, o = !s && this.domain ? this._fmt(Math.min(C(this.domain, this.playheadFrac), this.now), {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
@@ -1694,7 +1694,7 @@ let w = class extends j {
    *  winds the timeline to that event from _onPointerUp instead. */
   _renderThumbs() {
     if (!this._height || !this.domain) return g;
-    const e = P(this.domain, this.playheadFrac), t = this.thumbSizeActive * 0.75 / 2, i = this.thumbSize * 0.75 / 2, s = t + i + 6, o = C(this._dd), r = this._keptSel;
+    const e = C(this.domain, this.playheadFrac), t = this.thumbSizeActive * 0.75 / 2, i = this.thumbSize * 0.75 / 2, s = t + i + 6, o = P(this._dd), r = this._keptSel;
     let a;
     if (r && r.bands === this.bands && r.span === o && r.height === this._height && r.spacing === s)
       a = r.sel;
@@ -2705,7 +2705,7 @@ function ys(e) {
   return i || s;
 }
 function xs(e) {
-  return e.recoveryAttempts === 0 ? "recover" : !e.hasFrameCallback && !e.seeking && e.readyState >= 2 ? "finish" : "fail";
+  return e.allowReadyStateFallback && !e.hasFrameCallback && !e.seeking && e.readyState >= 2 ? "finish" : e.recoveryAttempts === 0 ? "recover" : "fail";
 }
 function ks(e) {
   return !!e.eventVideo && e.eventVideo === e.currentVideo && e.sourceToken === e.videoToken && !!e.currentSession && e.sourceSession === e.currentSession && !!e.expectedUrl && e.actualUrl === e.expectedUrl;
@@ -2739,7 +2739,7 @@ class ye {
 function Ts(e, t, i, s) {
   return i || !s || t === "muted" ? !1 : e === "auto" || t === "unmuted";
 }
-const xe = 6e4, As = 1e4, Ps = 5e3, Cs = 5e3, Ms = 8e3, Es = 15e3, Fs = 400, Rs = 15, zs = 25 * 6e4, Ls = 5 * 6e4, Is = 16, Ds = 6, Os = 2;
+const xe = 6e4, As = 1e4, Cs = 5e3, Ps = 5e3, Ms = 8e3, Es = 15e3, Fs = 400, Rs = 15, zs = 25 * 6e4, Ls = 5 * 6e4, Is = 16, Ds = 6, Os = 2;
 function Bs(e, t, i) {
   return e ? [i ? "fast" : void 0, t ? "fine" : void 0].filter(
     (s) => !!s
@@ -2948,7 +2948,7 @@ class Vs {
       }
     } catch {
     }
-    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, xe - Ps), i && this._requestSync();
+    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, xe - Cs), i && this._requestSync();
   }
   /** Fire the pyscript sync service (throttled). No-ops when pyscript isn't
    *  installed — the card just keeps the plain black scrub stage. */
@@ -3032,7 +3032,7 @@ class Vs {
   }
   /** Refresh tip.json if due (cheap: a few hundred bytes). */
   async ensureTip() {
-    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < Cs || await this._fetchTip();
+    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < Ps || await this._fetchTip();
   }
   async _fetchTip() {
     this._tipAt = Date.now();
@@ -3253,12 +3253,12 @@ let p = class extends j {
       t.addEventListener("pointermove", i), t.addEventListener("pointerup", s), t.addEventListener("pointercancel", s), this._showFollowCtrl();
     }, this._onClipSeeking = (e) => {
       const t = this._isCurrentClipEvent(e);
-      !t || this._clipWatchFailed || (this._releaseFrame(), this._clipSeekTarget = t.currentTime, this._clipSeekWasPlaying ||= !t.paused, this._clipBuffering = !0, this._armClipFrameWatch());
+      !t || this._clipWatchFailed || (this._releaseFrame(), this._clipSeekTarget = t.currentTime, this._clipSeekWasPlaying ||= !t.paused, this._clipBuffering = !0, this._armClipFrameWatch(this._clipFrameWatchReason === "stall" ? "stall" : "seek"));
     }, this._onClipWaiting = (e) => {
       const t = this._isCurrentClipEvent(e);
-      !t || t.ended || this._clipWatchFailed || (this._clipSeekTarget = t.currentTime, this._clipSeekWasPlaying = !t.paused, this._clipBuffering = !0, this._armClipFrameWatch());
+      !t || t.ended || this._clipWatchFailed || (this._clipSeekTarget = t.currentTime, this._clipSeekWasPlaying = !t.paused, this._clipBuffering = !0, this._armClipFrameWatch("stall"));
     }, this._onClipSeeked = (e) => {
-      !this._isCurrentClipEvent(e) || this._clipWatchFailed || !this._loadingVideo && !this._clipBuffering || this._armClipFrameWatch();
+      !this._isCurrentClipEvent(e) || this._clipWatchFailed || !this._loadingVideo && !this._clipBuffering || this._armClipFrameWatch(this._clipFrameWatchReason ?? "seek");
     }, this._onEnded = (e) => {
       this.clipEndTime <= 0 || !this._isCurrentClipEvent(e) || (this._cancelClipFrameWatch(), this._clipBuffering = !1, this._endClipSession(), this.dispatchEvent(new CustomEvent("clip-ended", { bubbles: !0, composed: !0 })));
     }, this._onVideoReady = (e) => {
@@ -3270,10 +3270,10 @@ let p = class extends j {
         }).catch(() => {
         });
       })), !t.requestVideoFrameCallback && !t.seeking && t.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._releaseFrame();
+        this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._error = void 0, this._releaseFrame();
         return;
       }
-      (this._loadingVideo || this._clipBuffering) && this._armClipFrameWatch();
+      (this._loadingVideo || this._clipBuffering) && this._armClipFrameWatch(this._clipFrameWatchReason ?? "load");
     }, this._onVideoError = (e) => {
       this._isCurrentClipEvent(e) && this._failClip("Clip unavailable for this time range.");
     }, this._onClipPlay = (e) => {
@@ -3588,7 +3588,7 @@ let p = class extends j {
       })
     ), !(!this.hass || !this.nvrId || !this.cameraId)) {
       if (e.has("previewDir") && (this._resetPreviewSlots(), this._previewToken++, this._stopFollow(), this._warmPreview()), e.has("scrubbing") && this.scrubbing && (this._scrubVelPrev = void 0, this._coarseScrub = !1, clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, this._spriteReady = !1, this._warmPreview()), this._liveStream) {
-        (e.has("live") || e.has("_streamReady")) && (this._cancelLoad(), this._stopFollow(), this._hideLiveTimeline(), this._startLivePoll(), this._flashFollowCtrl());
+        (e.has("live") || e.has("_streamReady")) && (this._cancelLoad(), this._error = void 0, this._stopFollow(), this._hideLiveTimeline(), this._startLivePoll(), this._flashFollowCtrl());
         return;
       }
       if (this._stopLivePoll(), e.has("scrubbing") && this.scrubbing) {
@@ -3984,7 +3984,7 @@ let p = class extends j {
       }
       if (this._sessionId = a.session_id, this._clipSourceToken = i, this._clipSourceSession = a.session_id, this._clipSourceUrl = a.url, this._setClipSrc(a.url), this._clipBuffering = !0, await this.updateComplete, i !== this._videoToken || this._sessionId !== a.session_id || this._videoSrc !== a.url)
         return;
-      this._armClipFrameWatch();
+      this._armClipFrameWatch("load");
     } catch (a) {
       if (i !== this._videoToken || a?.name === "AbortError") return;
       console.warn("[unifi-timeline] clip session failed", a), this._failClip("Clip unavailable for this time range.");
@@ -4023,61 +4023,66 @@ let p = class extends j {
     this._seekClipTo(o * i.duration), this._clipProgress = o, this._clipTime = i.currentTime, this._clipDuration = i.duration;
   }
   _cancelClipFrameWatch() {
-    this._clipFrameGeneration++, clearTimeout(this._clipFrameTimer), this._clipFrameTimer = void 0;
+    this._clipFrameGeneration++, clearTimeout(this._clipFrameTimer), this._clipFrameTimer = void 0, this._clipFrameWatchReason = void 0;
+    const e = this._clipFrameCallback;
+    this._clipFrameCallback = void 0, e && e.video.cancelVideoFrameCallback?.call(e.video, e.id);
   }
   _seekClipTo(e) {
     const t = this._video;
-    !t || !isFinite(t.duration) || t.duration <= 0 || (this._cancelClipFrameWatch(), this._releaseFrame(), this._clipSeekTarget = Math.min(t.duration, Math.max(0, e)), this._clipSeekWasPlaying = !t.paused, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._clipBuffering = !0, t.currentTime = this._clipSeekTarget, this._armClipFrameWatch());
+    !t || !isFinite(t.duration) || t.duration <= 0 || (this._cancelClipFrameWatch(), this._releaseFrame(), this._clipSeekTarget = Math.min(t.duration, Math.max(0, e)), this._clipSeekWasPlaying = !t.paused, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._error = void 0, this._clipBuffering = !0, t.currentTime = this._clipSeekTarget, this._armClipFrameWatch("seek"));
   }
-  _armClipFrameWatch() {
-    const e = this._video;
-    if (!e || this._clipWatchFailed || this._clipFrameTimer !== void 0) return;
-    const t = this._clipFrameGeneration, i = () => {
-      t !== this._clipFrameGeneration || e !== this._video || (clearTimeout(this._clipFrameTimer), this._clipFrameTimer = void 0, this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._error = void 0, this._releaseFrame());
-    }, s = e.requestVideoFrameCallback, o = () => {
-      s?.call(e, (r, a) => {
-        if (!(t !== this._clipFrameGeneration || e !== this._video)) {
+  _armClipFrameWatch(e) {
+    const t = this._video;
+    if (!t || this._clipWatchFailed || ((!this._clipFrameWatchReason || e === "stall") && (this._clipFrameWatchReason = e), this._clipFrameTimer !== void 0)) return;
+    const i = this._clipFrameGeneration, s = () => {
+      i !== this._clipFrameGeneration || t !== this._video || (this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._error = void 0, this._releaseFrame());
+    }, o = t.requestVideoFrameCallback, r = () => {
+      let a;
+      a = o.call(t, (n, l) => {
+        if (this._clipFrameCallback?.video === t && this._clipFrameCallback.id === a && (this._clipFrameCallback = void 0), !(i !== this._clipFrameGeneration || t !== this._video)) {
           if (!ys({
-            mediaTime: a.mediaTime,
-            currentTime: e.currentTime,
+            mediaTime: l.mediaTime,
+            currentTime: t.currentTime,
             seekTarget: this._clipSeekTarget,
-            seeking: e.seeking,
-            readyState: e.readyState
+            seeking: t.seeking,
+            readyState: t.readyState
           })) {
-            o();
+            r();
             return;
           }
-          i();
+          s();
         }
-      });
+      }), this._clipFrameCallback = { video: t, id: a };
     };
-    s ? o() : requestAnimationFrame(
+    o ? r() : e !== "stall" && requestAnimationFrame(
       () => requestAnimationFrame(() => {
-        t !== this._clipFrameGeneration || e !== this._video || e.seeking || e.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || i();
+        i !== this._clipFrameGeneration || t !== this._video || this._clipFrameWatchReason === "stall" || t.seeking || t.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || s();
       })
     ), this._clipFrameTimer = setTimeout(() => {
-      if (t !== this._clipFrameGeneration || e !== this._video) return;
+      if (i !== this._clipFrameGeneration || t !== this._video) return;
       this._clipFrameTimer = void 0;
-      const r = xs({
+      const a = xs({
         recoveryAttempts: this._clipRecoveryAttempts,
-        hasFrameCallback: !!s,
-        seeking: e.seeking,
-        readyState: e.readyState
+        hasFrameCallback: !!o,
+        allowReadyStateFallback: this._clipFrameWatchReason !== "stall",
+        seeking: t.seeking,
+        readyState: t.readyState
       });
-      if (r === "recover") {
+      if (a === "recover") {
+        const n = this._clipFrameWatchReason ?? e;
         this._clipRecoveryAttempts = 1;
-        const a = this._clipSeekWasPlaying || !e.paused;
-        e.pause();
+        const l = this._clipSeekWasPlaying || !t.paused;
+        t.pause();
         try {
-          e.currentTime = Math.min(e.duration || this._clipSeekTarget, this._clipSeekTarget);
+          t.currentTime = Math.min(t.duration || this._clipSeekTarget, this._clipSeekTarget);
         } catch {
         }
-        a && e.play().catch(() => {
-        }), this._cancelClipFrameWatch(), this._armClipFrameWatch();
+        l && t.play().catch(() => {
+        }), this._cancelClipFrameWatch(), this._armClipFrameWatch(n);
         return;
       }
-      if (r === "finish") {
-        i();
+      if (a === "finish") {
+        s();
         return;
       }
       this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipWatchFailed = !0, this._error = "Clip stalled while seeking. Try again.", this._releaseFrame();
@@ -6419,7 +6424,7 @@ let I = class extends j {
     }, this._onTileOpen = (e) => {
       const t = e.detail.navigation_path;
       if (t) {
-        Pt(t);
+        Ct(t);
         return;
       }
       this.dispatchEvent(
@@ -7013,7 +7018,7 @@ var fo = Object.defineProperty, mo = Object.getOwnPropertyDescriptor, T = (e, t,
   return s && o && fo(t, i, o), o;
 };
 const vo = 3e4, go = 2 * 6e4, bo = "2.0.2", wo = 2e3, yo = 1e3, xo = 33, ko = 1.3, So = 1.15;
-let _t = 0, Pe = "", S = class extends j {
+let _t = 0, Ce = "", S = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new He(2, () => {
       this._thumbVersion++;
@@ -7024,17 +7029,17 @@ let _t = 0, Pe = "", S = class extends j {
       }
       const e = this._config?.back_button_path;
       if (e) {
-        Pt(e);
+        Ct(e);
         return;
       }
       const t = this._config?.back_fallback_path || `/${window.location.pathname.split("/")[1] ?? ""}`;
       if (window.history.length <= 1) {
-        Pt(t);
+        Ct(t);
         return;
       }
       const i = window.location.href;
       window.history.back(), window.setTimeout(() => {
-        window.location.href === i && this.isConnected && Pt(t);
+        window.location.href === i && this.isConnected && Ct(t);
       }, 400);
     }, this._onMediaFsExit = () => {
       this._drillFs && this._drillOut(!0);
@@ -7061,13 +7066,13 @@ let _t = 0, Pe = "", S = class extends j {
         this._closeCal();
         return;
       }
-      const e = new Date(this._domain ? P(this._domain, this._phFrac()) : Date.now());
+      const e = new Date(this._domain ? C(this._domain, this._phFrac()) : Date.now());
       this._calCursor = { y: e.getFullYear(), m: e.getMonth() }, this._calOpen = !0, window.addEventListener("pointerdown", this._outsideCalClose, !0);
     }, this._outsideCalClose = (e) => {
       const t = e.composedPath(), i = this.renderRoot.querySelector(".cal-pop"), s = this.renderRoot.querySelector(".date-pill");
       i && t.includes(i) || s && t.includes(s) || (e.preventDefault(), e.stopPropagation(), Ye(), this._closeCal());
     }, this._onLivePlaying = (e) => {
-      this._livePaused = !e.detail.playing, e.detail.playing && this._liveMode && !this._scrubbing && this._domain && (this._now = Date.now(), this._domain = N(this._now, C(this._domain), this._phFrac()));
+      this._livePaused = !e.detail.playing, e.detail.playing && this._liveMode && !this._scrubbing && this._domain && (this._now = Date.now(), this._domain = N(this._now, P(this._domain), this._phFrac()));
     }, this._modeSwapDir = 0, this._showTimeline = () => {
       this._setMode("timeline");
     }, this._showEvents = () => {
@@ -7089,22 +7094,22 @@ let _t = 0, Pe = "", S = class extends j {
     }, this._onLive = () => {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._now = Date.now();
-      const e = this._domain, t = N(this._now, C(e), this._phFrac());
+      const e = this._domain, t = N(this._now, P(e), this._phFrac());
       this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, yo), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clipEnd = 0;
     }, this._onRewind = (e) => {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._liveMode = !1, this._livePaused = !1, this._scrubbing = !1, this._playingBand = void 0, this._clipEnd = 0, this._targetTime = e.detail.time;
-      const t = this._domain, i = N(e.detail.time, C(t), this._phFrac());
+      const t = this._domain, i = N(e.detail.time, P(t), this._phFrac());
       this._domain = i, this._glideRulers(t, i);
     }, this._onPlaybackTime = (e) => {
       if (this._liveMode || this._scrubbing || !this._domain) return;
-      const t = this._domain, i = N(e.detail.time, C(t), this._phFrac());
+      const t = this._domain, i = N(e.detail.time, P(t), this._phFrac());
       this._domain = i, Math.abs(
-        P(i, this._phFrac()) - P(t, this._phFrac())
+        C(i, this._phFrac()) - C(t, this._phFrac())
       ) >= wo && this._glideRulers(t, i);
     }, this._onPlaybackSeek = (e) => {
       if (!this._domain) return;
-      const t = this._domain, i = N(e.detail.time, C(t), this._phFrac());
+      const t = this._domain, i = N(e.detail.time, P(t), this._phFrac());
       this._domain = i, this._glideRulers(t, i);
     }, this._onEventSelected = (e) => {
       this._playBand(e.detail);
@@ -7265,10 +7270,10 @@ let _t = 0, Pe = "", S = class extends j {
     const e = this._config?.page_background;
     if (!e) return;
     const t = document.documentElement;
-    _t === 0 && (Pe = t.style.backgroundColor), _t++, t.style.backgroundColor = e, this._pageBgApplied = !0;
+    _t === 0 && (Ce = t.style.backgroundColor), _t++, t.style.backgroundColor = e, this._pageBgApplied = !0;
   }
   _removePageBackground() {
-    this._pageBgApplied && (this._pageBgApplied = !1, _t--, _t <= 0 && (_t = 0, document.documentElement.style.backgroundColor = Pe));
+    this._pageBgApplied && (this._pageBgApplied = !1, _t--, _t <= 0 && (_t = 0, document.documentElement.style.backgroundColor = Ce));
   }
   connectedCallback() {
     super.connectedCallback(), this._applyPageBackground(), this._tick = setInterval(() => this._onTick(), 1e3), this._bandInterval = setInterval(() => {
@@ -7391,7 +7396,7 @@ let _t = 0, Pe = "", S = class extends j {
    *  (the cache dir follows the camera). Deliberately does NOT close the strip
    *  — only dragging UP on the video does. */
   _selectCamera(e) {
-    e !== this._activeCamera && (this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._footageSpans = [], this._gaps = [], this._gapRange = void 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._liveMode || !this._domain ? this._onLive() : (clearTimeout(this._scrubSettleTimer), this._playingBand = void 0, this._clipEnd = 0, this._livePaused = !1, this._scrubbing = !1, this._targetTime = Math.min(P(this._domain, this._phFrac()), Date.now())), this._fetchGaps(!0), this._fetchManifest());
+    e !== this._activeCamera && (this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._footageSpans = [], this._gaps = [], this._gapRange = void 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._liveMode || !this._domain ? this._onLive() : (clearTimeout(this._scrubSettleTimer), this._playingBand = void 0, this._clipEnd = 0, this._livePaused = !1, this._scrubbing = !1, this._targetTime = Math.min(C(this._domain, this._phFrac()), Date.now())), this._fetchGaps(!0), this._fetchManifest());
   }
   _closeCal() {
     this._calOpen = !1, window.removeEventListener("pointerdown", this._outsideCalClose, !0);
@@ -7428,11 +7433,11 @@ let _t = 0, Pe = "", S = class extends j {
       this._onLive();
       return;
     }
-    this._playingBand = void 0, this._clipEnd = 0, this._scrubbing = !1, this._livePaused = !1, this._liveMode = !1, this._targetTime = o, this._domain = N(o, C(this._domain), this._phFrac()), this._fetchGaps(!1);
+    this._playingBand = void 0, this._clipEnd = 0, this._scrubbing = !1, this._livePaused = !1, this._liveMode = !1, this._targetTime = o, this._domain = N(o, P(this._domain), this._phFrac()), this._fetchGaps(!1);
   }
   // ---- live tick & band fetching -----------------------------------------
   _onTick() {
-    this._now = Date.now(), this._liveMode && !this._scrubbing && !this._livePaused && this._domain && (this._domain = N(this._now, C(this._domain), this._phFrac()));
+    this._now = Date.now(), this._liveMode && !this._scrubbing && !this._livePaused && this._domain && (this._domain = N(this._now, P(this._domain), this._phFrac()));
   }
   /** Fetch camera-offline (footage-gap) spans for a large buffer around the
    *  visible window, guard-gated so panning inside the buffer is free. This is
@@ -7440,7 +7445,7 @@ let _t = 0, Pe = "", S = class extends j {
    *  the manifest — see _fetchManifest.) */
   async _fetchGaps(e = !1) {
     if (!this.hass || !this._domain || !(this._config?.show_footage_gaps ?? !0)) return;
-    const t = C(this._domain), i = Math.max(t * 2, 180 * it), s = this._domain.start - i, o = Math.min(this._domain.end + i, this._now + 1e3), r = i * 0.5, a = !!this._gapRange && this._domain.start - r >= this._gapRange.start && this._domain.end + r <= this._gapRange.end;
+    const t = P(this._domain), i = Math.max(t * 2, 180 * it), s = this._domain.start - i, o = Math.min(this._domain.end + i, this._now + 1e3), r = i * 0.5, a = !!this._gapRange && this._domain.start - r >= this._gapRange.start && this._domain.end + r <= this._gapRange.end;
     if (!e && a) return;
     this._gapRange = { start: s, end: o };
     const n = this._activeCamera || this._config.camera, l = await Ui(this.hass, n, s, o, this._nvrId);
@@ -7477,7 +7482,7 @@ let _t = 0, Pe = "", S = class extends j {
    *  timeline never gets here — tapping a thumbnail there seeks the ruler and
    *  keeps playing the continuous footage. */
   _playBand(e) {
-    this._domain && (this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._scrubbing = !1, this._liveMode = !1, this._playingBand = e, this._clipEnd = Math.min(e.end + this._postMs, Date.now()), this._targetTime = Math.max(e.start - this._preMs, 0), this._domain = N(e.start, C(this._domain), this._phFrac()));
+    this._domain && (this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._scrubbing = !1, this._liveMode = !1, this._playingBand = e, this._clipEnd = Math.min(e.end + this._postMs, Date.now()), this._targetTime = Math.max(e.start - this._preMs, 0), this._domain = N(e.start, P(this._domain), this._phFrac()));
   }
   /** The multi-camera page (card_version: multi): same ha-card + header shell
    *  (title, optional back button) as the single card, with <upc-multi-view>
@@ -7548,12 +7553,12 @@ let _t = 0, Pe = "", S = class extends j {
     i.setHours(0, 0, 0, 0);
     const s = new Date(i);
     s.setDate(s.getDate() - (this._config?.calendar_days ?? 30));
-    const o = new Date(e, t, 1), r = o.getDay(), a = new Date(e, t + 1, 0).getDate(), n = new Date(this._domain ? P(this._domain, this._phFrac()) : Date.now()), l = (k) => n.getFullYear() === e && n.getMonth() === t && n.getDate() === k, _ = Ct({
+    const o = new Date(e, t, 1), r = o.getDay(), a = new Date(e, t + 1, 0).getDate(), n = new Date(this._domain ? C(this._domain, this._phFrac()) : Date.now()), l = (k) => n.getFullYear() === e && n.getMonth() === t && n.getDate() === k, _ = Pt({
       month: "long",
       year: "numeric"
     }).format(o), u = Array.from(
       { length: 7 },
-      (k, V) => Ct({ weekday: "narrow" }).format(new Date(2023, 0, V + 1))
+      (k, V) => Pt({ weekday: "narrow" }).format(new Date(2023, 0, V + 1))
     ), h = this._mode === "list" ? this._eventDayKeys() : void 0, f = !!h && h.size > 0, b = e * 12 + t;
     let x = s.getFullYear() * 12 + s.getMonth();
     if (f) {
@@ -7676,10 +7681,10 @@ let _t = 0, Pe = "", S = class extends j {
     );
     const t = this._config.show_footage_gaps ?? !0 ? this._gaps : [];
     this._loader.setGaps(t);
-    const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, o = this._isStacked(), r = this._config.fs_timeline_width ?? (o ? 120 : 165), a = this._fsPad(), n = this._fsGutter(), l = this._config.fs_timeline_grab_width ?? 0, _ = this._config.fs_timeline_scrim ?? 0.88, u = this._config.fs_timeline_scrim_extend ?? (o ? 130 : 170), h = Ct({
+    const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, o = this._isStacked(), r = this._config.fs_timeline_width ?? (o ? 120 : 165), a = this._fsPad(), n = this._fsGutter(), l = this._config.fs_timeline_grab_width ?? 0, _ = this._config.fs_timeline_scrim ?? 0.88, u = this._config.fs_timeline_scrim_extend ?? (o ? 130 : 170), h = Pt({
       month: "short",
       day: "numeric"
-    }).format(new Date(P(this._domain, this._phFrac()))), f = this._isStacked(), b = this._config.tablet_events_thumbnail_size ?? 145, x = this._config.list_text_size ?? 12, R = Math.max(1, x - 1), H = b + 168, q = (f ? "" : `flex-basis:${H}px;min-width:${H}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, k = this._cameraEntries(), V = k.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", Y = this._config.video_ratio ?? 0.45, kt = Math.max(15, Math.min(85, Y > 1 ? Y : Y * 100)), dt = `height:${this._config.height || (f ? "100dvh" : "80vh")}`, W = f ? `--upc-video-frac:${kt}%` : "", $ = this._config.list_divider_color || i, z = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), G = f && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", K = (k.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
+    }).format(new Date(C(this._domain, this._phFrac()))), f = this._isStacked(), b = this._config.tablet_events_thumbnail_size ?? 145, x = this._config.list_text_size ?? 12, R = Math.max(1, x - 1), H = b + 168, q = (f ? "" : `flex-basis:${H}px;min-width:${H}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, k = this._cameraEntries(), V = k.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", Y = this._config.video_ratio ?? 0.45, kt = Math.max(15, Math.min(85, Y > 1 ? Y : Y * 100)), dt = `height:${this._config.height || (f ? "100dvh" : "80vh")}`, W = f ? `--upc-video-frac:${kt}%` : "", $ = this._config.list_divider_color || i, z = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), G = f && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", K = (k.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
     return d`
       <ha-card style=${dt}>
         <div class="header" style=${K}>

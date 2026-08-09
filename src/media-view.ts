@@ -131,6 +131,7 @@ const POSTER_REFRESH_MS = 10_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
 const HOLD_FRAME_ENABLED = true;
 const CLIP_FRAME_STALL_MS = 2_500;
+type ClipFrameWatchReason = 'load' | 'seek' | 'stall';
 
 /** A play() rejection that means "the browser refused", not "superseded".
  *  NotAllowedError = autoplay policy (iOS Low Power Mode refuses even muted).
@@ -273,6 +274,8 @@ export class MediaView extends LitElement {
   @state() private _clipBuffering = false;
   private _clipFrameGeneration = 0;
   private _clipFrameTimer?: ReturnType<typeof setTimeout>;
+  private _clipFrameCallback?: { video: HTMLVideoElement; id: number };
+  private _clipFrameWatchReason?: ClipFrameWatchReason;
   private _clipSeekTarget = 0;
   private _clipSeekWasPlaying = false;
   private _clipRecoveryAttempts = 0;
@@ -1470,6 +1473,7 @@ export class MediaView extends LitElement {
       // its play/pause so the card can freeze the playhead when paused.
       if (changed.has('live') || changed.has('_streamReady')) {
         this._cancelLoad(); // back to live: stop any historical export in flight
+        this._error = undefined;
         this._stopFollow();
         this._hideLiveTimeline();
         this._startLivePoll();
@@ -2272,7 +2276,7 @@ export class MediaView extends LitElement {
       ) {
         return;
       }
-      this._armClipFrameWatch();
+      this._armClipFrameWatch('load');
     } catch (err) {
       if (token !== this._videoToken) return; // superseded or torn down
       if ((err as Error)?.name === 'AbortError') return;
@@ -2377,6 +2381,15 @@ export class MediaView extends LitElement {
     this._clipFrameGeneration++;
     clearTimeout(this._clipFrameTimer);
     this._clipFrameTimer = undefined;
+    this._clipFrameWatchReason = undefined;
+    const frameCallback = this._clipFrameCallback;
+    this._clipFrameCallback = undefined;
+    if (frameCallback) {
+      const cancelFrameCallback = (frameCallback.video as unknown as {
+        cancelVideoFrameCallback?: (id: number) => void;
+      }).cancelVideoFrameCallback;
+      cancelFrameCallback?.call(frameCallback.video, frameCallback.id);
+    }
   }
 
   private _seekClipTo(target: number): void {
@@ -2388,9 +2401,10 @@ export class MediaView extends LitElement {
     this._clipSeekWasPlaying = !v.paused;
     this._clipRecoveryAttempts = 0;
     this._clipWatchFailed = false;
+    this._error = undefined;
     this._clipBuffering = true;
     v.currentTime = this._clipSeekTarget;
-    this._armClipFrameWatch();
+    this._armClipFrameWatch('seek');
   }
 
   private _onClipSeeking = (event: Event): void => {
@@ -2400,7 +2414,7 @@ export class MediaView extends LitElement {
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying ||= !v.paused;
     this._clipBuffering = true;
-    this._armClipFrameWatch();
+    this._armClipFrameWatch(this._clipFrameWatchReason === 'stall' ? 'stall' : 'seek');
   };
 
   private _onClipWaiting = (event: Event): void => {
@@ -2409,17 +2423,20 @@ export class MediaView extends LitElement {
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying = !v.paused;
     this._clipBuffering = true;
-    this._armClipFrameWatch();
+    this._armClipFrameWatch('stall');
   };
 
-  private _armClipFrameWatch(): void {
+  private _armClipFrameWatch(reason: ClipFrameWatchReason): void {
     const v = this._video;
-    if (!v || this._clipWatchFailed || this._clipFrameTimer !== undefined) return;
+    if (!v || this._clipWatchFailed) return;
+    if (!this._clipFrameWatchReason || reason === 'stall') {
+      this._clipFrameWatchReason = reason;
+    }
+    if (this._clipFrameTimer !== undefined) return;
     const generation = this._clipFrameGeneration;
     const finish = (): void => {
       if (generation !== this._clipFrameGeneration || v !== this._video) return;
-      clearTimeout(this._clipFrameTimer);
-      this._clipFrameTimer = undefined;
+      this._cancelClipFrameWatch();
       this._loadingVideo = false;
       this._clipBuffering = false;
       this._clipSeekWasPlaying = false;
@@ -2434,7 +2451,14 @@ export class MediaView extends LitElement {
       ) => number;
     }).requestVideoFrameCallback;
     const requestFrame = (): void => {
-      requestFrameCallback?.call(v, (_now, metadata) => {
+      let frameCallbackId: number;
+      frameCallbackId = requestFrameCallback!.call(v, (_now, metadata) => {
+        if (
+          this._clipFrameCallback?.video === v &&
+          this._clipFrameCallback.id === frameCallbackId
+        ) {
+          this._clipFrameCallback = undefined;
+        }
         if (generation !== this._clipFrameGeneration || v !== this._video) return;
         if (
           !isPresentedClipFrame({
@@ -2450,15 +2474,17 @@ export class MediaView extends LitElement {
         }
         finish();
       });
+      this._clipFrameCallback = { video: v, id: frameCallbackId };
     };
     if (requestFrameCallback) {
       requestFrame();
-    } else {
+    } else if (reason !== 'stall') {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (
             generation !== this._clipFrameGeneration ||
             v !== this._video ||
+            this._clipFrameWatchReason === 'stall' ||
             v.seeking ||
             v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
           ) {
@@ -2474,10 +2500,12 @@ export class MediaView extends LitElement {
       const action = clipWatchdogAction({
         recoveryAttempts: this._clipRecoveryAttempts,
         hasFrameCallback: !!requestFrameCallback,
+        allowReadyStateFallback: this._clipFrameWatchReason !== 'stall',
         seeking: v.seeking,
         readyState: v.readyState,
       });
       if (action === 'recover') {
+        const retryReason = this._clipFrameWatchReason ?? reason;
         this._clipRecoveryAttempts = 1;
         const resume = this._clipSeekWasPlaying || !v.paused;
         v.pause();
@@ -2490,7 +2518,7 @@ export class MediaView extends LitElement {
         // WebViews can leave play() pending forever while stalled. Rearm now,
         // independently of that promise and independently of media events.
         this._cancelClipFrameWatch();
-        this._armClipFrameWatch();
+        this._armClipFrameWatch(retryReason);
         return;
       }
       if (action === 'finish') {
@@ -2515,7 +2543,7 @@ export class MediaView extends LitElement {
     ) {
       return;
     }
-    this._armClipFrameWatch();
+    this._armClipFrameWatch(this._clipFrameWatchReason ?? 'seek');
   };
 
   // The single <video> is only used for BOUNDED event clips now (continuous
@@ -2561,10 +2589,14 @@ export class MediaView extends LitElement {
       this._clipBuffering = false;
       this._clipSeekWasPlaying = false;
       this._clipRecoveryAttempts = 0;
+      this._clipWatchFailed = false;
+      this._error = undefined;
       this._releaseFrame();
       return;
     }
-    if (this._loadingVideo || this._clipBuffering) this._armClipFrameWatch();
+    if (this._loadingVideo || this._clipBuffering) {
+      this._armClipFrameWatch(this._clipFrameWatchReason ?? 'load');
+    }
   };
 
   private _onVideoError = (event: Event): void => {
