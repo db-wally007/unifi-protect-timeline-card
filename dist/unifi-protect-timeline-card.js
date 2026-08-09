@@ -3216,7 +3216,7 @@ function Te(e) {
 }
 let p = class extends j {
   constructor() {
-    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new ye(Se, $e), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveMountedAt = 0, this._liveStartupAttempts = 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._clipBuffering = !1, this._clipFrameGeneration = 0, this._clipSeekTarget = 0, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipSourceToken = 0, this._clipSourceUrl = "", this._followToken = 0, this._followWatch = {
+    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.stacked = !1, this.startFs = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new ye(Se, $e), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._liveMountedAt = 0, this._liveStartupAttempts = 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._clipBuffering = !1, this._clipFrameGeneration = 0, this._clipSeekTarget = 0, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._clipSourceToken = 0, this._clipSourceUrl = "", this._followToken = 0, this._followWatch = {
       a: void 0,
       b: void 0
     }, this._followWatchTries = { a: 0, b: 0 }, this._followMeta = {
@@ -3249,7 +3249,7 @@ let p = class extends j {
       t.addEventListener("pointermove", i), t.addEventListener("pointerup", s), t.addEventListener("pointercancel", s), this._showFollowCtrl();
     }, this._onClipSeeking = () => {
       const e = this._video;
-      e && (this._cancelClipFrameWatch(), this._releaseFrame(), this._clipSeekTarget = e.currentTime, this._clipSeekWasPlaying ||= !e.paused, this._clipBuffering = !0, this._armClipFrameWatch());
+      e && (this._releaseFrame(), this._clipSeekTarget = e.currentTime, this._clipSeekWasPlaying ||= !e.paused, this._clipBuffering = !0, this._armClipFrameWatch());
     }, this._onClipWaiting = () => {
       const e = this._video;
       !e || e.ended || (this._clipSeekTarget = e.currentTime, this._clipSeekWasPlaying = !e.paused, this._clipBuffering = !0, this._armClipFrameWatch());
@@ -3955,13 +3955,13 @@ let p = class extends j {
    *  (live fallback when no live stream element is available). */
   async _loadSegment(e, t = !1) {
     const i = ++this._videoToken;
-    t || this._releaseFrame(), this._cancelClipFrameWatch(), this._setClipSrc(), this._error = void 0, this._loadingVideo = !0, this._autoplayDone = !1, this._clipPaused = !1, this._clipRate = 1, this._clipProgress = 0, this._preparing = !0, this._clipBuffering = !1, this._flashFollowCtrl();
+    t || this._releaseFrame(), this._cancelClipFrameWatch(), this._setClipSrc(), this._error = void 0, this._loadingVideo = !0, this._autoplayDone = !1, this._clipPaused = !1, this._clipRate = 1, this._clipProgress = 0, this._preparing = !0, this._clipBuffering = !1, this._clipSeekTarget = 0, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._flashFollowCtrl();
     let s = e, o;
-    if (t ? (o = this.now, s = Math.max(this.now - this._segLenMs(), 0)) : o = Math.min(this.clipEndTime, this.now), o - s < 1500) {
-      this._loadingVideo = !1, this._preparing = !1;
+    if (t ? (o = this.now, s = Math.max(this.now - this._segLenMs(), 0)) : o = Math.min(this.clipEndTime, this.now), this._endClipSession(), o - s < 1500) {
+      this._setClipSrc(), this._loadingVideo = !1, this._preparing = !1;
       return;
     }
-    this._clipStart = s, this._endClipSession();
+    this._clipStart = s;
     const r = new AbortController();
     this._sessionAbort = r;
     try {
@@ -3977,7 +3977,7 @@ let p = class extends j {
         le(this.hass, a.session_id);
         return;
       }
-      this._sessionId = a.session_id, this._clipSourceToken = i, this._clipSourceSession = a.session_id, this._clipSourceUrl = a.url, this._setClipSrc(a.url);
+      this._sessionId = a.session_id, this._clipSourceToken = i, this._clipSourceSession = a.session_id, this._clipSourceUrl = a.url, this._setClipSrc(a.url), this._clipBuffering = !0, await this.updateComplete, this._armClipFrameWatch();
     } catch (a) {
       if (i !== this._videoToken || a?.name === "AbortError") return;
       console.warn("[unifi-timeline] clip session failed", a), this._onVideoError();
@@ -4007,13 +4007,13 @@ let p = class extends j {
   }
   _seekClipTo(e) {
     const t = this._video;
-    !t || !isFinite(t.duration) || t.duration <= 0 || (this._cancelClipFrameWatch(), this._releaseFrame(), this._clipSeekTarget = Math.min(t.duration, Math.max(0, e)), this._clipSeekWasPlaying = !t.paused, this._clipRecoveryAttempts = 0, this._clipBuffering = !0, t.currentTime = this._clipSeekTarget, this._armClipFrameWatch());
+    !t || !isFinite(t.duration) || t.duration <= 0 || (this._cancelClipFrameWatch(), this._releaseFrame(), this._clipSeekTarget = Math.min(t.duration, Math.max(0, e)), this._clipSeekWasPlaying = !t.paused, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._clipBuffering = !0, t.currentTime = this._clipSeekTarget, this._armClipFrameWatch());
   }
   _armClipFrameWatch() {
     const e = this._video;
-    if (!e || this._clipFrameTimer !== void 0) return;
+    if (!e || this._clipWatchFailed || this._clipFrameTimer !== void 0) return;
     const t = this._clipFrameGeneration, i = () => {
-      t !== this._clipFrameGeneration || e !== this._video || e.seeking || e.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || (clearTimeout(this._clipFrameTimer), this._clipFrameTimer = void 0, this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._error = void 0, this._releaseFrame());
+      t !== this._clipFrameGeneration || e !== this._video || e.seeking || e.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || (clearTimeout(this._clipFrameTimer), this._clipFrameTimer = void 0, this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._error = void 0, this._releaseFrame());
     }, s = e.requestVideoFrameCallback, o = () => {
       s?.call(e, (r, a) => {
         if (!(t !== this._clipFrameGeneration || e !== this._video)) {
@@ -4050,7 +4050,7 @@ let p = class extends j {
         i();
         return;
       }
-      this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._error = "Clip stalled while seeking. Try again.", this._releaseFrame();
+      this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._clipWatchFailed = !0, this._error = "Clip stalled while seeking. Try again.", this._releaseFrame();
     }, Js);
   }
   // ---- delayed-follow engine -----------------------------------------------

@@ -272,6 +272,7 @@ export class MediaView extends LitElement {
   private _clipSeekTarget = 0;
   private _clipSeekWasPlaying = false;
   private _clipRecoveryAttempts = 0;
+  private _clipWatchFailed = false;
   private _clipSourceToken = 0;
   private _clipSourceSession?: string;
   private _clipSourceUrl = '';
@@ -2176,6 +2177,10 @@ export class MediaView extends LitElement {
     this._clipProgress = 0;
     this._preparing = true;
     this._clipBuffering = false;
+    this._clipSeekTarget = 0;
+    this._clipSeekWasPlaying = false;
+    this._clipRecoveryAttempts = 0;
+    this._clipWatchFailed = false;
     this._flashFollowCtrl(); // flash the custom controls
 
     let start = startMs;
@@ -2186,7 +2191,9 @@ export class MediaView extends LitElement {
     } else {
       end = Math.min(this.clipEndTime, this.now);
     }
+    this._endClipSession(); // supersede any previous clip's session
     if (end - start < 1500) {
+      this._setClipSrc();
       this._loadingVideo = false;
       this._preparing = false;
       return;
@@ -2200,7 +2207,6 @@ export class MediaView extends LitElement {
     // content process killed on iOS (the Companion app snaps back to the default
     // dashboard the moment the download finishes). The session endpoint returns a
     // faststart file served with real Range, so the phone holds only its buffer.
-    this._endClipSession(); // supersede any previous clip's session
     const ctl = new AbortController();
     this._sessionAbort = ctl;
     try {
@@ -2221,6 +2227,11 @@ export class MediaView extends LitElement {
       this._clipSourceSession = session.session_id;
       this._clipSourceUrl = session.url;
       this._setClipSrc(session.url);
+      // Start a bounded deadline immediately. Some WebViews emit no media event
+      // at all after src assignment; event-driven arming alone can spin forever.
+      this._clipBuffering = true;
+      await this.updateComplete;
+      this._armClipFrameWatch();
     } catch (err) {
       if (token !== this._videoToken) return; // superseded or torn down
       if ((err as Error)?.name === 'AbortError') return;
@@ -2316,6 +2327,7 @@ export class MediaView extends LitElement {
     this._clipSeekTarget = Math.min(v.duration, Math.max(0, target));
     this._clipSeekWasPlaying = !v.paused;
     this._clipRecoveryAttempts = 0;
+    this._clipWatchFailed = false;
     this._clipBuffering = true;
     v.currentTime = this._clipSeekTarget;
     this._armClipFrameWatch();
@@ -2324,7 +2336,6 @@ export class MediaView extends LitElement {
   private _onClipSeeking = (): void => {
     const v = this._video;
     if (!v) return;
-    this._cancelClipFrameWatch();
     this._releaseFrame();
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying ||= !v.paused;
@@ -2343,7 +2354,7 @@ export class MediaView extends LitElement {
 
   private _armClipFrameWatch(): void {
     const v = this._video;
-    if (!v || this._clipFrameTimer !== undefined) return;
+    if (!v || this._clipWatchFailed || this._clipFrameTimer !== undefined) return;
     const generation = this._clipFrameGeneration;
     const finish = (): void => {
       if (
@@ -2360,6 +2371,7 @@ export class MediaView extends LitElement {
       this._clipBuffering = false;
       this._clipSeekWasPlaying = false;
       this._clipRecoveryAttempts = 0;
+      this._clipWatchFailed = false;
       this._error = undefined;
       this._releaseFrame();
     };
@@ -2416,6 +2428,7 @@ export class MediaView extends LitElement {
       this._loadingVideo = false;
       this._clipBuffering = false;
       this._clipSeekWasPlaying = false;
+      this._clipWatchFailed = true;
       this._error = 'Clip stalled while seeking. Try again.';
       this._releaseFrame();
     }, CLIP_FRAME_STALL_MS);
