@@ -818,6 +818,7 @@ export class MultiView extends LitElement {
       .previewDir=${''}
       .accent=${accent}
       .now=${Date.now()}
+      @clip-ended=${this._closePlayback}
     ></upc-media-view>`;
   }
 }
