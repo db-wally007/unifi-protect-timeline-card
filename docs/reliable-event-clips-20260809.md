@@ -53,8 +53,9 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Every media event verifies current element, load token, session ID, and normalized source URL.
   Outgoing videos are forced to NETWORK_EMPTY before replacement, so detached old players cannot
   cancel, pause, error, or delete the new session.
-- Multi-camera playback closes and unmounts at natural clip end. Session cleanup is source-scoped;
-  a late old-video ended event cannot delete the replacement session.
+- Multi-camera playback advances through a stable snapshot of the merged all-camera event list,
+  remounting the player for whichever camera owns the next row. The newest event, or a disabled
+  autoplay setting, closes playback and restores the live grid. Session cleanup remains source-scoped.
 
 ## Active Installation
 
@@ -69,7 +70,7 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Automated tests: 86/86 passed
 - TypeScript typecheck: passed
 - Production build: passed
-- Independent final review: fallback findings corrected; closing re-review found no issues
+- Independent reviews: implementation findings and the final coverage gap were corrected
 - Real 137-second single-card event: visible preparation with no held frame; +15 preserved media
   source, session, and parent target; buffering status was visible; playback continued from the
   requested position without re-export
