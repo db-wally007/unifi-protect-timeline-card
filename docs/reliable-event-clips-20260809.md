@@ -14,6 +14,8 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Active-source event isolation: `832f32b`
 - Transparent buffering spinner: `f456227`
 - Delayed buffering indicator: `19c7719`
+- Presented-frame rewind fix: `c42fffd`
+- No-rVFC readiness correction: pending final commit
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
@@ -35,6 +37,10 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
   bounded second interval. A pending `play()` promise and repeated media-event storms cannot move
   the deadline. Terminal failure cannot become a new unbounded buffering overlay; Play or a seek is
   an explicit retry.
+- A presented rVFC frame at the requested seek target ends buffering immediately even if the
+  browser has not yet flipped `seeking` to false. Stale pre-seek frames remain rejected. Trailing
+  `seeked`/`canplay`/`playing` events cannot rearm a completed watch, preventing the watchdog from
+  rewinding already-playing footage back to the original seek target.
 - Every media event verifies current element, load token, session ID, and normalized source URL.
   Outgoing videos are forced to NETWORK_EMPTY before replacement, so detached old players cannot
   cancel, pause, error, or delete the new session.
@@ -45,13 +51,13 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
 - Resource URL:
-  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-delayed-spinner-78f229d90133`
-- Bundle SHA-256 prefix: `78f229d90133`
+  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-no-rewind-c25175c55eb3`
+- Bundle SHA-256 prefix: `c25175c55eb3`
 - Pyscript remains the restored scrub generator and is unrelated to this clip-only candidate.
 
 ## Validation
 
-- Automated tests: 81/81 passed
+- Automated tests: 84/84 passed
 - TypeScript typecheck: passed
 - Production build: passed
 - Independent final review: no critical, high, or medium findings; deployment accepted
@@ -76,6 +82,14 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
   fill (`rgb(252, 157, 243)` in the tested card)
 - Spinner transform changed between 180ms samples under animation `upc-spin`, confirming it is a
   real rotating CSS indicator rather than a static image
+- Before the rewind fix, a target frame was presented at 482ms, but the watcher rejected it solely
+  because `seeking` was still true. At 2.5s it paused at 106.85s and reseeked to 104.90s, matching
+  the reported visible rewind.
+- Final identical Slow 4G/2x trace: buffering cleared in 505ms, spinner never flashed, no watchdog
+  pause/play occurred, and no rewind was observed.
+- Deterministic delayed-rVFC trace: spinner appeared at 1214ms and cleared at 1542ms on the
+  presented target frame; playback advanced from 79.39s to 80.73s with zero watchdog calls and
+  zero backward jumps.
 - Native versus prepared Range test: native export ignored `Range` and returned full HTTP 200 with
   `ftyp -> mdat -> moov`; prepared session returned exact HTTP 206 bytes with
   `ftyp -> moov`, proving faststart materialization remains necessary
