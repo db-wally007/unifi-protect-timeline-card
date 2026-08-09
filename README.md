@@ -279,8 +279,10 @@ native Home Assistant UniFi export proxy ignores HTTP Range and the NVR writes M
 the media payload, so a browser cannot start or seek it without receiving the entire file. The
 helper materializes the export, uses FFmpeg stream copy with `+faststart` (no quality/codec change),
 and serves it with real HTTP Range support. One prepared session is retained across every seek in
-that playback; the card shows explicit `Preparing clip`, `Loading clip`, and `Buffering clip`
-states instead of covering them with a stale LIVE/history frame.
+that playback. Preparation and initial loading use explicit black `Preparing clip` / `Loading clip`
+screens instead of stale LIVE/history frames; seek buffering leaves the video visible and, only
+after 1.2 seconds, shows a transparent animated spinner in the configured seek-bar accent color
+with no text.
 
 The caches deliberately live in `config/.cache/` rather than `config/www/`, because that is the one
 path Home Assistant's backups skip — and a symlink from `www/` cannot work, as aiohttp's static
