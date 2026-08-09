@@ -1439,16 +1439,15 @@ export class UnifiProtectTimelineCard extends LitElement {
     if (jump >= SKIP_GLIDE_MIN_MS) this._glideRulers(from, to);
   };
 
-  /** The skip buttons announce their target on the PRESS, before the player has
-   *  re-exported and reloaded the footage (a second or two). Move the ruler
-   *  now — waiting for playback-time left the timeline frozen until the video
-   *  caught up, which read as the button not working. */
+  /** The skip buttons announce their target on the press. Move the ruler now,
+   *  but do NOT feed that time back through the media-view's `targetTime`: the
+   *  clip and follow players already own their seek, and treating it as a new
+   *  external target destroys/rebuilds the active seekable clip session. */
   private _onPlaybackSeek = (e: CustomEvent<{ time: number }>): void => {
     if (!this._domain) return;
     const from = this._domain;
     const to = domainForPlayhead(e.detail.time, spanOf(from), this._phFrac());
     this._domain = to;
-    this._targetTime = e.detail.time;
     this._glideRulers(from, to);
   };
 

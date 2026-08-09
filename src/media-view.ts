@@ -125,6 +125,7 @@ const LIVE_AUDIO_VERIFY_MS = 350;
 const POSTER_REFRESH_MS = 10_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
 const HOLD_FRAME_ENABLED = true;
+const CLIP_FRAME_STALL_MS = 2_500;
 
 /** A play() rejection that means "the browser refused", not "superseded".
  *  NotAllowedError = autoplay policy (iOS Low Power Mode refuses even muted).
@@ -264,6 +265,12 @@ export class MediaView extends LitElement {
   @state() private _clipTime = 0; // clip playhead (s) for the M:SS / M:SS readout
   @state() private _clipDuration = 0; // clip length (s)
   @state() private _preparing = false; // server is exporting+remuxing the clip
+  @state() private _clipBuffering = false;
+  private _clipFrameGeneration = 0;
+  private _clipFrameTimer?: ReturnType<typeof setTimeout>;
+  private _clipSeekTarget = 0;
+  private _clipSeekWasPlaying = false;
+  private _clipRecoveryAttempted = false;
   // Server-side working directory for the clip currently loaded. Dropped as soon
   // as playback ends or the view goes away; the server also sweeps orphans, so a
   // missed DELETE (force-quit, lost network) costs a directory for SESSION_TTL.
@@ -362,6 +369,8 @@ export class MediaView extends LitElement {
   private _cancelLoad(): void {
     this._videoToken++;
     this._preparing = false;
+    this._clipBuffering = false;
+    this._cancelClipFrameWatch();
     this._endClipSession();
   }
 
@@ -881,6 +890,10 @@ export class MediaView extends LitElement {
       padding: 12px;
       pointer-events: none;
     }
+    .clip-status {
+      z-index: 4;
+      background: #000;
+    }
     .spinner {
       width: 28px;
       height: 28px;
@@ -1003,7 +1016,14 @@ export class MediaView extends LitElement {
     // live flash black: traced it as `deepVideoFound: true, readyState: 0,
     // videoWidth: 0` at the moment of the hold. The frame has to be copied
     // while it still exists.
-    if (
+    const enteringBoundedClip =
+      this.clipEndTime > 0 &&
+      (changed.has('clipEndTime') || changed.has('targetTime') || changed.has('cameraId'));
+    if (enteringBoundedClip) {
+      // A clip has an honest preparation screen. Never cover it with a frame
+      // from LIVE, delayed history, or the previously selected event.
+      this._releaseFrame();
+    } else if (
       changed.has('scrubbing') ||
       changed.has('live') ||
       changed.has('cameraId') ||
@@ -2141,6 +2161,8 @@ export class MediaView extends LitElement {
    *  (live fallback when no live stream element is available). */
   private async _loadSegment(startMs: number, trailing = false): Promise<void> {
     const token = ++this._videoToken;
+    if (!trailing) this._releaseFrame();
+    this._cancelClipFrameWatch();
     this._setClipSrc();
     this._error = undefined;
     this._loadingVideo = true;
@@ -2149,6 +2171,7 @@ export class MediaView extends LitElement {
     this._clipRate = 1; // a fresh clip plays at 1× (mute preference is kept)
     this._clipProgress = 0;
     this._preparing = true;
+    this._clipBuffering = false;
     this._flashFollowCtrl(); // flash the custom controls
 
     let start = startMs;
@@ -2241,7 +2264,7 @@ export class MediaView extends LitElement {
     const frac = this._forceRotate
       ? Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
       : Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    v.currentTime = frac * v.duration;
+    this._seekClipTo(frac * v.duration);
     this._clipProgress = frac;
     this._clipTime = v.currentTime;
     this._clipDuration = v.duration;
@@ -2269,44 +2292,149 @@ export class MediaView extends LitElement {
     this._showFollowCtrl();
   };
 
+  private _cancelClipFrameWatch(): void {
+    this._clipFrameGeneration++;
+    clearTimeout(this._clipFrameTimer);
+    this._clipFrameTimer = undefined;
+  }
+
+  private _seekClipTo(target: number): void {
+    const v = this._video;
+    if (!v || !isFinite(v.duration) || v.duration <= 0) return;
+    this._cancelClipFrameWatch();
+    this._releaseFrame();
+    this._clipSeekTarget = Math.min(v.duration, Math.max(0, target));
+    this._clipSeekWasPlaying = !v.paused;
+    this._clipRecoveryAttempted = false;
+    this._clipBuffering = true;
+    v.currentTime = this._clipSeekTarget;
+  }
+
+  private _onClipSeeking = (): void => {
+    const v = this._video;
+    if (!v) return;
+    this._cancelClipFrameWatch();
+    this._releaseFrame();
+    this._clipSeekTarget = v.currentTime;
+    this._clipSeekWasPlaying ||= !v.paused;
+    this._clipBuffering = true;
+  };
+
+  private _onClipWaiting = (): void => {
+    const v = this._video;
+    if (!v || v.ended) return;
+    this._clipSeekTarget = v.currentTime;
+    this._clipSeekWasPlaying = !v.paused;
+    this._clipBuffering = true;
+    this._armClipFrameWatch();
+  };
+
+  private _armClipFrameWatch(): void {
+    const v = this._video;
+    if (!v) return;
+    this._cancelClipFrameWatch();
+    const generation = this._clipFrameGeneration;
+    const finish = (): void => {
+      if (
+        generation !== this._clipFrameGeneration ||
+        v !== this._video ||
+        v.seeking ||
+        v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
+        return;
+      }
+      clearTimeout(this._clipFrameTimer);
+      this._clipFrameTimer = undefined;
+      this._loadingVideo = false;
+      this._clipBuffering = false;
+      this._clipSeekWasPlaying = false;
+      this._clipRecoveryAttempted = false;
+      this._releaseFrame();
+    };
+    const frameVideo = v as HTMLVideoElement & {
+      requestVideoFrameCallback?: (
+        callback: (now: number, metadata: VideoFrameCallbackMetadata) => void,
+      ) => number;
+    };
+    if (frameVideo.requestVideoFrameCallback) {
+      frameVideo.requestVideoFrameCallback((_now, metadata) => {
+        if (generation !== this._clipFrameGeneration || v !== this._video) return;
+        if (Math.abs(metadata.mediaTime - v.currentTime) > 0.75) {
+          this._armClipFrameWatch();
+          return;
+        }
+        finish();
+      });
+    } else {
+      requestAnimationFrame(() => requestAnimationFrame(finish));
+    }
+    this._clipFrameTimer = setTimeout(() => {
+      if (generation !== this._clipFrameGeneration || v !== this._video) return;
+      if (!this._clipRecoveryAttempted) {
+        this._clipRecoveryAttempted = true;
+        const resume = this._clipSeekWasPlaying || !v.paused;
+        v.pause();
+        try {
+          v.currentTime = Math.min(v.duration || this._clipSeekTarget, this._clipSeekTarget);
+        } catch {
+          /* source changed while recovery was arming */
+        }
+        const recovered = resume ? v.play() : Promise.resolve();
+        recovered.catch(() => undefined).finally(() => this._armClipFrameWatch());
+        return;
+      }
+      finish();
+    }, CLIP_FRAME_STALL_MS);
+  }
+
+  private _onClipSeeked = (): void => {
+    this._armClipFrameWatch();
+  };
+
   // The single <video> is only used for BOUNDED event clips now (continuous
   // playback goes through the delayed-follow engine). When a bounded clip ends,
   // hand back to the card to pick the next event or fall into delayed-follow.
   private _onEnded = (): void => {
     if (this.clipEndTime > 0) {
+      this._cancelClipFrameWatch();
+      this._clipBuffering = false;
+      this._endClipSession();
       this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
     }
   };
 
   private _onVideoReady = (): void => {
-    this._loadingVideo = false;
     const v = this._video;
     if (!v) return;
     v.playbackRate = this._clipRate; // keep the chosen speed across buffering stalls
-    if (this._autoplayDone) return;
-    this._autoplayDone = true;
-    // Autoplay honoring the mute preference. After a user gesture (clip click /
-    // timeline tap) the browser allows sound; if blocked, fall back to muted.
-    v.muted = this._clipMuted;
-    v.play().catch(() => {
-      v.muted = true;
-      v.play()
-        .then(() => {
-          if (this._audioUserChoice === 'unmuted') {
-            v.volume = 1;
-            v.muted = false;
-          }
-        })
-        .catch(() => {
-          /* give up; user can press play */
-        });
-    });
+    if (!this._autoplayDone) {
+      this._autoplayDone = true;
+      // Autoplay honoring the mute preference. After a user gesture (clip click /
+      // timeline tap) the browser allows sound; if blocked, fall back to muted.
+      v.muted = this._clipMuted;
+      v.play().catch(() => {
+        v.muted = true;
+        v.play()
+          .then(() => {
+            if (this._audioUserChoice === 'unmuted') {
+              v.volume = 1;
+              v.muted = false;
+            }
+          })
+          .catch(() => {
+            /* give up; user can press play */
+          });
+      });
+    }
+    this._armClipFrameWatch();
   };
 
   private _onVideoError = (): void => {
     // The clip is fetched fully into a blob before playing (no mid-playback
     // auth expiry to retry), so an error here means the clip is unplayable.
     this._loadingVideo = false;
+    this._clipBuffering = false;
+    this._cancelClipFrameWatch();
     this._error = 'Clip unavailable for this time range.';
   };
 
@@ -3317,8 +3445,9 @@ export class MediaView extends LitElement {
     e.stopPropagation();
     const v = this._video;
     if (v) {
-      v.currentTime = Math.max(0, v.currentTime - 15);
-      this._announceSeek(this._clipStart + v.currentTime * 1000);
+      const target = Math.max(0, v.currentTime - 15);
+      this._seekClipTo(target);
+      this._announceSeek(this._clipStart + target * 1000, false);
     }
     this._showFollowCtrl();
   };
@@ -3326,8 +3455,9 @@ export class MediaView extends LitElement {
     e.stopPropagation();
     const v = this._video;
     if (v && isFinite(v.duration)) {
-      v.currentTime = Math.min(v.duration, v.currentTime + 15);
-      this._announceSeek(this._clipStart + v.currentTime * 1000);
+      const target = Math.min(v.duration, v.currentTime + 15);
+      this._seekClipTo(target);
+      this._announceSeek(this._clipStart + target * 1000, false);
     }
     this._showFollowCtrl();
   };
@@ -3370,10 +3500,10 @@ export class MediaView extends LitElement {
    *  A skip re-exports and reloads footage, which takes a second or two; the
    *  ruler must not sit still until then, so it glides on the press and the
    *  playback-time that eventually arrives is already where it is pointing. */
-  private _announceSeek(t: number): void {
+  private _announceSeek(t: number, holdFrame = true): void {
     // The skip buttons reload footage without touching targetTime, so the
     // willUpdate hook above never sees them — hold from here instead.
-    this._holdFrame();
+    if (holdFrame) this._holdFrame();
     this.dispatchEvent(
       new CustomEvent('playback-seek', { detail: { time: t }, bubbles: true, composed: true }),
     );
@@ -3760,8 +3890,8 @@ export class MediaView extends LitElement {
                 ? // No percentage any more: the transfer happens NVR->server, so
                   // there is nothing client-side to measure. Export dominates
                   // (~5.6s for a 5-minute clip), the remux is ~0.3s.
-                  html`<div class="overlay"><div class="spinner"></div>Preparing clip…</div>`
-                : html`<div class="overlay"><div class="spinner"></div></div>`
+                  html`<div class="overlay clip-status"><div class="spinner"></div>Preparing clip…</div>`
+                : html`<div class="overlay clip-status"><div class="spinner"></div>Loading clip…</div>`
               : this._error
                 ? html`<div class="msg error">${this._error}</div>`
                 : html`<div class="msg">Tap the timeline to play from a time.</div>`}
@@ -3788,10 +3918,21 @@ export class MediaView extends LitElement {
           @ended=${this._onEnded}
           @canplay=${this._onVideoReady}
           @playing=${this._onVideoReady}
+          @loadeddata=${this._onVideoReady}
+          @seeking=${this._onClipSeeking}
+          @seeked=${this._onClipSeeked}
+          @waiting=${this._onClipWaiting}
+          @stalled=${this._onClipWaiting}
           @play=${() => (this._clipPaused = false)}
           @pause=${() => (this._clipPaused = true)}
           @error=${this._onVideoError}
         ></video>
+        ${this._loadingVideo || this._clipBuffering
+          ? html`<div class="overlay clip-status">
+              <div class="spinner"></div>
+              ${this._loadingVideo ? 'Loading clip…' : 'Buffering clip…'}
+            </div>`
+          : nothing}
         ${this._renderCtrlBar('clip')}
         ${this._error ? html`<div class="msg error">${this._error}</div>` : nothing}
       </div>
