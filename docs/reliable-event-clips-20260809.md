@@ -16,7 +16,7 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Delayed buffering indicator: `19c7719`
 - Presented-frame rewind fix: `c42fffd`
 - No-rVFC readiness correction: `c0a03cd`
-- Final no-rVFC lifecycle review fixes: pending final commit
+- Final no-rVFC lifecycle review fixes: `689dd86`
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
