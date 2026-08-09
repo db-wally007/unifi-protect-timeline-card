@@ -903,6 +903,8 @@ export class MediaView extends LitElement {
     .clip-buffering {
       z-index: 4;
       background: transparent;
+      opacity: 0;
+      animation: upc-buffer-reveal 0s linear 1.2s forwards;
     }
     .spinner {
       width: 28px;
@@ -925,6 +927,11 @@ export class MediaView extends LitElement {
     @keyframes upc-spin {
       to {
         transform: rotate(360deg);
+      }
+    }
+    @keyframes upc-buffer-reveal {
+      to {
+        opacity: 1;
       }
     }
     .msg {
