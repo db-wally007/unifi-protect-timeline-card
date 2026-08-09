@@ -17,7 +17,7 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Presented-frame rewind fix: `c42fffd`
 - No-rVFC readiness correction: `c0a03cd`
 - Final no-rVFC lifecycle review fixes: `689dd86`
-- Multi-camera all-event autoplay: pending final commit
+- Multi-camera all-event autoplay: `5195095`
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
