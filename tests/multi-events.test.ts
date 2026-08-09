@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { mergeStrip, relTime, tagBands, type MultiBand } from '../src/data/multi-events';
+import {
+  mergeStrip,
+  nextNewerMultiBand,
+  relTime,
+  tagBands,
+  type MultiBand,
+} from '../src/data/multi-events';
 import type { DetectionBand } from '../src/data/types';
 
 const S = 1000;
@@ -44,6 +50,32 @@ describe('mergeStrip', () => {
   it('handles empty camera lists (manifest not loaded yet)', () => {
     const garden = tagBands([band(0, 10)], 'camera.garden', 'Garden');
     expect(mergeStrip([[], garden, []])).toHaveLength(1);
+  });
+});
+
+describe('nextNewerMultiBand', () => {
+  it('advances through merged chronological order across cameras', () => {
+    const garden = tagBands([band(100, 110), band(0, 10)], 'camera.garden', 'Garden');
+    const garage = tagBands([band(200, 210), band(50, 60)], 'camera.garage', 'Garage');
+    const merged = mergeStrip([garden, garage]);
+
+    expect(nextNewerMultiBand(merged, merged[2])).toBe(merged[1]);
+    expect(merged[2].camera).toBe('camera.garage');
+    expect(merged[1].camera).toBe('camera.garden');
+    expect(nextNewerMultiBand(merged, merged[0])).toBeUndefined();
+
+    const sameTime = mergeStrip([
+      tagBands([band(300, 310, { id: 'garden-tie' })], 'camera.garden', 'Garden'),
+      tagBands([band(300, 310, { id: 'garage-tie' })], 'camera.garage', 'Garage'),
+    ]);
+    expect(nextNewerMultiBand(sameTime, sameTime[1])).toBe(sameTime[0]);
+
+    const detached = tagBands([band(250, 260, { id: 'detached' })], 'camera.corner', 'Corner')[0];
+    const refreshed = mergeStrip([
+      tagBands([band(300, 310, { id: 'newer' })], 'camera.garden', 'Garden'),
+      tagBands([band(200, 210, { id: 'older' })], 'camera.garage', 'Garage'),
+    ]);
+    expect(nextNewerMultiBand(refreshed, detached)).toBe(refreshed[0]);
   });
 });
 

@@ -17,6 +17,7 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - Presented-frame rewind fix: `c42fffd`
 - No-rVFC readiness correction: `c0a03cd`
 - Final no-rVFC lifecycle review fixes: `689dd86`
+- Multi-camera all-event autoplay: pending final commit
 - Isolated worktree: `www/unifi-protect-timeline-card-clip-reliability`
 
 ## Root Causes And Fixes
@@ -59,13 +60,13 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 
 - Resource ID: `5eb9580c5c0844319ad12cf76ef286ff`
 - Resource URL:
-  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=reliable-clips-no-rewind-43a37a096da0`
-- Bundle SHA-256 prefix: `43a37a096da0`
+  `/local/unifi-protect-timeline-card-clip-reliability/dist/unifi-protect-timeline-card.js?v=multi-all-camera-autoplay-2e083cc40389`
+- Bundle SHA-256 prefix: `2e083cc40389`
 - Pyscript remains the restored scrub generator and is unrelated to this clip-only candidate.
 
 ## Validation
 
-- Automated tests: 85/85 passed
+- Automated tests: 86/86 passed
 - TypeScript typecheck: passed
 - Production build: passed
 - Independent final review: fallback findings corrected; closing re-review found no issues
@@ -111,6 +112,11 @@ credentials, signed media URLs, session IDs, or camera stream URLs.
 - A no-rVFC watch completed by its watchdog advanced the generation before queued rAF work ran.
   Starting a new stall watch and then flushing every old callback left that new watch, reason, and
   timeout intact.
+- Multi-camera autoplay advanced from a Garden clip to the immediately newer Garage clip in the
+  merged 344-event all-camera list. The collapsed player and expanded event-grid lightbox passed
+  on tablet and 390x844 mobile layouts; the newest event stopped autoplay and restored the live grid.
+  The chain snapshots that merged order when playback starts, so a manifest refresh cannot skip an
+  equal-time cross-camera successor or remove the active row out from under the sequence.
 - Native versus prepared Range test: native export ignored `Range` and returned full HTTP 200 with
   `ftyp -> mdat -> moov`; prepared session returned exact HTTP 206 bytes with
   `ftyp -> moov`, proving faststart materialization remains necessary

@@ -29,6 +29,26 @@ export function mergeStrip(perCamera: MultiBand[][]): MultiBand[] {
   return perCamera.flat().sort((a, b) => b.start - a.start);
 }
 
+/** The next event newer than `after`, across the merged all-camera list. */
+export function nextNewerMultiBand(
+  bands: readonly MultiBand[],
+  after: MultiBand,
+): MultiBand | undefined {
+  const currentIndex = bands.findIndex(
+    (band) =>
+      band.camera === after.camera && band.type === after.type && band.start === after.start,
+  );
+  if (currentIndex >= 0) return bands[currentIndex - 1];
+
+  // The manifests may refresh while a clip plays and drop its old row. Fall
+  // back to the same nearest-newer rule used by the single-camera view.
+  let best: MultiBand | undefined;
+  for (const band of bands) {
+    if (band.start > after.start && (!best || band.start < best.start)) best = band;
+  }
+  return best;
+}
+
 /** UniFi-app-style relative time for the tile overlays: "just now",
  *  "5 minutes ago", "2 hours ago", "3 days ago". */
 export function relTime(ms: number, now: number): string {
