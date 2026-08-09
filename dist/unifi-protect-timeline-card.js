@@ -4781,10 +4781,9 @@ let p = class extends j {
           @pause=${this._onClipPause}
           @error=${this._onVideoError}
         ></video>
-        ${this._loadingVideo || this._clipBuffering ? d`<div class="overlay clip-status">
-              <div class="spinner"></div>
-              ${this._loadingVideo ? "Loading clip…" : "Buffering clip…"}
-            </div>` : g}
+        ${this._loadingVideo ? d`<div class="overlay clip-status"><div class="spinner"></div>Loading clip…</div>` : this._clipBuffering ? d`<div class="overlay clip-buffering" aria-label="Buffering clip">
+                <div class="spinner"></div>
+              </div>` : g}
         ${this._renderCtrlBar("clip")}
         ${this._error ? d`<div class="msg error">${this._error}</div>` : g}
       </div>
@@ -5314,13 +5313,27 @@ p.styles = st`
       z-index: 4;
       background: #000;
     }
+    .clip-buffering {
+      z-index: 4;
+      background: transparent;
+    }
     .spinner {
       width: 28px;
       height: 28px;
       border: 3px solid rgba(255, 255, 255, 0.25);
-      border-top-color: var(--primary-color, #03a9f4);
+      border-top-color: var(--upc-accent, var(--primary-color, #03a9f4));
       border-radius: 50%;
       animation: upc-spin 0.8s linear infinite;
+    }
+    .clip-buffering .spinner {
+      width: 40px;
+      height: 40px;
+      border-width: 4px;
+      border-color: rgba(255, 255, 255, 0.28);
+      border-top-color: var(--upc-accent, var(--primary-color, #03a9f4));
+      border-right-color: var(--upc-accent, var(--primary-color, #03a9f4));
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+      animation-duration: 0.7s;
     }
     @keyframes upc-spin {
       to {
