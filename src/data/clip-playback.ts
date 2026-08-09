@@ -11,7 +11,7 @@ export function clipWatchdogAction(options: {
   return 'fail';
 }
 
-export function isCurrentClipEnd(options: {
+export function isCurrentClipSource(options: {
   eventVideo: HTMLVideoElement | null;
   currentVideo: HTMLVideoElement | undefined;
   sourceToken: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clipWatchdogAction, isCurrentClipEnd } from '../src/data/clip-playback';
+import { clipWatchdogAction, isCurrentClipSource } from '../src/data/clip-playback';
 
 describe('clipWatchdogAction', () => {
   it('always performs one recovery before terminating', () => {
@@ -44,7 +44,7 @@ describe('clipWatchdogAction', () => {
   });
 });
 
-describe('isCurrentClipEnd', () => {
+describe('isCurrentClipSource', () => {
   const currentVideo = {} as HTMLVideoElement;
   const valid = {
     eventVideo: currentVideo,
@@ -58,13 +58,13 @@ describe('isCurrentClipEnd', () => {
   };
 
   it('accepts only the current video, token, session, and source', () => {
-    expect(isCurrentClipEnd(valid)).toBe(true);
+    expect(isCurrentClipSource(valid)).toBe(true);
   });
 
   it('rejects every stale ownership dimension', () => {
-    expect(isCurrentClipEnd({ ...valid, eventVideo: {} as HTMLVideoElement })).toBe(false);
-    expect(isCurrentClipEnd({ ...valid, sourceToken: 6 })).toBe(false);
-    expect(isCurrentClipEnd({ ...valid, sourceSession: 'old' })).toBe(false);
-    expect(isCurrentClipEnd({ ...valid, actualUrl: 'https://example.test/old.mp4' })).toBe(false);
+    expect(isCurrentClipSource({ ...valid, eventVideo: {} as HTMLVideoElement })).toBe(false);
+    expect(isCurrentClipSource({ ...valid, sourceToken: 6 })).toBe(false);
+    expect(isCurrentClipSource({ ...valid, sourceSession: 'old' })).toBe(false);
+    expect(isCurrentClipSource({ ...valid, actualUrl: 'https://example.test/old.mp4' })).toBe(false);
   });
 });
