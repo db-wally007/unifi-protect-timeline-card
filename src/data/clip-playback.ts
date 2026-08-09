@@ -1,5 +1,22 @@
 export type ClipWatchdogAction = 'recover' | 'finish' | 'fail';
 
+export function isPresentedClipFrame(options: {
+  mediaTime: number;
+  currentTime: number;
+  seekTarget: number;
+  seeking: boolean;
+  readyState: number;
+  tolerance?: number;
+}): boolean {
+  const tolerance = options.tolerance ?? 0.75;
+  const atRequestedTarget = Math.abs(options.mediaTime - options.seekTarget) <= tolerance;
+  const atCurrentPlayback =
+    !options.seeking &&
+    options.readyState >= 2 &&
+    Math.abs(options.mediaTime - options.currentTime) <= tolerance;
+  return atRequestedTarget || atCurrentPlayback;
+}
+
 export function clipWatchdogAction(options: {
   recoveryAttempts: number;
   hasFrameCallback: boolean;

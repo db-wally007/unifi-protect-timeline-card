@@ -35,7 +35,11 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
 import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
 import { inGap } from './data/gaps';
-import { clipWatchdogAction, isCurrentClipSource } from './data/clip-playback';
+import {
+  clipWatchdogAction,
+  isCurrentClipSource,
+  isPresentedClipFrame,
+} from './data/clip-playback';
 import {
   LiveHealthTracker,
   liveProgressValue,
@@ -2413,14 +2417,7 @@ export class MediaView extends LitElement {
     if (!v || this._clipWatchFailed || this._clipFrameTimer !== undefined) return;
     const generation = this._clipFrameGeneration;
     const finish = (): void => {
-      if (
-        generation !== this._clipFrameGeneration ||
-        v !== this._video ||
-        v.seeking ||
-        v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-      ) {
-        return;
-      }
+      if (generation !== this._clipFrameGeneration || v !== this._video) return;
       clearTimeout(this._clipFrameTimer);
       this._clipFrameTimer = undefined;
       this._loadingVideo = false;
@@ -2439,7 +2436,15 @@ export class MediaView extends LitElement {
     const requestFrame = (): void => {
       requestFrameCallback?.call(v, (_now, metadata) => {
         if (generation !== this._clipFrameGeneration || v !== this._video) return;
-        if (Math.abs(metadata.mediaTime - v.currentTime) > 0.75) {
+        if (
+          !isPresentedClipFrame({
+            mediaTime: metadata.mediaTime,
+            currentTime: v.currentTime,
+            seekTarget: this._clipSeekTarget,
+            seeking: v.seeking,
+            readyState: v.readyState,
+          })
+        ) {
           requestFrame();
           return;
         }
@@ -2491,7 +2496,13 @@ export class MediaView extends LitElement {
   }
 
   private _onClipSeeked = (event: Event): void => {
-    if (!this._isCurrentClipEvent(event) || this._clipWatchFailed) return;
+    if (
+      !this._isCurrentClipEvent(event) ||
+      this._clipWatchFailed ||
+      (!this._loadingVideo && !this._clipBuffering)
+    ) {
+      return;
+    }
     this._armClipFrameWatch();
   };
 
@@ -2541,7 +2552,7 @@ export class MediaView extends LitElement {
       this._releaseFrame();
       return;
     }
-    this._armClipFrameWatch();
+    if (this._loadingVideo || this._clipBuffering) this._armClipFrameWatch();
   };
 
   private _onVideoError = (event: Event): void => {
