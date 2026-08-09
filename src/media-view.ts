@@ -270,7 +270,10 @@ export class MediaView extends LitElement {
   private _clipFrameTimer?: ReturnType<typeof setTimeout>;
   private _clipSeekTarget = 0;
   private _clipSeekWasPlaying = false;
-  private _clipRecoveryAttempted = false;
+  private _clipRecoveryAttempts = 0;
+  private _clipSourceToken = 0;
+  private _clipSourceSession?: string;
+  private _clipSourceUrl = '';
   // Server-side working directory for the clip currently loaded. Dropped as soon
   // as playback ends or the view goes away; the server also sweeps orphans, so a
   // missed DELETE (force-quit, lost network) costs a directory for SESSION_TTL.
@@ -2213,6 +2216,9 @@ export class MediaView extends LitElement {
         return;
       }
       this._sessionId = session.session_id;
+      this._clipSourceToken = token;
+      this._clipSourceSession = session.session_id;
+      this._clipSourceUrl = session.url;
       this._setClipSrc(session.url);
     } catch (err) {
       if (token !== this._videoToken) return; // superseded or torn down
@@ -2232,6 +2238,9 @@ export class MediaView extends LitElement {
     if (!this._sessionId) return;
     endClipSession(this.hass, this._sessionId);
     this._sessionId = undefined;
+    this._clipSourceToken = 0;
+    this._clipSourceSession = undefined;
+    this._clipSourceUrl = '';
   }
 
   private _onTimeUpdate = (): void => {
@@ -2305,9 +2314,10 @@ export class MediaView extends LitElement {
     this._releaseFrame();
     this._clipSeekTarget = Math.min(v.duration, Math.max(0, target));
     this._clipSeekWasPlaying = !v.paused;
-    this._clipRecoveryAttempted = false;
+    this._clipRecoveryAttempts = 0;
     this._clipBuffering = true;
     v.currentTime = this._clipSeekTarget;
+    this._armClipFrameWatch();
   }
 
   private _onClipSeeking = (): void => {
@@ -2318,6 +2328,7 @@ export class MediaView extends LitElement {
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying ||= !v.paused;
     this._clipBuffering = true;
+    this._armClipFrameWatch();
   };
 
   private _onClipWaiting = (): void => {
@@ -2331,8 +2342,7 @@ export class MediaView extends LitElement {
 
   private _armClipFrameWatch(): void {
     const v = this._video;
-    if (!v) return;
-    this._cancelClipFrameWatch();
+    if (!v || this._clipFrameTimer !== undefined) return;
     const generation = this._clipFrameGeneration;
     const finish = (): void => {
       if (
@@ -2348,30 +2358,35 @@ export class MediaView extends LitElement {
       this._loadingVideo = false;
       this._clipBuffering = false;
       this._clipSeekWasPlaying = false;
-      this._clipRecoveryAttempted = false;
+      this._clipRecoveryAttempts = 0;
+      this._error = undefined;
       this._releaseFrame();
     };
-    const frameVideo = v as HTMLVideoElement & {
+    const requestFrameCallback = (v as unknown as {
       requestVideoFrameCallback?: (
         callback: (now: number, metadata: VideoFrameCallbackMetadata) => void,
       ) => number;
-    };
-    if (frameVideo.requestVideoFrameCallback) {
-      frameVideo.requestVideoFrameCallback((_now, metadata) => {
+    }).requestVideoFrameCallback;
+    const requestFrame = (): void => {
+      requestFrameCallback?.call(v, (_now, metadata) => {
         if (generation !== this._clipFrameGeneration || v !== this._video) return;
         if (Math.abs(metadata.mediaTime - v.currentTime) > 0.75) {
-          this._armClipFrameWatch();
+          requestFrame();
           return;
         }
         finish();
       });
+    };
+    if (requestFrameCallback) {
+      requestFrame();
     } else {
       requestAnimationFrame(() => requestAnimationFrame(finish));
     }
     this._clipFrameTimer = setTimeout(() => {
       if (generation !== this._clipFrameGeneration || v !== this._video) return;
-      if (!this._clipRecoveryAttempted) {
-        this._clipRecoveryAttempted = true;
+      this._clipFrameTimer = undefined;
+      if (this._clipRecoveryAttempts === 0) {
+        this._clipRecoveryAttempts = 1;
         const resume = this._clipSeekWasPlaying || !v.paused;
         v.pause();
         try {
@@ -2379,11 +2394,27 @@ export class MediaView extends LitElement {
         } catch {
           /* source changed while recovery was arming */
         }
-        const recovered = resume ? v.play() : Promise.resolve();
-        recovered.catch(() => undefined).finally(() => this._armClipFrameWatch());
+        if (resume) void v.play().catch(() => undefined);
+        // WebViews can leave play() pending forever while stalled. Rearm now,
+        // independently of that promise and independently of media events.
+        this._cancelClipFrameWatch();
+        this._armClipFrameWatch();
         return;
       }
-      finish();
+      if (
+        !requestFrameCallback &&
+        !v.seeking &&
+        v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
+        finish();
+        return;
+      }
+      this._cancelClipFrameWatch();
+      this._loadingVideo = false;
+      this._clipBuffering = false;
+      this._clipSeekWasPlaying = false;
+      this._error = 'Clip stalled while seeking. Try again.';
+      this._releaseFrame();
     }, CLIP_FRAME_STALL_MS);
   }
 
@@ -2394,13 +2425,27 @@ export class MediaView extends LitElement {
   // The single <video> is only used for BOUNDED event clips now (continuous
   // playback goes through the delayed-follow engine). When a bounded clip ends,
   // hand back to the card to pick the next event or fall into delayed-follow.
-  private _onEnded = (): void => {
-    if (this.clipEndTime > 0) {
-      this._cancelClipFrameWatch();
-      this._clipBuffering = false;
-      this._endClipSession();
-      this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
+  private _onEnded = (event: Event): void => {
+    const v = event.currentTarget as HTMLVideoElement | null;
+    const expectedUrl = this._clipSourceUrl
+      ? new URL(this._clipSourceUrl, window.location.href).href
+      : '';
+    if (
+      this.clipEndTime <= 0 ||
+      !v ||
+      v !== this._video ||
+      this._clipSourceToken !== this._videoToken ||
+      !this._sessionId ||
+      this._clipSourceSession !== this._sessionId ||
+      !expectedUrl ||
+      (v.currentSrc || v.src) !== expectedUrl
+    ) {
+      return;
     }
+    this._cancelClipFrameWatch();
+    this._clipBuffering = false;
+    this._endClipSession();
+    this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
   };
 
   private _onVideoReady = (): void => {
