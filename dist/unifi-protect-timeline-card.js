@@ -45,7 +45,7 @@ const Ke = (e) => new Me(typeof e == "string" ? e : e + "", void 0, Nt), st = (e
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: Je, defineProperty: Qe, getOwnPropertyDescriptor: ti, getOwnPropertyNames: ei, getOwnPropertySymbols: ii, getPrototypeOf: si } = Object, Ct = globalThis, Jt = Ct.trustedTypes, oi = Jt ? Jt.emptyScript : "", ri = Ct.reactiveElementPolyfillSupport, vt = (e, t) => e, Mt = { toAttribute(e, t) {
+const { is: Je, defineProperty: Qe, getOwnPropertyDescriptor: ti, getOwnPropertyNames: ei, getOwnPropertySymbols: ii, getPrototypeOf: si } = Object, Et = globalThis, Jt = Et.trustedTypes, oi = Jt ? Jt.emptyScript : "", ri = Et.reactiveElementPolyfillSupport, vt = (e, t) => e, Mt = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
       e = e ? oi : null;
@@ -74,7 +74,7 @@ const { is: Je, defineProperty: Qe, getOwnPropertyDescriptor: ti, getOwnProperty
   }
   return i;
 } }, Ut = (e, t) => !Je(e, t), Qt = { attribute: !0, type: String, converter: Mt, reflect: !1, useDefault: !1, hasChanged: Ut };
-Symbol.metadata ??= Symbol("metadata"), Ct.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
+Symbol.metadata ??= Symbol("metadata"), Et.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
 let rt = class extends HTMLElement {
   static addInitializer(t) {
     this._$Ei(), (this.l ??= []).push(t);
@@ -256,13 +256,13 @@ let rt = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-rt.elementStyles = [], rt.shadowRootOptions = { mode: "open" }, rt[vt("elementProperties")] = /* @__PURE__ */ new Map(), rt[vt("finalized")] = /* @__PURE__ */ new Map(), ri?.({ ReactiveElement: rt }), (Ct.reactiveElementVersions ??= []).push("2.1.2");
+rt.elementStyles = [], rt.shadowRootOptions = { mode: "open" }, rt[vt("elementProperties")] = /* @__PURE__ */ new Map(), rt[vt("finalized")] = /* @__PURE__ */ new Map(), ri?.({ ReactiveElement: rt }), (Et.reactiveElementVersions ??= []).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ht = globalThis, te = (e) => e, Et = Ht.trustedTypes, ee = Et ? Et.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Ee = "$lit$", X = `lit$${Math.random().toFixed(9).slice(2)}$`, Ce = "?" + X, ai = `<${Ce}>`, tt = document, gt = () => tt.createComment(""), bt = (e) => e === null || typeof e != "object" && typeof e != "function", jt = Array.isArray, ni = (e) => jt(e) || typeof e?.[Symbol.iterator] == "function", zt = `[ 	
+const Ht = globalThis, te = (e) => e, Ct = Ht.trustedTypes, ee = Ct ? Ct.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Ce = "$lit$", X = `lit$${Math.random().toFixed(9).slice(2)}$`, Ee = "?" + X, ai = `<${Ee}>`, tt = document, gt = () => tt.createComment(""), bt = (e) => e === null || typeof e != "object" && typeof e != "function", jt = Array.isArray, ni = (e) => jt(e) || typeof e?.[Symbol.iterator] == "function", zt = `[ 	
 \f\r]`, pt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ie = /-->/g, se = />/g, Z = RegExp(`>|${zt}(?:([^\\s"'>=/]+)(${zt}*=${zt}*(?:[^ 	
 \f\r"'\`<>=]|("|')|))|$)`, "g"), oe = /'/g, re = /"/g, Fe = /^(?:script|style|textarea|title)$/i, li = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), d = li(1), et = Symbol.for("lit-noChange"), g = Symbol.for("lit-nothing"), ae = /* @__PURE__ */ new WeakMap(), Q = tt.createTreeWalker(tt, 129);
 function Re(e, t) {
@@ -277,7 +277,7 @@ const hi = (e, t) => {
     let _, u, h = -1, f = 0;
     for (; f < l.length && (a.lastIndex = f, u = a.exec(l), u !== null); ) f = a.lastIndex, a === pt ? u[1] === "!--" ? a = ie : u[1] !== void 0 ? a = se : u[2] !== void 0 ? (Fe.test(u[2]) && (o = RegExp("</" + u[2], "g")), a = Z) : u[3] !== void 0 && (a = Z) : a === Z ? u[0] === ">" ? (a = o ?? pt, h = -1) : u[1] === void 0 ? h = -2 : (h = a.lastIndex - u[2].length, _ = u[1], a = u[3] === void 0 ? Z : u[3] === '"' ? re : oe) : a === re || a === oe ? a = Z : a === ie || a === se ? a = pt : (a = Z, o = void 0);
     const b = a === Z && e[n + 1].startsWith("/>") ? " " : "";
-    r += a === pt ? l + ai : h >= 0 ? (s.push(_), l.slice(0, h) + Ee + l.slice(h) + X + b) : l + X + (h === -2 ? n : b);
+    r += a === pt ? l + ai : h >= 0 ? (s.push(_), l.slice(0, h) + Ce + l.slice(h) + X + b) : l + X + (h === -2 ? n : b);
   }
   return [Re(e, r + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
@@ -293,19 +293,19 @@ class wt {
     }
     for (; (o = Q.nextNode()) !== null && l.length < n; ) {
       if (o.nodeType === 1) {
-        if (o.hasAttributes()) for (const h of o.getAttributeNames()) if (h.endsWith(Ee)) {
+        if (o.hasAttributes()) for (const h of o.getAttributeNames()) if (h.endsWith(Ce)) {
           const f = u[a++], b = o.getAttribute(h).split(X), x = /([.?@])?(.*)/.exec(f);
           l.push({ type: 1, index: r, name: x[2], strings: b, ctor: x[1] === "." ? di : x[1] === "?" ? pi : x[1] === "@" ? ui : Ft }), o.removeAttribute(h);
         } else h.startsWith(X) && (l.push({ type: 6, index: r }), o.removeAttribute(h));
         if (Fe.test(o.tagName)) {
           const h = o.textContent.split(X), f = h.length - 1;
           if (f > 0) {
-            o.textContent = Et ? Et.emptyScript : "";
+            o.textContent = Ct ? Ct.emptyScript : "";
             for (let b = 0; b < f; b++) o.append(h[b], gt()), Q.nextNode(), l.push({ type: 2, index: ++r });
             o.append(h[f], gt());
           }
         }
-      } else if (o.nodeType === 8) if (o.data === Ce) l.push({ type: 2, index: r });
+      } else if (o.nodeType === 8) if (o.data === Ee) l.push({ type: 2, index: r });
       else {
         let h = -1;
         for (; (h = o.data.indexOf(X, h + 1)) !== -1; ) l.push({ type: 7, index: r }), h += X.length - 1;
@@ -708,11 +708,11 @@ async function Oe(e) {
 const Be = 1e3, it = 60 * Be, Mi = 60 * it, Bt = 4 * it, Ve = 60 * it, O = (() => {
   const t = Math.pow(Ve / Bt, 0.034482758620689655);
   return Array.from({ length: 30 }, (i, s) => Math.round(Bt * Math.pow(t, s)));
-})(), Rt = 0.15, Ei = 0.179;
+})(), Rt = 0.15, Ci = 0.179;
 function M(e) {
   return e.end - e.start;
 }
-function Ci(e) {
+function Ei(e) {
   return Math.min(Ve, Math.max(Bt, e));
 }
 function P(e, t = Rt) {
@@ -2362,7 +2362,7 @@ y([
 w = y([
   ot("upc-scrubber-timeline")
 ], w);
-var bs = Object.defineProperty, ws = Object.getOwnPropertyDescriptor, C = (e, t, i, s) => {
+var bs = Object.defineProperty, ws = Object.getOwnPropertyDescriptor, E = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? ws(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && bs(t, i, o), o;
@@ -2621,67 +2621,67 @@ A.styles = st`
       background: var(--divider-color, rgba(255, 255, 255, 0.1));
     }
   `;
-C([
+E([
   c({ attribute: !1 })
 ], A.prototype, "bands", 2);
-C([
+E([
   c({ attribute: !1 })
 ], A.prototype, "loader", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "thumbVersion", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "textSize", 2);
-C([
+E([
   c()
 ], A.prototype, "textColor", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "durationSize", 2);
-C([
+E([
   c()
 ], A.prototype, "durationColor", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "activeTextSize", 2);
-C([
+E([
   c()
 ], A.prototype, "activeTextColor", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "activeDurationSize", 2);
-C([
+E([
   c()
 ], A.prototype, "activeDurationColor", 2);
-C([
+E([
   c()
 ], A.prototype, "activeBg", 2);
-C([
+E([
   c()
 ], A.prototype, "playingKey", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "dateFontSize", 2);
-C([
+E([
   c()
 ], A.prototype, "dateFontColor", 2);
-C([
+E([
   c()
 ], A.prototype, "dividerColor", 2);
-C([
+E([
   c({ type: Number })
 ], A.prototype, "thumbWidth", 2);
-C([
+E([
   c({ type: Boolean, reflect: !0 })
 ], A.prototype, "showCamera", 2);
-C([
+E([
   c({ type: Boolean, reflect: !0 })
 ], A.prototype, "line1White", 2);
-C([
+E([
   B(".list")
 ], A.prototype, "_listEl", 2);
-A = C([
+A = E([
   ot("upc-events-list")
 ], A);
 /**
@@ -2699,11 +2699,18 @@ const ft = je(class extends Ge {
   update(e, [t, i]) {
     return t !== this.key && (qe(e), this.key = t), i;
   }
-}), we = [750, 1500, 3e3];
-function ys(e, t, i, s) {
+});
+function ys(e) {
+  return e.recoveryAttempts === 0 ? "recover" : !e.hasFrameCallback && !e.seeking && e.readyState >= 2 ? "finish" : "fail";
+}
+function xs(e) {
+  return !!e.eventVideo && e.eventVideo === e.currentVideo && e.sourceToken === e.videoToken && !!e.currentSession && e.sourceSession === e.currentSession && !!e.expectedUrl && e.actualUrl === e.expectedUrl;
+}
+const we = [750, 1500, 3e3];
+function ks(e, t, i, s) {
   return typeof e == "string" && e.length > 0 && !t && i < we.length && s >= we[i];
 }
-function xs(e, t) {
+function Ss(e, t) {
   if (!t) return e.currentTime;
   const i = e.getVideoPlaybackQuality?.().totalVideoFrames, s = e.webkitDecodedFrameCount;
   return Number.isFinite(i) && Number.isFinite(s) ? Math.max(i, s) : Number.isFinite(i) ? i : Number.isFinite(s) ? s : e.currentTime;
@@ -2725,18 +2732,18 @@ class ye {
     return { progressing: s, continuousMs: o, stable: r, stalled: a };
   }
 }
-function ks(e, t, i, s) {
+function $s(e, t, i, s) {
   return i || !s || t === "muted" ? !1 : e === "auto" || t === "unmuted";
 }
-const xe = 6e4, Ss = 1e4, $s = 5e3, Ts = 5e3, As = 8e3, Ps = 15e3, Ms = 400, Es = 15, Cs = 25 * 6e4, Fs = 5 * 6e4, Rs = 16, zs = 6, Ls = 2;
-function Is(e, t, i) {
+const xe = 6e4, Ts = 1e4, As = 5e3, Ps = 5e3, Ms = 8e3, Cs = 15e3, Es = 400, Fs = 15, Rs = 25 * 6e4, zs = 5 * 6e4, Ls = 16, Is = 6, Ds = 2;
+function Os(e, t, i) {
   return e ? [i ? "fast" : void 0, t ? "fine" : void 0].filter(
     (s) => !!s
   ) : [t ? "fine" : void 0, i ? "fast" : void 0].filter(
     (s) => !!s
   );
 }
-class Ds {
+class Bs {
   constructor() {
     this._dir = "", this._blocks = /* @__PURE__ */ new Set(), this._blockMs = 6e5, this._overview = /* @__PURE__ */ new Set(), this._overviewMs = 36e5, this._mapped = /* @__PURE__ */ new Set(), this._indexAt = 0, this._blobs = /* @__PURE__ */ new Map(), this._loading = /* @__PURE__ */ new Map(), this._maps = /* @__PURE__ */ new Map(), this._lastSync = 0, this._pinned = /* @__PURE__ */ new Set(), this._warnedNoHeadFile = !1, this._spriteBlocks = /* @__PURE__ */ new Set(), this._spriteOverview = /* @__PURE__ */ new Set(), this._fastSpriteBlocks = /* @__PURE__ */ new Set(), this._fastSpriteOverview = /* @__PURE__ */ new Set(), this._sprites = /* @__PURE__ */ new Map(), this._spriteLoading = /* @__PURE__ */ new Map(), this._fastSprites = /* @__PURE__ */ new Map(), this._fastSpriteLoading = /* @__PURE__ */ new Map(), this._sheets = /* @__PURE__ */ new Map(), this._sheetLoading = /* @__PURE__ */ new Map(), this._sheetAborts = /* @__PURE__ */ new Map(), this._sheetInflight = 0, this._tipAt = 0, this._tipReqAt = 0, this._tipPolling = !1, this._tipEnabled = !1, this._mapLoading = /* @__PURE__ */ new Map();
   }
@@ -2864,7 +2871,7 @@ class Ds {
       return this._sheets.delete(t), this._sheets.set(t, s), s;
     let o = this._sheetLoading.get(t);
     if (!o) {
-      if (i && this._sheetInflight >= Ls) return;
+      if (i && this._sheetInflight >= Ds) return;
       o = this._fetchSheet(t).finally(() => this._sheetLoading.delete(t)), this._sheetLoading.set(t, o);
     }
     return o;
@@ -2876,7 +2883,7 @@ class Ds {
       const s = await fetch(`${this._dir}/${t}`, { signal: i.signal });
       if (!s.ok) return;
       const o = await createImageBitmap(await s.blob());
-      for (this._sheets.set(t, o); this._sheets.size > zs; ) {
+      for (this._sheets.set(t, o); this._sheets.size > Is; ) {
         const r = this._sheets.keys().next().value;
         if (r === void 0 || r === t) break;
         const a = this._sheets.get(r);
@@ -2905,7 +2912,7 @@ class Ds {
     const i = Date.now() - this._indexAt;
     if (i < xe) {
       const s = this._head;
-      s && t !== void 0 && t >= s.start && i >= Ss && this._refreshIndex();
+      s && t !== void 0 && t >= s.start && i >= Ts && this._refreshIndex();
       return;
     }
     return this._refreshIndex();
@@ -2932,19 +2939,19 @@ class Ds {
             fastSprite: !!r.fast_sprite
           } : void 0, this._head && !this._head.file && !this._warnedNoHeadFile && (this._warnedNoHeadFile = !0, console.warn(
             "[unifi-protect-timeline-card] scrub preview: protect_scrub.py is out of date (head has no immutable `file`) — near-live preview disabled. Update the pyscript job."
-          )), i = Date.now() - (o.generated ?? 0) > Cs;
+          )), i = Date.now() - (o.generated ?? 0) > Rs;
         }
       }
     } catch {
     }
-    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, xe - $s), i && this._requestSync();
+    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, xe - As), i && this._requestSync();
   }
   /** Fire the pyscript sync service (throttled). No-ops when pyscript isn't
    *  installed — the card just keeps the plain black scrub stage. */
   _requestSync() {
     if (!this._hass) return;
     const t = Date.now();
-    t - this._lastSync < Fs || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_scrub_sync" }).catch(() => {
+    t - this._lastSync < zs || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_scrub_sync" }).catch(() => {
     }));
   }
   /** The block covering `t`, if any. Completed blocks win; the rolling head
@@ -2993,7 +3000,7 @@ class Ds {
   requestTip() {
     if (!this._tipEnabled || !this._hass || !this._dir) return;
     const t = Date.now();
-    t - this._tipReqAt < As || this._tip && this._tip.end > t - Ps || (this._tipReqAt = t, this._hass.callWS({
+    t - this._tipReqAt < Ms || this._tip && this._tip.end > t - Cs || (this._tipReqAt = t, this._hass.callWS({
       type: "call_service",
       domain: "pyscript",
       service: "protect_scrub_tip",
@@ -3007,8 +3014,8 @@ class Ds {
       this._tipPolling = !0;
       try {
         const t = this._tip?.end ?? 0;
-        for (let i = 0; i < Es; i++) {
-          if (await new Promise((s) => setTimeout(s, Ms)), !this._tipEnabled) return;
+        for (let i = 0; i < Fs; i++) {
+          if (await new Promise((s) => setTimeout(s, Es)), !this._tipEnabled) return;
           if (await this._fetchTip(), (this._tip?.end ?? 0) > t) {
             this.onTipUpdate?.();
             return;
@@ -3021,7 +3028,7 @@ class Ds {
   }
   /** Refresh tip.json if due (cheap: a few hundred bytes). */
   async ensureTip() {
-    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < Ts || await this._fetchTip();
+    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < Ps || await this._fetchTip();
   }
   async _fetchTip() {
     this._tipAt = Date.now();
@@ -3148,7 +3155,7 @@ class Ds {
         return;
       }
       const s = await i.blob(), o = URL.createObjectURL(s);
-      for (this._blobs.set(t.key, o), t.head && !t.part && (this._headHeld = t); this._blobs.size > Rs; ) {
+      for (this._blobs.set(t.key, o), t.head && !t.part && (this._headHeld = t); this._blobs.size > Ls; ) {
         let r = !1;
         for (const [a, n] of this._blobs)
           if (!this._pinned.has(n)) {
@@ -3198,12 +3205,12 @@ function mt(e) {
   }
   return null;
 }
-var Os = Object.defineProperty, Bs = Object.getOwnPropertyDescriptor, m = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? Bs(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var Vs = Object.defineProperty, Ws = Object.getOwnPropertyDescriptor, m = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? Ws(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && Os(t, i, o), o;
+  return s && o && Vs(t, i, o), o;
 };
-const ke = 5 * 6e4, Vs = 400, Ws = 1200, Ot = 400, Ns = 40, Us = 5, Hs = 15, js = 5e3, Gs = 15e3, Se = 750, $e = 3e3, qs = 3e3, Ys = 350, Xs = 1e4, Ks = 2500;
+const ke = 5 * 6e4, Ns = 400, Us = 1200, Ot = 400, Hs = 40, js = 5, Gs = 15, qs = 5e3, Ys = 15e3, Se = 750, $e = 3e3, Xs = 3e3, Ks = 350, Zs = 1e4, Js = 2500;
 function Te(e) {
   return e?.name === "NotAllowedError";
 }
@@ -3215,7 +3222,7 @@ let p = class extends j {
     }, this._followWatchTries = { a: 0, b: 0 }, this._followMeta = {
       a: { start: 0, end: 0, ready: !1, leadIn: 0 },
       b: { start: 0, end: 0, ready: !1, leadIn: 0 }
-    }, this._followPlayhead = 0, this._followSwapArmed = !1, this._preview = new Ds(), this._previewActive = null, this._previewBlocks = {
+    }, this._followPlayhead = 0, this._followSwapArmed = !1, this._preview = new Bs(), this._previewActive = null, this._previewBlocks = {
       a: void 0,
       b: void 0
     }, this._previewPending = {
@@ -3250,7 +3257,16 @@ let p = class extends j {
       this._armClipFrameWatch();
     }, this._onEnded = (e) => {
       const t = e.currentTarget, i = this._clipSourceUrl ? new URL(this._clipSourceUrl, window.location.href).href : "";
-      this.clipEndTime <= 0 || !t || t !== this._video || this._clipSourceToken !== this._videoToken || !this._sessionId || this._clipSourceSession !== this._sessionId || !i || (t.currentSrc || t.src) !== i || (this._cancelClipFrameWatch(), this._clipBuffering = !1, this._endClipSession(), this.dispatchEvent(new CustomEvent("clip-ended", { bubbles: !0, composed: !0 })));
+      this.clipEndTime <= 0 || !xs({
+        eventVideo: t,
+        currentVideo: this._video,
+        sourceToken: this._clipSourceToken,
+        videoToken: this._videoToken,
+        sourceSession: this._clipSourceSession,
+        currentSession: this._sessionId,
+        expectedUrl: i,
+        actualUrl: t?.currentSrc || t?.src || ""
+      }) || (this._cancelClipFrameWatch(), this._clipBuffering = !1, this._endClipSession(), this.dispatchEvent(new CustomEvent("clip-ended", { bubbles: !0, composed: !0 })));
     }, this._onVideoReady = () => {
       const e = this._video;
       e && (e.playbackRate = this._clipRate, this._autoplayDone || (this._autoplayDone = !0, e.muted = this._clipMuted, e.play().catch(() => {
@@ -3484,7 +3500,7 @@ let p = class extends j {
   }
   _pollLive() {
     const e = this.renderRoot.querySelector(".live-player");
-    if (e && ys(
+    if (e && ks(
       e._error,
       !!e._errorIsFatal,
       this._liveStartupAttempts,
@@ -3502,7 +3518,7 @@ let p = class extends j {
     const o = this._liveHealth.sample({
       identity: s,
       nowMs: performance.now(),
-      currentTime: xs(s, this._useWebRtcLive),
+      currentTime: Ss(s, this._useWebRtcLive),
       readyState: s.readyState,
       paused: s.paused,
       seeking: s.seeking,
@@ -3512,7 +3528,7 @@ let p = class extends j {
       this._restartLivePlayer();
       return;
     }
-    ks(
+    $s(
       this.liveAudioStart,
       this._audioUserChoice,
       this._liveAudioAttempted,
@@ -3553,7 +3569,7 @@ let p = class extends j {
         }
       }
     }
-    if (e.has("_isFs") && this.stacked && this._syncFsDialog(), this._liveStream && Date.now() - this._posterAt > Xs) {
+    if (e.has("_isFs") && this.stacked && this._syncFsDialog(), this._liveStream && Date.now() - this._posterAt > Zs) {
       this._posterAt = Date.now();
       const t = this._posterUrl();
       t && (this._posterPreload = t);
@@ -3622,7 +3638,7 @@ let p = class extends j {
       return;
     }
     const r = this._preview.blockMs();
-    this._coarseScrub = this._coarseScrub ? o > r / Ws : o > r / Vs;
+    this._coarseScrub = this._coarseScrub ? o > r / Us : o > r / Ns;
   }
   _scheduleFineScrubUpgrade() {
     clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, !(!this._coarseScrub || !this.scrubbing) && (this._scrubFineTimer = setTimeout(() => {
@@ -3656,7 +3672,7 @@ let p = class extends j {
     return this.previewMode === "sprites" ? !0 : this.previewMode === "video" ? !1 : this._autoSprites;
   }
   _spriteVariants(e) {
-    return Is(
+    return Os(
       this._coarseScrub,
       this._preview.hasSprites(e),
       this._preview.hasFastSprites(e)
@@ -3683,10 +3699,10 @@ let p = class extends j {
    *  claims to be. One-way on purpose: a device that has proved slow shouldn't
    *  flip back mid-session on one lucky sample. */
   _noteSeek(e) {
-    if (this._autoSprites || this.previewMode !== "auto" || (this._seekSamples.push(e), this._seekSamples.length < Us)) return;
-    this._seekSamples.length > Hs && this._seekSamples.shift();
+    if (this._autoSprites || this.previewMode !== "auto" || (this._seekSamples.push(e), this._seekSamples.length < js)) return;
+    this._seekSamples.length > Gs && this._seekSamples.shift();
     const t = this._seekSamples.slice().sort((s, o) => s - o);
-    t[Math.floor(t.length / 2)] > Ns && (this._autoSprites = !0, this.requestUpdate());
+    t[Math.floor(t.length / 2)] > Hs && (this._autoSprites = !0, this.requestUpdate());
   }
   /** Paint the frame for `t` from the sprite sheets. Returns false when this
    *  unit has no atlas (tip, mapped part, or a block the job hasn't reached),
@@ -4010,26 +4026,32 @@ let p = class extends j {
       });
     };
     s ? o() : requestAnimationFrame(() => requestAnimationFrame(i)), this._clipFrameTimer = setTimeout(() => {
-      if (!(t !== this._clipFrameGeneration || e !== this._video)) {
-        if (this._clipFrameTimer = void 0, this._clipRecoveryAttempts === 0) {
-          this._clipRecoveryAttempts = 1;
-          const r = this._clipSeekWasPlaying || !e.paused;
-          e.pause();
-          try {
-            e.currentTime = Math.min(e.duration || this._clipSeekTarget, this._clipSeekTarget);
-          } catch {
-          }
-          r && e.play().catch(() => {
-          }), this._cancelClipFrameWatch(), this._armClipFrameWatch();
-          return;
+      if (t !== this._clipFrameGeneration || e !== this._video) return;
+      this._clipFrameTimer = void 0;
+      const r = ys({
+        recoveryAttempts: this._clipRecoveryAttempts,
+        hasFrameCallback: !!s,
+        seeking: e.seeking,
+        readyState: e.readyState
+      });
+      if (r === "recover") {
+        this._clipRecoveryAttempts = 1;
+        const a = this._clipSeekWasPlaying || !e.paused;
+        e.pause();
+        try {
+          e.currentTime = Math.min(e.duration || this._clipSeekTarget, this._clipSeekTarget);
+        } catch {
         }
-        if (!s && !e.seeking && e.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-          i();
-          return;
-        }
-        this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._error = "Clip stalled while seeking. Try again.", this._releaseFrame();
+        a && e.play().catch(() => {
+        }), this._cancelClipFrameWatch(), this._armClipFrameWatch();
+        return;
       }
-    }, Ks);
+      if (r === "finish") {
+        i();
+        return;
+      }
+      this._cancelClipFrameWatch(), this._loadingVideo = !1, this._clipBuffering = !1, this._clipSeekWasPlaying = !1, this._error = "Clip stalled while seeking. Try again.", this._releaseFrame();
+    }, Js);
   }
   // ---- delayed-follow engine -----------------------------------------------
   _followVideo(e) {
@@ -4286,7 +4308,7 @@ let p = class extends j {
     cancelAnimationFrame(this._freezeRaf), clearTimeout(this._freezeTimer);
     const e = ++this._frameWatchGeneration;
     this._framePresented = !1, this._rvfcVideo = void 0, this._rvfcSource = "";
-    const t = performance.now(), i = this.live ? js : Gs, s = () => {
+    const t = performance.now(), i = this.live ? qs : Ys, s = () => {
       if (this._framePresented) {
         this._releaseFrame();
         return;
@@ -4394,7 +4416,7 @@ let p = class extends j {
   _resetLiveHealth() {
     this._liveHealth = new ye(
       Se,
-      this._useWebRtcLive ? qs : $e
+      this._useWebRtcLive ? Xs : $e
     );
   }
   _resetLiveSession() {
@@ -4428,7 +4450,7 @@ let p = class extends j {
     this._liveAudioAttempted = !0, this._liveAudioTrying = !0;
     const t = this._livePlayerGeneration, i = e.currentTime;
     try {
-      if (e.muted = !1, await e.play(), await new Promise((s) => setTimeout(s, Ys)), t !== this._livePlayerGeneration || e !== this._liveVideo() || e.paused || e.currentTime <= i + 0.01)
+      if (e.muted = !1, await e.play(), await new Promise((s) => setTimeout(s, Ks)), t !== this._livePlayerGeneration || e !== this._liveVideo() || e.paused || e.currentTime <= i + 0.01)
         throw new Error("audible autoplay did not remain active");
       this._liveMuted = !1;
     } catch {
@@ -5523,13 +5545,13 @@ m([
 p = m([
   ot("upc-media-view")
 ], p);
-function Zs(e, t, i) {
+function Qs(e, t, i) {
   return e.map((s) => ({ ...s, camera: t, cameraName: i }));
 }
-function Js(e) {
+function to(e) {
   return e.flat().sort((t, i) => i.start - t.start);
 }
-function Qs(e, t) {
+function eo(e, t) {
   const i = Math.max(0, Math.floor((t - e) / 1e3));
   if (i < 60) return "just now";
   const s = Math.floor(i / 60);
@@ -5539,12 +5561,12 @@ function Qs(e, t) {
   const r = Math.floor(o / 24);
   return r === 1 ? "1 day ago" : `${r} days ago`;
 }
-var to = Object.defineProperty, eo = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? eo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var io = Object.defineProperty, so = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? so(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && to(t, i, o), o;
+  return s && o && io(t, i, o), o;
 };
-let E = class extends j {
+let C = class extends j {
   constructor() {
     super(...arguments), this.bands = [], this.thumbVersion = 0, this.headerText = "Events", this.thumbSize = 0, this.timeSize = 12, this.playingKey = "", this.lastPlayedKey = "", this.expanded = !1, this.gridColumns = 2, this.accent = "#fc9df3", this.hideHead = !1, this.gridThumbWidth = 120, this.dateFontSize = 13, this.itemTextSize = 12, this.captions = !1, this.gridCaptions = !1, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map(), this._toggle = async () => {
       if (this.expanded) {
@@ -5716,7 +5738,7 @@ let E = class extends j {
     `;
   }
 };
-E.styles = st`
+C.styles = st`
     :host {
       display: block;
     }
@@ -5949,65 +5971,65 @@ E.styles = st`
   `;
 F([
   c({ attribute: !1 })
-], E.prototype, "bands", 2);
+], C.prototype, "bands", 2);
 F([
   c({ attribute: !1 })
-], E.prototype, "loader", 2);
+], C.prototype, "loader", 2);
 F([
   c({ type: Number })
-], E.prototype, "thumbVersion", 2);
+], C.prototype, "thumbVersion", 2);
 F([
   c()
-], E.prototype, "headerText", 2);
+], C.prototype, "headerText", 2);
 F([
   c({ type: Number })
-], E.prototype, "thumbSize", 2);
+], C.prototype, "thumbSize", 2);
 F([
   c({ type: Number })
-], E.prototype, "timeSize", 2);
+], C.prototype, "timeSize", 2);
 F([
   c()
-], E.prototype, "playingKey", 2);
+], C.prototype, "playingKey", 2);
 F([
   c()
-], E.prototype, "lastPlayedKey", 2);
+], C.prototype, "lastPlayedKey", 2);
 F([
   c({ type: Boolean, reflect: !0 })
-], E.prototype, "expanded", 2);
+], C.prototype, "expanded", 2);
 F([
   c({ type: Number })
-], E.prototype, "gridColumns", 2);
+], C.prototype, "gridColumns", 2);
 F([
   c()
-], E.prototype, "accent", 2);
+], C.prototype, "accent", 2);
 F([
   c({ type: Boolean })
-], E.prototype, "hideHead", 2);
+], C.prototype, "hideHead", 2);
 F([
   c({ type: Number })
-], E.prototype, "gridThumbWidth", 2);
+], C.prototype, "gridThumbWidth", 2);
 F([
   c({ type: Number })
-], E.prototype, "dateFontSize", 2);
+], C.prototype, "dateFontSize", 2);
 F([
   c({ type: Number })
-], E.prototype, "itemTextSize", 2);
+], C.prototype, "itemTextSize", 2);
 F([
   c({ type: Boolean, reflect: !0 })
-], E.prototype, "captions", 2);
+], C.prototype, "captions", 2);
 F([
   c({ type: Boolean, reflect: !0 })
-], E.prototype, "gridCaptions", 2);
+], C.prototype, "gridCaptions", 2);
 F([
   B(".strip")
-], E.prototype, "_stripEl", 2);
-E = F([
+], C.prototype, "_stripEl", 2);
+C = F([
   ot("upc-event-strip")
-], E);
-var io = Object.defineProperty, so = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? so(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+], C);
+var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? ro(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && io(t, i, o), o;
+  return s && o && oo(t, i, o), o;
 };
 const Ae = 0;
 let L = class extends j {
@@ -6071,7 +6093,7 @@ let L = class extends j {
               ${i ? "Connecting…" : `${t} not found`}
             </div>`}
         <span class="name">${s}</span>
-        ${o ? d`<span class="last">${o.label}: ${Qs(o.start, Date.now())}</span>` : ""}
+        ${o ? d`<span class="last">${o.label}: ${eo(o.start, Date.now())}</span>` : ""}
         <button class="fs-btn" title="Fullscreen" @click=${(r) => this._fullscreen(r, e)}>
           <ha-icon icon="mdi:fullscreen"></ha-icon>
         </button>
@@ -6304,15 +6326,15 @@ D([
 L = D([
   ot("upc-live-grid")
 ], L);
-var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, U = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? ro(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var ao = Object.defineProperty, no = Object.getOwnPropertyDescriptor, U = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? no(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && oo(t, i, o), o;
+  return s && o && ao(t, i, o), o;
 };
-const ao = 3e4, no = 2 * 6e4, lo = 56, ho = d`<svg viewBox="0 0 24 24">
+const lo = 3e4, ho = 2 * 6e4, co = 56, po = d`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="16" height="5.5" rx="1.5"></rect>
   <rect x="4" y="13.5" width="16" height="5.5" rx="1.5"></rect>
-</svg>`, co = d`<svg viewBox="0 0 24 24">
+</svg>`, uo = d`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="6.6" height="14" rx="1.5"></rect>
   <rect x="13.4" y="5" width="6.6" height="14" rx="1.5"></rect>
 </svg>`;
@@ -6361,7 +6383,7 @@ let I = class extends j {
     };
   }
   connectedCallback() {
-    super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), ao), this._minuteTimer = setInterval(() => {
+    super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), lo), this._minuteTimer = setInterval(() => {
       this._minuteTick++;
     }, 6e4), this.hasUpdated && (this._resetToMain(), this._fetchAll());
   }
@@ -6425,19 +6447,19 @@ let I = class extends j {
     let r = !1;
     for (const { e: a, loaded: n } of i)
       (!n || n.stale) && (r = !0), n && o.set(a.camera, {
-        bands: Zs(Ne(n.entries.map(De), s), a.camera, this._name(a)),
+        bands: Qs(Ne(n.entries.map(De), s), a.camera, this._name(a)),
         spans: Ue(n.entries, n.preMs, n.postMs),
         preMs: n.preMs,
         postMs: n.postMs
       });
-    this._data = o, this._strip = Js([...o.values()].map((a) => a.bands)), this._thumbVersion++, r && this._requestSync();
+    this._data = o, this._strip = to([...o.values()].map((a) => a.bands)), this._thumbVersion++, r && this._requestSync();
   }
   /** Fire the pyscript sync service (throttled; it syncs ALL cameras) and
    *  re-check the manifests a few seconds later. No-ops without pyscript. */
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < no || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < ho || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchAll(), 8e3));
   }
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -6456,7 +6478,7 @@ let I = class extends j {
       </button>
     `;
     return d`<div class="grid-view">
-      ${t(1, "Single column", ho)} ${t(2, "Two columns", co)}
+      ${t(1, "Single column", po)} ${t(2, "Two columns", uo)}
     </div>`;
   }
   render() {
@@ -6618,7 +6640,7 @@ let I = class extends j {
                   .minuteTick=${this._minuteTick}
                   .columns=${u}
                   .scrollMode=${u === 1}
-                  .padTop=${u === 1 ? 0 : lo}
+                  .padTop=${u === 1 ? 0 : co}
                   .aspect=${this.config.grid_aspect ?? "16/9"}
                   @tile-open=${this._onTileOpen}
                   @tile-fullscreen=${this._onTileFs}
@@ -6932,12 +6954,12 @@ U([
 I = U([
   ot("upc-multi-view")
 ], I);
-var po = Object.defineProperty, uo = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? uo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var _o = Object.defineProperty, fo = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? fo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && po(t, i, o), o;
+  return s && o && _o(t, i, o), o;
 };
-const _o = 3e4, fo = 2 * 6e4, mo = "2.0.2", vo = 2e3, go = 1e3, bo = 33, wo = 1.3, yo = 1.15;
+const mo = 3e4, vo = 2 * 6e4, go = "2.0.2", bo = 2e3, wo = 1e3, yo = 33, xo = 1.3, ko = 1.15;
 let _t = 0, Pe = "", S = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new He(2, () => {
@@ -6966,7 +6988,7 @@ let _t = 0, Pe = "", S = class extends j {
     }, this._onPlayerFs = (e) => {
       this._playerFs = e.detail.fs, this._playerRotated = e.detail.rotated;
     }, this._pageBgApplied = !1, this._scrubPreviewScheduler = new Ki(
-      bo,
+      yo,
       (e) => {
         this._targetTime = e;
       }
@@ -7015,7 +7037,7 @@ let _t = 0, Pe = "", S = class extends j {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._now = Date.now();
       const e = this._domain, t = N(this._now, M(e), this._phFrac());
-      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, go), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clipEnd = 0;
+      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, wo), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clipEnd = 0;
     }, this._onRewind = (e) => {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._liveMode = !1, this._livePaused = !1, this._scrubbing = !1, this._playingBand = void 0, this._clipEnd = 0, this._targetTime = e.detail.time;
@@ -7026,7 +7048,7 @@ let _t = 0, Pe = "", S = class extends j {
       const t = this._domain, i = N(e.detail.time, M(t), this._phFrac());
       this._domain = i, Math.abs(
         P(i, this._phFrac()) - P(t, this._phFrac())
-      ) >= vo && this._glideRulers(t, i);
+      ) >= bo && this._glideRulers(t, i);
     }, this._onPlaybackSeek = (e) => {
       if (!this._domain) return;
       const t = this._domain, i = N(e.detail.time, M(t), this._phFrac());
@@ -7086,7 +7108,7 @@ let _t = 0, Pe = "", S = class extends j {
    *  The card column's timeline follows the overlay while it is up; it is
    *  behind the fullscreen player, so nobody sees it move. */
   _phFrac() {
-    return this._playerFs && this._isStacked() ? Ei : Rt;
+    return this._playerFs && this._isStacked() ? Ci : Rt;
   }
   /** Clearance the fullscreen ruler keeps from the top/bottom screen edges.
    *  Per layout — see the block in render(), its only caller. */
@@ -7198,7 +7220,7 @@ let _t = 0, Pe = "", S = class extends j {
   connectedCallback() {
     super.connectedCallback(), this._applyPageBackground(), this._tick = setInterval(() => this._onTick(), 1e3), this._bandInterval = setInterval(() => {
       this._isMulti && !this._drill || (this._fetchGaps(!0), this._fetchManifest());
-    }, _o), this._hostRo = new ResizeObserver((e) => {
+    }, mo), this._hostRo = new ResizeObserver((e) => {
       const t = Math.round(e[e.length - 1].contentRect.width);
       t && t !== this._hostWidth && (this._hostWidth = t);
     }), this._hostRo.observe(this), this.hasUpdated && this._config && !this._isMulti && (this._resetToLive(), this._fetchGaps(!0), this._fetchManifest());
@@ -7279,7 +7301,7 @@ let _t = 0, Pe = "", S = class extends j {
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < fo || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < vo || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchManifest(), 8e3));
   }
   /** Initial visible span: default_timeline_zoom (0–100) wins, else minutes. */
@@ -7289,7 +7311,7 @@ let _t = 0, Pe = "", S = class extends j {
       const t = Math.max(0, Math.min(100, e)), i = Math.round((1 - t / 100) * (O.length - 1));
       return O[i];
     }
-    return this._config?.default_span_minutes != null ? Ci(this._config.default_span_minutes * it) : O[0];
+    return this._config?.default_span_minutes != null ? Ei(this._config.default_span_minutes * it) : O[0];
   }
   _resolveNvrId() {
     return this._config?.nvr_id ? this._config.nvr_id : this.hass?.entities?.[this._activeCamera || this._config.camera]?.config_entry_id ?? "";
@@ -7551,7 +7573,7 @@ let _t = 0, Pe = "", S = class extends j {
         .loader=${this._loader}
         .thumbVersion=${this._thumbVersion}
         .fontSize=${Math.round(
-      (t.timeline_font_size ?? 12) * (e ? o ? yo : wo : 1)
+      (t.timeline_font_size ?? 12) * (e ? o ? ko : xo : 1)
     )}
         .fontColor=${t.timeline_font_color ?? "#d0d0d0"}
         .accentColor=${t.accent_color ?? "#fc9df3"}
@@ -8280,7 +8302,7 @@ window.customCards.push({
   preview: !1
 });
 console.info(
-  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${mo} `,
+  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${go} `,
   "color:#fff;background:#03a9f4;font-weight:700;border-radius:3px 0 0 3px;padding:2px 4px",
   "color:#03a9f4;background:#222;border-radius:0 3px 3px 0;padding:2px 4px"
 );
