@@ -1,5 +1,47 @@
 import { describe, expect, it } from 'vitest';
-import { clipWatchdogAction, isCurrentClipSource } from '../src/data/clip-playback';
+import {
+  clipWatchdogAction,
+  isCurrentClipSource,
+  isPresentedClipFrame,
+} from '../src/data/clip-playback';
+
+describe('isPresentedClipFrame', () => {
+  it('accepts the requested frame even before seeking flips false', () => {
+    expect(
+      isPresentedClipFrame({
+        mediaTime: 104.882,
+        currentTime: 104.902,
+        seekTarget: 104.902,
+        seeking: true,
+        readyState: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects a stale pre-seek frame while seeking', () => {
+    expect(
+      isPresentedClipFrame({
+        mediaTime: 107.046,
+        currentTime: 104.902,
+        seekTarget: 104.902,
+        seeking: true,
+        readyState: 1,
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts an advancing current frame after the seek completes', () => {
+    expect(
+      isPresentedClipFrame({
+        mediaTime: 106.8,
+        currentTime: 106.82,
+        seekTarget: 104.902,
+        seeking: false,
+        readyState: 4,
+      }),
+    ).toBe(true);
+  });
+});
 
 describe('clipWatchdogAction', () => {
   it('always performs one recovery before terminating', () => {
