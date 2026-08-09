@@ -35,6 +35,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
 import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
 import { inGap } from './data/gaps';
+import { clipWatchdogAction, isCurrentClipEnd } from './data/clip-playback';
 import {
   LiveHealthTracker,
   liveProgressValue,
@@ -2385,7 +2386,13 @@ export class MediaView extends LitElement {
     this._clipFrameTimer = setTimeout(() => {
       if (generation !== this._clipFrameGeneration || v !== this._video) return;
       this._clipFrameTimer = undefined;
-      if (this._clipRecoveryAttempts === 0) {
+      const action = clipWatchdogAction({
+        recoveryAttempts: this._clipRecoveryAttempts,
+        hasFrameCallback: !!requestFrameCallback,
+        seeking: v.seeking,
+        readyState: v.readyState,
+      });
+      if (action === 'recover') {
         this._clipRecoveryAttempts = 1;
         const resume = this._clipSeekWasPlaying || !v.paused;
         v.pause();
@@ -2401,11 +2408,7 @@ export class MediaView extends LitElement {
         this._armClipFrameWatch();
         return;
       }
-      if (
-        !requestFrameCallback &&
-        !v.seeking &&
-        v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-      ) {
+      if (action === 'finish') {
         finish();
         return;
       }
@@ -2432,13 +2435,16 @@ export class MediaView extends LitElement {
       : '';
     if (
       this.clipEndTime <= 0 ||
-      !v ||
-      v !== this._video ||
-      this._clipSourceToken !== this._videoToken ||
-      !this._sessionId ||
-      this._clipSourceSession !== this._sessionId ||
-      !expectedUrl ||
-      (v.currentSrc || v.src) !== expectedUrl
+      !isCurrentClipEnd({
+        eventVideo: v,
+        currentVideo: this._video,
+        sourceToken: this._clipSourceToken,
+        videoToken: this._videoToken,
+        sourceSession: this._clipSourceSession,
+        currentSession: this._sessionId,
+        expectedUrl,
+        actualUrl: v?.currentSrc || v?.src || '',
+      })
     ) {
       return;
     }
