@@ -35,7 +35,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
 import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
 import { inGap } from './data/gaps';
-import { clipWatchdogAction, isCurrentClipEnd } from './data/clip-playback';
+import { clipWatchdogAction, isCurrentClipSource } from './data/clip-playback';
 import {
   LiveHealthTracker,
   liveProgressValue,
@@ -373,6 +373,7 @@ export class MediaView extends LitElement {
    *  frees its working directory immediately instead of waiting for the sweep. */
   private _cancelLoad(): void {
     this._videoToken++;
+    if (this._video) releaseVideo(this._video);
     this._preparing = false;
     this._clipBuffering = false;
     this._cancelClipFrameWatch();
@@ -2166,6 +2167,7 @@ export class MediaView extends LitElement {
    *  (live fallback when no live stream element is available). */
   private async _loadSegment(startMs: number, trailing = false): Promise<void> {
     const token = ++this._videoToken;
+    if (this._video) releaseVideo(this._video);
     if (!trailing) this._releaseFrame();
     this._cancelClipFrameWatch();
     this._setClipSrc();
@@ -2181,6 +2183,7 @@ export class MediaView extends LitElement {
     this._clipSeekWasPlaying = false;
     this._clipRecoveryAttempts = 0;
     this._clipWatchFailed = false;
+    this._error = undefined;
     this._flashFollowCtrl(); // flash the custom controls
 
     let start = startMs;
@@ -2196,6 +2199,12 @@ export class MediaView extends LitElement {
       this._setClipSrc();
       this._loadingVideo = false;
       this._preparing = false;
+      this._error = 'Clip is too short to play.';
+      queueMicrotask(() => {
+        if (token === this._videoToken && this.clipEndTime > 0) {
+          this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
+        }
+      });
       return;
     }
     this._clipStart = start;
@@ -2231,12 +2240,19 @@ export class MediaView extends LitElement {
       // at all after src assignment; event-driven arming alone can spin forever.
       this._clipBuffering = true;
       await this.updateComplete;
+      if (
+        token !== this._videoToken ||
+        this._sessionId !== session.session_id ||
+        this._videoSrc !== session.url
+      ) {
+        return;
+      }
       this._armClipFrameWatch();
     } catch (err) {
       if (token !== this._videoToken) return; // superseded or torn down
       if ((err as Error)?.name === 'AbortError') return;
       console.warn('[unifi-timeline] clip session failed', err);
-      this._onVideoError();
+      this._failClip('Clip unavailable for this time range.');
     } finally {
       if (this._sessionAbort === ctl) this._sessionAbort = undefined;
       if (token === this._videoToken) this._preparing = false;
@@ -2255,8 +2271,27 @@ export class MediaView extends LitElement {
     this._clipSourceUrl = '';
   }
 
-  private _onTimeUpdate = (): void => {
-    const v = this._video;
+  private _isCurrentClipEvent(event: Event): HTMLVideoElement | undefined {
+    const v = event.currentTarget instanceof HTMLVideoElement ? event.currentTarget : null;
+    const expectedUrl = this._clipSourceUrl
+      ? new URL(this._clipSourceUrl, window.location.href).href
+      : '';
+    return isCurrentClipSource({
+      eventVideo: v,
+      currentVideo: this._video,
+      sourceToken: this._clipSourceToken,
+      videoToken: this._videoToken,
+      sourceSession: this._clipSourceSession,
+      currentSession: this._sessionId,
+      expectedUrl,
+      actualUrl: v?.currentSrc || v?.src || '',
+    })
+      ? v ?? undefined
+      : undefined;
+  }
+
+  private _onTimeUpdate = (event: Event): void => {
+    const v = this._isCurrentClipEvent(event);
     if (!v) return;
     const real = this._clipStart + v.currentTime * 1000;
     this.dispatchEvent(
@@ -2333,9 +2368,9 @@ export class MediaView extends LitElement {
     this._armClipFrameWatch();
   }
 
-  private _onClipSeeking = (): void => {
-    const v = this._video;
-    if (!v) return;
+  private _onClipSeeking = (event: Event): void => {
+    const v = this._isCurrentClipEvent(event);
+    if (!v || this._clipWatchFailed) return;
     this._releaseFrame();
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying ||= !v.paused;
@@ -2343,9 +2378,9 @@ export class MediaView extends LitElement {
     this._armClipFrameWatch();
   };
 
-  private _onClipWaiting = (): void => {
-    const v = this._video;
-    if (!v || v.ended) return;
+  private _onClipWaiting = (event: Event): void => {
+    const v = this._isCurrentClipEvent(event);
+    if (!v || v.ended || this._clipWatchFailed) return;
     this._clipSeekTarget = v.currentTime;
     this._clipSeekWasPlaying = !v.paused;
     this._clipBuffering = true;
@@ -2434,7 +2469,8 @@ export class MediaView extends LitElement {
     }, CLIP_FRAME_STALL_MS);
   }
 
-  private _onClipSeeked = (): void => {
+  private _onClipSeeked = (event: Event): void => {
+    if (!this._isCurrentClipEvent(event) || this._clipWatchFailed) return;
     this._armClipFrameWatch();
   };
 
@@ -2442,34 +2478,16 @@ export class MediaView extends LitElement {
   // playback goes through the delayed-follow engine). When a bounded clip ends,
   // hand back to the card to pick the next event or fall into delayed-follow.
   private _onEnded = (event: Event): void => {
-    const v = event.currentTarget as HTMLVideoElement | null;
-    const expectedUrl = this._clipSourceUrl
-      ? new URL(this._clipSourceUrl, window.location.href).href
-      : '';
-    if (
-      this.clipEndTime <= 0 ||
-      !isCurrentClipEnd({
-        eventVideo: v,
-        currentVideo: this._video,
-        sourceToken: this._clipSourceToken,
-        videoToken: this._videoToken,
-        sourceSession: this._clipSourceSession,
-        currentSession: this._sessionId,
-        expectedUrl,
-        actualUrl: v?.currentSrc || v?.src || '',
-      })
-    ) {
-      return;
-    }
+    if (this.clipEndTime <= 0 || !this._isCurrentClipEvent(event)) return;
     this._cancelClipFrameWatch();
     this._clipBuffering = false;
     this._endClipSession();
     this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
   };
 
-  private _onVideoReady = (): void => {
-    const v = this._video;
-    if (!v) return;
+  private _onVideoReady = (event: Event): void => {
+    const v = this._isCurrentClipEvent(event);
+    if (!v || this._clipWatchFailed) return;
     v.playbackRate = this._clipRate; // keep the chosen speed across buffering stalls
     if (!this._autoplayDone) {
       this._autoplayDone = true;
@@ -2490,16 +2508,43 @@ export class MediaView extends LitElement {
           });
       });
     }
+    const requestFrameCallback = (v as unknown as {
+      requestVideoFrameCallback?: (callback: () => void) => number;
+    }).requestVideoFrameCallback;
+    if (!requestFrameCallback && !v.seeking && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      this._cancelClipFrameWatch();
+      this._loadingVideo = false;
+      this._clipBuffering = false;
+      this._clipSeekWasPlaying = false;
+      this._clipRecoveryAttempts = 0;
+      this._releaseFrame();
+      return;
+    }
     this._armClipFrameWatch();
   };
 
-  private _onVideoError = (): void => {
+  private _onVideoError = (event: Event): void => {
+    if (!this._isCurrentClipEvent(event)) return;
+    this._failClip('Clip unavailable for this time range.');
+  };
+
+  private _failClip(message: string): void {
     // The clip is fetched fully into a blob before playing (no mid-playback
     // auth expiry to retry), so an error here means the clip is unplayable.
     this._loadingVideo = false;
     this._clipBuffering = false;
     this._cancelClipFrameWatch();
-    this._error = 'Clip unavailable for this time range.';
+    this._error = message;
+  }
+
+  private _onClipPlay = (event: Event): void => {
+    if (!this._isCurrentClipEvent(event)) return;
+    this._clipPaused = false;
+  };
+
+  private _onClipPause = (event: Event): void => {
+    if (!this._isCurrentClipEvent(event)) return;
+    this._clipPaused = true;
   };
 
   // ---- delayed-follow engine -----------------------------------------------
@@ -3529,7 +3574,10 @@ export class MediaView extends LitElement {
     e.stopPropagation();
     const v = this._video;
     if (!v) return;
-    if (v.paused) v.play().catch(() => {});
+    if (v.paused) {
+      if (this._clipWatchFailed) this._seekClipTo(v.currentTime);
+      v.play().catch(() => {});
+    }
     else v.pause();
     this._showFollowCtrl();
   };
@@ -3987,8 +4035,8 @@ export class MediaView extends LitElement {
           @seeked=${this._onClipSeeked}
           @waiting=${this._onClipWaiting}
           @stalled=${this._onClipWaiting}
-          @play=${() => (this._clipPaused = false)}
-          @pause=${() => (this._clipPaused = true)}
+          @play=${this._onClipPlay}
+          @pause=${this._onClipPause}
           @error=${this._onVideoError}
         ></video>
         ${this._loadingVideo || this._clipBuffering
