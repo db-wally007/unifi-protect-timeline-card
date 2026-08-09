@@ -274,9 +274,13 @@ on-demand NVR snapshots — but the events list stays empty and scrubbing shows 
 ### `protect_cache` (required by both caches)
 
 A small custom component that serves the two caches at `/protect_thumbs/…` and `/protect_scrub/…`,
-and hosts the clip-session API (`POST /api/protect_clip/session`) that all historical playback uses:
-it exports a range, remuxes it for fast start, and serves it with real HTTP range support so the
-video element can stream and seek instead of downloading the whole export.
+and hosts the clip-session API (`POST /api/protect_clip/session`) used by bounded event clips. The
+native Home Assistant UniFi export proxy ignores HTTP Range and the NVR writes MP4 metadata after
+the media payload, so a browser cannot start or seek it without receiving the entire file. The
+helper materializes the export, uses FFmpeg stream copy with `+faststart` (no quality/codec change),
+and serves it with real HTTP Range support. One prepared session is retained across every seek in
+that playback; the card shows explicit `Preparing clip`, `Loading clip`, and `Buffering clip`
+states instead of covering them with a stale LIVE/history frame.
 
 The caches deliberately live in `config/.cache/` rather than `config/www/`, because that is the one
 path Home Assistant's backups skip — and a symlink from `www/` cannot work, as aiohttp's static
