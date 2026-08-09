@@ -5610,6 +5610,16 @@ function eo(e) {
   return e.flat().sort((t, i) => i.start - t.start);
 }
 function io(e, t) {
+  const i = e.findIndex(
+    (o) => o.camera === t.camera && o.type === t.type && o.start === t.start
+  );
+  if (i >= 0) return e[i - 1];
+  let s;
+  for (const o of e)
+    o.start > t.start && (!s || o.start < s.start) && (s = o);
+  return s;
+}
+function so(e, t) {
   const i = Math.max(0, Math.floor((t - e) / 1e3));
   if (i < 60) return "just now";
   const s = Math.floor(i / 60);
@@ -5619,10 +5629,10 @@ function io(e, t) {
   const r = Math.floor(o / 24);
   return r === 1 ? "1 day ago" : `${r} days ago`;
 }
-var so = Object.defineProperty, oo = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? oo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? ro(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && so(t, i, o), o;
+  return s && o && oo(t, i, o), o;
 };
 let M = class extends j {
   constructor() {
@@ -6084,10 +6094,10 @@ F([
 M = F([
   ot("upc-event-strip")
 ], M);
-var ro = Object.defineProperty, ao = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? ao(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var ao = Object.defineProperty, no = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? no(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && ro(t, i, o), o;
+  return s && o && ao(t, i, o), o;
 };
 const Ae = 0;
 let L = class extends j {
@@ -6151,7 +6161,7 @@ let L = class extends j {
               ${i ? "Connecting…" : `${t} not found`}
             </div>`}
         <span class="name">${s}</span>
-        ${o ? d`<span class="last">${o.label}: ${io(o.start, Date.now())}</span>` : ""}
+        ${o ? d`<span class="last">${o.label}: ${so(o.start, Date.now())}</span>` : ""}
         <button class="fs-btn" title="Fullscreen" @click=${(r) => this._fullscreen(r, e)}>
           <ha-icon icon="mdi:fullscreen"></ha-icon>
         </button>
@@ -6384,27 +6394,27 @@ D([
 L = D([
   ot("upc-live-grid")
 ], L);
-var no = Object.defineProperty, lo = Object.getOwnPropertyDescriptor, U = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? lo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var lo = Object.defineProperty, ho = Object.getOwnPropertyDescriptor, U = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? ho(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && no(t, i, o), o;
+  return s && o && lo(t, i, o), o;
 };
-const ho = 3e4, co = 2 * 6e4, po = 56, uo = d`<svg viewBox="0 0 24 24">
+const co = 3e4, po = 2 * 6e4, uo = 56, _o = d`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="16" height="5.5" rx="1.5"></rect>
   <rect x="4" y="13.5" width="16" height="5.5" rx="1.5"></rect>
-</svg>`, _o = d`<svg viewBox="0 0 24 24">
+</svg>`, fo = d`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="6.6" height="14" rx="1.5"></rect>
   <rect x="13.4" y="5" width="6.6" height="14" rx="1.5"></rect>
 </svg>`;
 let I = class extends j {
   constructor() {
-    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._loader = new He(2, () => {
+    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._playbackOrder = [], this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._loader = new He(2, () => {
       this._thumbVersion++;
     }), this._lastSyncTrigger = 0, this._fetchSeq = 0, this._onStripSelect = (e) => {
-      this._playback = e.detail, this._lastPlayedKey = `${e.detail.type}@${e.detail.start}`;
+      this._playbackOrder = [...this._strip], this._playBand(e.detail);
     }, this._onToggleExpand = async () => {
       if (this.stacked) {
-        this._expanded = !this._expanded, this._expanded && (this._playback = void 0);
+        this._expanded = !this._expanded, this._expanded && this._closePlayback();
         return;
       }
       if (this._expanded) {
@@ -6418,9 +6428,21 @@ let I = class extends j {
         ).finished.catch(() => {
         }), this._expanded = !1;
       } else
-        this._playback = void 0, this._expanded = !0;
+        this._closePlayback(), this._expanded = !0;
     }, this._closePlayback = () => {
-      this._playback = void 0;
+      this._playback = void 0, this._playbackOrder = [];
+    }, this._onClipEnded = () => {
+      const e = this._playback;
+      if (e) {
+        if (this.config?.autoplay_next_event ?? !0) {
+          const t = io(this._playbackOrder, e);
+          if (t) {
+            this._playBand(t);
+            return;
+          }
+        }
+        this._closePlayback();
+      }
     }, this._onTileOpen = (e) => {
       const t = e.detail.navigation_path;
       if (t) {
@@ -6441,7 +6463,7 @@ let I = class extends j {
     };
   }
   connectedCallback() {
-    super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), ho), this._minuteTimer = setInterval(() => {
+    super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), co), this._minuteTimer = setInterval(() => {
       this._minuteTick++;
     }, 6e4), this.hasUpdated && (this._resetToMain(), this._fetchAll());
   }
@@ -6452,10 +6474,10 @@ let I = class extends j {
    *  in the expanded events browser, default 2-column density, no last-played
    *  highlight. Used on every (re)entry so the view never resumes mid-clip. */
   _resetToMain() {
-    this._playback = void 0, this._expanded = !1, this._lastPlayedKey = "", this._gridView = 2;
+    this._playback = void 0, this._playbackOrder = [], this._expanded = !1, this._lastPlayedKey = "", this._gridView = 2;
   }
   updated(e) {
-    e.has("config") && this.config && (this._playback = void 0, this._expanded = !1, this._lastPlayedKey = "", this._fetchAll()), e.has("_expanded") && this._expanded && !this.stacked && this.renderRoot.querySelector(".events-scroll.grid")?.animate(
+    e.has("config") && this.config && (this._playback = void 0, this._playbackOrder = [], this._expanded = !1, this._lastPlayedKey = "", this._fetchAll()), e.has("_expanded") && this._expanded && !this.stacked && this.renderRoot.querySelector(".events-scroll.grid")?.animate(
       [
         { opacity: 0, transform: "translateX(-30px)" },
         { opacity: 1, transform: "none" }
@@ -6517,8 +6539,11 @@ let I = class extends j {
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < co || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < po || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchAll(), 8e3));
+  }
+  _playBand(e) {
+    this._playback = e, this._lastPlayedKey = `${e.type}@${e.start}`;
   }
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
   _setGridView(e) {
@@ -6536,7 +6561,7 @@ let I = class extends j {
       </button>
     `;
     return d`<div class="grid-view">
-      ${t(1, "Single column", uo)} ${t(2, "Two columns", _o)}
+      ${t(1, "Single column", _o)} ${t(2, "Two columns", fo)}
     </div>`;
   }
   render() {
@@ -6698,7 +6723,7 @@ let I = class extends j {
                   .minuteTick=${this._minuteTick}
                   .columns=${u}
                   .scrollMode=${u === 1}
-                  .padTop=${u === 1 ? 0 : po}
+                  .padTop=${u === 1 ? 0 : uo}
                   .aspect=${this.config.grid_aspect ?? "16/9"}
                   @tile-open=${this._onTileOpen}
                   @tile-fullscreen=${this._onTileFs}
@@ -6726,7 +6751,7 @@ let I = class extends j {
       .previewDir=${""}
       .accent=${i}
       .now=${Date.now()}
-      @clip-ended=${this._closePlayback}
+      @clip-ended=${this._onClipEnded}
     ></upc-media-view>`;
   }
 };
@@ -7012,12 +7037,12 @@ U([
 I = U([
   ot("upc-multi-view")
 ], I);
-var fo = Object.defineProperty, mo = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? mo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
+var mo = Object.defineProperty, vo = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? vo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && fo(t, i, o), o;
+  return s && o && mo(t, i, o), o;
 };
-const vo = 3e4, go = 2 * 6e4, bo = "2.0.2", wo = 2e3, yo = 1e3, xo = 33, ko = 1.3, So = 1.15;
+const go = 3e4, bo = 2 * 6e4, wo = "2.0.2", yo = 2e3, xo = 1e3, ko = 33, So = 1.3, $o = 1.15;
 let _t = 0, Ce = "", S = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new He(2, () => {
@@ -7046,7 +7071,7 @@ let _t = 0, Ce = "", S = class extends j {
     }, this._onPlayerFs = (e) => {
       this._playerFs = e.detail.fs, this._playerRotated = e.detail.rotated;
     }, this._pageBgApplied = !1, this._scrubPreviewScheduler = new Ki(
-      xo,
+      ko,
       (e) => {
         this._targetTime = e;
       }
@@ -7095,7 +7120,7 @@ let _t = 0, Ce = "", S = class extends j {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._now = Date.now();
       const e = this._domain, t = N(this._now, P(e), this._phFrac());
-      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, yo), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clipEnd = 0;
+      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, xo), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clipEnd = 0;
     }, this._onRewind = (e) => {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), clearTimeout(this._scrubSettleTimer), this._liveMode = !1, this._livePaused = !1, this._scrubbing = !1, this._playingBand = void 0, this._clipEnd = 0, this._targetTime = e.detail.time;
@@ -7106,7 +7131,7 @@ let _t = 0, Ce = "", S = class extends j {
       const t = this._domain, i = N(e.detail.time, P(t), this._phFrac());
       this._domain = i, Math.abs(
         C(i, this._phFrac()) - C(t, this._phFrac())
-      ) >= wo && this._glideRulers(t, i);
+      ) >= yo && this._glideRulers(t, i);
     }, this._onPlaybackSeek = (e) => {
       if (!this._domain) return;
       const t = this._domain, i = N(e.detail.time, P(t), this._phFrac());
@@ -7278,7 +7303,7 @@ let _t = 0, Ce = "", S = class extends j {
   connectedCallback() {
     super.connectedCallback(), this._applyPageBackground(), this._tick = setInterval(() => this._onTick(), 1e3), this._bandInterval = setInterval(() => {
       this._isMulti && !this._drill || (this._fetchGaps(!0), this._fetchManifest());
-    }, vo), this._hostRo = new ResizeObserver((e) => {
+    }, go), this._hostRo = new ResizeObserver((e) => {
       const t = Math.round(e[e.length - 1].contentRect.width);
       t && t !== this._hostWidth && (this._hostWidth = t);
     }), this._hostRo.observe(this), this.hasUpdated && this._config && !this._isMulti && (this._resetToLive(), this._fetchGaps(!0), this._fetchManifest());
@@ -7359,7 +7384,7 @@ let _t = 0, Ce = "", S = class extends j {
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < go || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < bo || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchManifest(), 8e3));
   }
   /** Initial visible span: default_timeline_zoom (0–100) wins, else minutes. */
@@ -7631,7 +7656,7 @@ let _t = 0, Ce = "", S = class extends j {
         .loader=${this._loader}
         .thumbVersion=${this._thumbVersion}
         .fontSize=${Math.round(
-      (t.timeline_font_size ?? 12) * (e ? o ? So : ko : 1)
+      (t.timeline_font_size ?? 12) * (e ? o ? $o : So : 1)
     )}
         .fontColor=${t.timeline_font_color ?? "#d0d0d0"}
         .accentColor=${t.accent_color ?? "#fc9df3"}
@@ -8360,7 +8385,7 @@ window.customCards.push({
   preview: !1
 });
 console.info(
-  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${bo} `,
+  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${wo} `,
   "color:#fff;background:#03a9f4;font-weight:700;border-radius:3px 0 0 3px;padding:2px 4px",
   "color:#03a9f4;background:#222;border-radius:0 3px 3px 0;padding:2px 4px"
 );

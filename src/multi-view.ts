@@ -23,7 +23,12 @@ import type { CameraEntry, CardConfig, HomeAssistant } from './data/types';
 import { loadManifest, manifestToBand } from './data/manifest';
 import { groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
-import { mergeStrip, tagBands, type MultiBand } from './data/multi-events';
+import {
+  mergeStrip,
+  nextNewerMultiBand,
+  tagBands,
+  type MultiBand,
+} from './data/multi-events';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { THUMBS_BASE } from './data/ha-urls';
 import { navigate } from './data/navigate';
@@ -69,6 +74,7 @@ export class MultiView extends LitElement {
   @state() private _data = new Map<string, CameraData>(); // by camera entity_id
   @state() private _strip: MultiBand[] = []; // merged, newest-first
   @state() private _playback?: MultiBand; // undefined = live grid
+  private _playbackOrder: MultiBand[] = []; // stable all-camera order for the active autoplay chain
   // Events browsing mode (header chevron): the strip becomes a grid LIST and
   // the live cameras are UNMOUNTED (no video decode while browsing events).
   @state() private _expanded = false;
@@ -374,6 +380,7 @@ export class MultiView extends LitElement {
    *  highlight. Used on every (re)entry so the view never resumes mid-clip. */
   private _resetToMain(): void {
     this._playback = undefined;
+    this._playbackOrder = [];
     this._expanded = false;
     this._lastPlayedKey = '';
     this._gridView = 2;
@@ -382,6 +389,7 @@ export class MultiView extends LitElement {
   protected updated(changed: PropertyValues): void {
     if (changed.has('config') && this.config) {
       this._playback = undefined;
+      this._playbackOrder = [];
       this._expanded = false;
       this._lastPlayedKey = '';
       void this._fetchAll();
@@ -492,18 +500,23 @@ export class MultiView extends LitElement {
     this._syncRefetchTimer = setTimeout(() => void this._fetchAll(), 8_000);
   }
 
-  private _onStripSelect = (e: CustomEvent<MultiBand>): void => {
+  private _playBand(band: MultiBand): void {
     // Collapsed: the player mounts where the live grid was. Expanded: the grid
     // STAYS and the player opens as an overlay on top of it (see render).
-    this._playback = e.detail;
-    this._lastPlayedKey = `${e.detail.type}@${e.detail.start}`;
+    this._playback = band;
+    this._lastPlayedKey = `${band.type}@${band.start}`;
+  }
+
+  private _onStripSelect = (e: CustomEvent<MultiBand>): void => {
+    this._playbackOrder = [...this._strip];
+    this._playBand(e.detail);
   };
 
   private _onToggleExpand = async (): Promise<void> => {
     // Mobile keeps the event-strip's own up/down animation.
     if (this.stacked) {
       this._expanded = !this._expanded;
-      if (this._expanded) this._playback = undefined;
+      if (this._expanded) this._closePlayback();
       return;
     }
     // Tablet: the grid fades + slides horizontally (in from the left on expand,
@@ -523,13 +536,29 @@ export class MultiView extends LitElement {
       }
       this._expanded = false;
     } else {
-      this._playback = undefined;
+      this._closePlayback();
       this._expanded = true; // the expand-in animation runs in updated()
     }
   };
 
   private _closePlayback = (): void => {
     this._playback = undefined; // media-view unmounts (cancels the NVR export)
+    this._playbackOrder = [];
+  };
+
+  /** Advance through the merged all-camera event order, matching single view. */
+  private _onClipEnded = (): void => {
+    const current = this._playback;
+    if (!current) return;
+    if (this.config?.autoplay_next_event ?? true) {
+      const next = nextNewerMultiBand(this._playbackOrder, current);
+      if (next) {
+        this._playBand(next);
+        return;
+      }
+    }
+    // Multi view has no single timeline to continue; return to the live grid.
+    this._closePlayback();
   };
 
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -818,7 +847,7 @@ export class MultiView extends LitElement {
       .previewDir=${''}
       .accent=${accent}
       .now=${Date.now()}
-      @clip-ended=${this._closePlayback}
+      @clip-ended=${this._onClipEnded}
     ></upc-media-view>`;
   }
 }
