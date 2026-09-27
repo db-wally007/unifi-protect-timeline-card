@@ -288,6 +288,18 @@ export class EventsList extends LitElement {
    *  by the card when a calendar day is picked while the Events view is open.
    *  The whole event window is always rendered, so the target row exists; a
    *  day with no events scrolls to where it would be (the next older row). */
+  /** Bring one event's row into view, centred in the list. Returns false when
+   *  this list does not hold that event. Used when coming back from a clip's
+   *  fullscreen hand-off, so the row that was playing is in front of you. */
+  revealKey(key: string): boolean {
+    if (!key) return false;
+    const thumb = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(key)}"]`);
+    const row = thumb?.closest('button');
+    if (!row) return false;
+    row.scrollIntoView({ block: 'center', inline: 'nearest' });
+    return true;
+  }
+
   scrollToDay(dayStart: number): void {
     const dayEnd = dayStart + 86_400_000;
     // Newest-first: the day's first row is the newest band starting before the

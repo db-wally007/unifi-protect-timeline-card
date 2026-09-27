@@ -64,9 +64,37 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
   down, and swept after 30 min (a hard page navigation runs no `disconnectedCallback`, so the
   sweep — not the client — is what reaps those). `ffmpeg -f mp4` is REQUIRED: the temp file ends
   in `.tmp` and ffmpeg won't infer a muxer from that.
-- **Historical (delayed-follow).** Still Blob-based on purpose — chunks are capped at
-  `FOLLOW_MAX_CHUNK_MS` (30 s, ~26 MB) across two leap-frogging `<video>` slots, which was never
-  the memory problem, and blobs let them swap without a reload flash.
+  **Both stages are all-or-nothing before the client sees a frame** (the export has to reach its
+  last byte because `moov` is there, and faststart is a two-pass rewrite), which is why the
+  request handed to that pipeline has to be SMALL — see the playlist gotcha below.
+- **Merged events play as a PLAYLIST, never as one clip** (`clipSegments` in
+  `data/event-groups.ts`). The host (card.ts / multi-view.ts) owns a `_segIdx` cursor, feeds
+  media-view one segment's `targetTime`/`clipEndTime` at a time and advances on `clip-ended`;
+  media-view PREFETCHES the next segment's session 20 s before the current one ends, so a
+  boundary hands over in ~0.7 s with no overlay. `clipPlaylist`/`clipPlaylistIndex` also make the
+  seek bar span the whole group — a bar that fills in 2 minutes under a row labelled "37m56s"
+  would be a lie. A seek past the loaded clip emits `playlist-seek` and the next export starts AT
+  that instant. Moving BETWEEN segments of one event is not a new clip: media-view sets
+  `_segmentSwitch`, holds the outgoing frame (`_holdFrame` in `willUpdate`, released when the next
+  segment presents) and renders a transparent overlay — spinner + Cancel over a blurred scrim —
+  so a 2-3 s export does not flash the picture black. Selecting a DIFFERENT event still gets the
+  black "Preparing clip…" screen. Measured on the 37m56s row: first frame 4.9 s, skip to 10m
+  3.0 s, 15m 1.7 s (mid-segment seeks export only from the seek point), 30m 3.1 s, back to 5m
+  2.8 s, and a seek inside the loaded segment 0.7 s with zero requests.
+- **Historical (delayed-follow).** Chunks are capped at `FOLLOW_MAX_CHUNK_MS` (30 s, ~28 MB)
+  across two leap-frogging `<video>` slots. **Since 2026-09-24 each chunk is a clip SESSION**
+  (`startClipSession`, the same pipeline as event clips), not a Blob pulled from the export
+  proxy: the Blob path (raw export, `moov` at the END, whole chunk in page memory) is what WebKit
+  would not reliably play — Safari on a Mac showed 45-60 s of black after a clip ended, and the
+  iPhone app dropped its connection — while the same footage as a faststart session file served
+  with HTTP Range played every time. Each slot owns one session (`_followSession`), released 5 s
+  after the slot is refilled and on `_stopFollow`; prepares are abortable with a 45 s deadline.
+  Measured: clip end → moving footage 2.1 s, timeline tap → 2.9 s, 2 session dirs while following.
+  **Failures are BUDGETED** (`_followFailed`, `FOLLOW_RETRY_DELAYS_MS` = 1/3/8 s, then a message):
+  an unbounded 700 ms retry re-exported an unplayable chunk 29 times (~870 MB) in 40 s. Only a
+  "not finalized yet" miss (no request made) retries freely. Failures are written to the HA log
+  via `system_log.write` with the device's user agent (capped per page load) — the way to see
+  what a phone did.
   Segments are CUT at event boundaries (`segmentEndFor`): adaptive recording keeps high-res (2K) around
   events and a continuous 640×360 tier between, and the NVR serves ONE tier per export — a
   request overlapping an event comes from the high-res track where idle is just sparse keyframes
@@ -95,6 +123,28 @@ of each and editing either path edits this repo. Two consequences:
   is no separate deploy step, and no second copy to keep in sync.
 
 ## Gotchas (these cost real debugging time — keep them)
+
+- **A merged display event is NOT a clip, and the gap setting cannot save you.** `groupBands`
+  merges events with sub-`event_merge_gap_seconds` gaps into one row; on 2026-09-19 that was 43
+  garden events over **37m56s**. Handing that span to one clip session measured **34.9 s and
+  1.29 GB** on disk (plus the same again through the remux) — and because the overlay had no
+  progress, no deadline and no Cancel, the user retapped, and each retap started another export.
+  Re-grouping seven days at different settings: 60 s → longest row 37m56s, 30 s → 23m50s,
+  15 s → 19m38s. The activity genuinely is continuous, so the merge gap is a browsing preference,
+  not a remedy. Measured prepare times (2688x1512, LAN): 14 s → 0.60 s / 12.5 MB; 120 s → 4.14 s /
+  97 MB; 600 s → 17.1 s / 525 MB; 1500 s → 34.9 s / 1.29 GB. Playback then STREAMS: 14.4 MB
+  fetched to play the first 10 s of a 102 MB clip.
+- **These cameras record `always`, not `adaptive`** (`select.*_recording_mode`, all three).
+  So there is no cheap 640x360 idle tier — idle costs the same ~50 MB/min as event footage, and
+  the mixed-tier fast-forward hazard `footage-map.ts` describes cannot occur here
+  (`CUT_CHUNKS_AT_EVENTS` is already `false`). Re-check before relying on either behaviour.
+- **A cancelled request cannot stop an executor thread.** HA runs aiohttp with
+  `handler_cancellation=True`, so a client that gives up DOES cancel the handler — but the remux
+  used `subprocess.run` inside `async_add_executor_job`, which no cancellation can reach, and the
+  view's cleanup caught `Exception`, not `CancelledError`, so the session directory leaked too.
+  `clip_session.py` now uses `asyncio.create_subprocess_exec`, catches `BaseException` around the
+  build, counts waiters so an export nobody wants is cancelled, and dedupes identical in-flight
+  requests. uiprotect calls the NVR with `timeout=0` — any timeout has to be ours.
 
 - **Canvas `ctx.font` cannot use CSS `var()`** — it silently fails and the font stays default.
   Resolve the family with `getComputedStyle(this).fontFamily` and use a concrete `${px}` size.
@@ -166,6 +216,53 @@ of each and editing either path edits this repo. Two consequences:
   **Not reproducible in headless Chromium**, which software-decodes and copies the frame
   happily — force the path with `_looksBlack = () => true` to test it.
 - **Don't grep the minified bundle** to verify a fix — build with `--minify false` if you must.
+- **Never walk a full directory listing in pyscript.** The scrub cache is ~24k files per camera
+  and the job runs every minute; the name-classification loops this used to do were measured
+  (2026-09-21) pinning the HA event loop at 88-96% of a core for 15-20 s of every minute — the
+  whole container CPU sawtooth. pyscript AST-interprets every iteration, while native Python does
+  the same scan in 24 ms. `protect_scrub.py` now routes all seven of those walks through `_ints()`
+  (`set(map(int, re.findall(...)))`) and `_glob()` (`fnmatch.filter`) and only walks the matches:
+  main thread 28.2% -> 17.7%. pyscript exposes every builtin except six, so `map`/`set`/`int` are
+  native C — but there are still no generator expressions.
+- **The per-minute cron is the RECONCILER; triggers are for latency.** `protect_thumbs_sync`
+  re-queries the NVR window and rebuilds the manifest unconditionally, which is what makes a
+  missed edge, a revised event, a restart mid-burst, the manifest trim and the hourly purge all
+  self-heal with no special cases — at 0.28 s of CPU per run (0.47% of a core). Motion
+  `@state_trigger` + a backoff follower then puts a new event in the manifest ~1 s after it
+  happens instead of up to 60 s. Keep both: the follower is a pure optimisation, which is
+  precisely why resolving the motion sensors by naming convention is safe.
+- **Detach/re-attach and hide/show must each leave the stage PLAYING (fixed 2026-09-23).** HA
+  detaches cached views and Bubble hides popups with `display:none`; four separate ways the
+  picture used to freeze there, all reproduced before fixing:
+  1. media-view's `disconnectedCallback` tears every player down, but nothing about its
+     properties changes, so `updated()` never rebuilt it — and the MULTI page, unlike the
+     single-camera card, deliberately keeps its drilled-in state across a re-attach (card.ts
+     `connectedCallback` skips `_resetToLive` for `_isMulti`). Now `connectedCallback` sets
+     `_reattached` and `updated()` rebuilds, resuming follow at `_resumeAt` (the frame that was
+     on screen), not at the originally tapped time.
+  2. The card's `disconnectedCallback` DISCARDED a pending scrub-settle commit, and the
+     scrubber's cancelled its glide without closing the session → `scrubbing` stuck true, stage
+     parked on the preview tile. The card now runs `_pendingScrubCommit`; the scrubber emits
+     `scrub-end` and clears `_pointers`. Every other "supersede the settle" site goes through
+     `_cancelSettle()` so a stale commit can never run later.
+  3. Hiding paused recorded footage and `_resumeAfterVisible` only resumed LIVE. It now resumes
+     whatever was playing (`_resumeOnShow`).
+  4. The stacked-layout player `<dialog>` was opened once in `firstUpdated`; a card that becomes
+     stacked AFTER its first render (every `layout: auto` card) got it closed — `display:none`,
+     no picture at all. `updated()` now re-asserts `open`.
+- **A stale pointer makes the timeline ignore EVERY tap.** `_onPointerUp` treats a release while
+  2+ pointers are tracked as the end of a pinch and returns — so one pointer whose release never
+  arrived (capture lost, element detached mid-press) turns every later tap into the "second
+  finger" and swallows it. A PRIMARY `pointerdown` now clears the map (a primary pointer means no
+  other is active), and `lostpointercapture` is handled as a cancel — never as a tap, which would
+  seek to whatever thumbnail is under it.
+- **`_checkStage` is the follow engine's last line of defence.** The follow watchdog only covers a
+  chunk that never becomes READY; after that there is one `play()`. A ready chunk that gets
+  paused or stalls behind the card's back used to park its first frame — the keyframe LEAD-IN,
+  a few seconds BEFORE the tapped time, which is the tell in a screenshot — with the playhead
+  stopped. Once a second: nudge `play()` after 2.5 s, restart from the frame on screen after
+  6 s; user pause, tap-to-play, the live-edge wait, loading, scrubbing and hidden are all
+  excluded (verified: a user Pause held 10 s is left alone).
 
 ## Decoder-free sprite preview — `SPRITE-PREVIEW-2026-08-04` (server side DONE, card side TODO)
 

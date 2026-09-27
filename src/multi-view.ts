@@ -13,22 +13,17 @@
 //
 // Playback reuses <upc-media-view> with the single card's event-clip contract
 // (see card.ts _playBand): padded start/end, that camera's footage spans for
-// tier-aware segment cutting, live=false. keyed() forces a remount per clip so
-// no media-view state can leak between clips/cameras.
+// tier-aware segment cutting, live=false. keyed() remounts it per CAMERA, not
+// per clip — see the note on mountKey in render().
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { CameraEntry, CardConfig, HomeAssistant } from './data/types';
 import { loadManifest, manifestToBand } from './data/manifest';
-import { groupBands } from './data/event-groups';
+import { clipSegments, groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
-import {
-  mergeStrip,
-  nextNewerMultiBand,
-  tagBands,
-  type MultiBand,
-} from './data/multi-events';
+import { mergeStrip, tagBands, type MultiBand } from './data/multi-events';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { THUMBS_BASE } from './data/ha-urls';
 import { navigate } from './data/navigate';
@@ -74,7 +69,19 @@ export class MultiView extends LitElement {
   @state() private _data = new Map<string, CameraData>(); // by camera entity_id
   @state() private _strip: MultiBand[] = []; // merged, newest-first
   @state() private _playback?: MultiBand; // undefined = live grid
-  private _playbackOrder: MultiBand[] = []; // stable all-camera order for the active autoplay chain
+  // A merged row is a display span, not a clip (43 raw events over 37m56s on
+  // 2026-09-19). It plays as this ORDERED PLAYLIST of short bounded clips, one
+  // small export each, instead of one export of the whole span — which measured
+  // 34.9s and 1.29 GB and took the whole instance down with it when retapped.
+  @state() private _segments: FootageSpan[] = [];
+  @state() private _segIdx = 0;
+  // Set by a seek that lands outside the loaded clip: the next segment is then
+  // exported FROM that instant rather than from its own start.
+  private _segSeek?: number;
+  // Set when the event's clip has finished and playback has rolled on into the
+  // footage after it: the media-view then gets no clip end and plays
+  // continuously from this instant.
+  @state() private _followFrom?: number;
   // Events browsing mode (header chevron): the strip becomes a grid LIST and
   // the live cameras are UNMOUNTED (no video decode while browsing events).
   @state() private _expanded = false;
@@ -359,7 +366,16 @@ export class MultiView extends LitElement {
     // drop back to the live grid (the stale player is unmounted). Skip the very
     // first mount (defaults already hold; render handles it).
     if (this.hasUpdated) {
-      this._resetToMain();
+      if (this._suspendedForFs) {
+        // Back from the fullscreen timeline a clip handed off to: this is not a
+        // re-entry, it is the same page resuming — keep the grid/strip, the
+        // loaded pages and the last-played highlight, and put the scroll back.
+        this._suspendedForFs = false;
+        this._keepLastPlayed = true;
+        void this._revealLastPlayed();
+      } else {
+        this._resetToMain();
+      }
       void this._fetchAll();
     }
   }
@@ -372,26 +388,91 @@ export class MultiView extends LitElement {
     this._loader.cancelAll(); // nothing will consume in-flight snapshots anymore
     // Leaving the view: drop any selected clip so the media-view unmounts NOW
     // (cancels its NVR export / stops playback) instead of lingering in state.
-    this._resetToMain();
+    // Not when a clip handed off to the fullscreen timeline — the card keeps
+    // this page alive (cached) exactly so it can come back as it was.
+    if (!this._suspendedForFs) this._resetToMain();
+  }
+
+  // Set by _onFsHandoff: the next detach is a trip to the fullscreen timeline
+  // and back, not leaving the page.
+  private _suspendedForFs = false;
+  private _savedScroll: Array<[Element, number, number]> = [];
+
+  /** Remember every scrolled element in this page, and every scrolled
+   *  ancestor (a popup or view that scrolls the page itself). Detaching the
+   *  page — which the card does while the fullscreen timeline is up — resets
+   *  scroll offsets, so "10 pages down, five days back" has to be put back by
+   *  hand. The elements themselves survive (the card caches this page). */
+  private _saveScroll(): void {
+    const saved: Array<[Element, number, number]> = [];
+    const walk = (root: ParentNode): void => {
+      for (const el of Array.from(root.querySelectorAll('*'))) {
+        if (el.scrollTop || el.scrollLeft) saved.push([el, el.scrollTop, el.scrollLeft]);
+        if (el.shadowRoot) walk(el.shadowRoot);
+      }
+    };
+    walk(this.renderRoot);
+    // The page itself: on the phone the expanded grid scrolls THIS element.
+    if (this.scrollTop || this.scrollLeft) saved.push([this, this.scrollTop, this.scrollLeft]);
+    let n: Node | null = this;
+    while (n) {
+      const parent: Node | null =
+        (n as Element).parentElement ?? ((n.getRootNode() as ShadowRoot).host || null);
+      if (parent instanceof Element && (parent.scrollTop || parent.scrollLeft)) {
+        saved.push([parent, parent.scrollTop, parent.scrollLeft]);
+      }
+      n = parent;
+    }
+    const doc = document.scrollingElement;
+    if (doc && doc.scrollTop) saved.push([doc, doc.scrollTop, doc.scrollLeft]);
+    this._savedScroll = saved;
+  }
+
+  private _restoreScroll(): void {
+    const saved = this._savedScroll;
+    this._savedScroll = [];
+    for (const [el, top, left] of saved) {
+      el.scrollTop = top;
+      el.scrollLeft = left;
+    }
+  }
+
+  // After a fullscreen hand-off: keep the watched clip highlighted in the strip
+  // as well as the grid, until another clip is picked or the page is left.
+  @state() private _keepLastPlayed = false;
+
+  /** Back from the fullscreen timeline: put the page back where it was, then
+   *  bring the clip that was playing into view and highlight it — in the grid,
+   *  the tablet column, the phone carousel, whichever this page is showing.
+   *  Restoring the old offsets alone is not enough: the strip had nothing to
+   *  highlight and the exact item is what the viewer is looking for. */
+  private async _revealLastPlayed(): Promise<void> {
+    await this.updateComplete;
+    // Both presentations: the event strip (phone carousel, both grids) and the
+    // tablet's events-list column. Each can reveal a clip by its key.
+    const lists = Array.from(this.renderRoot.querySelectorAll('upc-event-strip, upc-events-list'));
+    await Promise.all(lists.map((s) => (s as LitElement).updateComplete));
+    await new Promise((r) => requestAnimationFrame(r));
+    this._restoreScroll();
+    for (const s of lists) {
+      if ((s as unknown as { revealKey(k: string): boolean }).revealKey(this._lastPlayedKey)) break;
+    }
   }
 
   /** Return to the default main screen: no clip selected (live grid shown), not
    *  in the expanded events browser, default 2-column density, no last-played
    *  highlight. Used on every (re)entry so the view never resumes mid-clip. */
   private _resetToMain(): void {
-    this._playback = undefined;
-    this._playbackOrder = [];
+    this._closePlayback();
     this._expanded = false;
     this._lastPlayedKey = '';
+    this._keepLastPlayed = false;
     this._gridView = 2;
   }
 
   protected updated(changed: PropertyValues): void {
     if (changed.has('config') && this.config) {
-      this._playback = undefined;
-      this._playbackOrder = [];
-      this._expanded = false;
-      this._lastPlayedKey = '';
+      this._resetToMain();
       void this._fetchAll();
     }
     // Tablet expand: the freshly-mounted grid slides IN from the left + fades.
@@ -505,10 +586,31 @@ export class MultiView extends LitElement {
     // STAYS and the player opens as an overlay on top of it (see render).
     this._playback = band;
     this._lastPlayedKey = `${band.type}@${band.start}`;
+    this._keepLastPlayed = false; // a new pick: back to the normal highlight rule
+    // Built ONCE per selection, not per render: the end cap is wall-clock, so
+    // recomputing would hand the media-view a new range on every tick.
+    const d = this._data.get(band.camera);
+    this._segments = clipSegments(band, {
+      mode: this.config?.merged_playback ?? 'continuous',
+      maxMs: (this.config?.clip_segment_seconds ?? 120) * 1000,
+      joinMs: (this.config?.clip_segment_join_seconds ?? 10) * 1000,
+      preMs: d?.preMs ?? 0,
+      postMs: d?.postMs ?? 0,
+      endCapMs: Date.now(),
+    });
+    this._segIdx = 0;
+    this._segSeek = undefined;
+    this._followFrom = undefined;
   }
 
+  /** A seek that left the loaded clip: jump the cursor to that segment and
+   *  export from the exact instant asked for. */
+  private _onPlaylistSeek = (e: CustomEvent<{ time: number; index: number }>): void => {
+    this._segIdx = Math.max(0, Math.min(this._segments.length - 1, e.detail.index));
+    this._segSeek = e.detail.time;
+  };
+
   private _onStripSelect = (e: CustomEvent<MultiBand>): void => {
-    this._playbackOrder = [...this._strip];
     this._playBand(e.detail);
   };
 
@@ -543,22 +645,35 @@ export class MultiView extends LitElement {
 
   private _closePlayback = (): void => {
     this._playback = undefined; // media-view unmounts (cancels the NVR export)
-    this._playbackOrder = [];
+    this._segments = [];
+    this._segIdx = 0;
+    this._segSeek = undefined;
+    this._followFrom = undefined;
   };
 
   /** Advance through the merged all-camera event order, matching single view. */
   private _onClipEnded = (): void => {
     const current = this._playback;
     if (!current) return;
-    if (this.config?.autoplay_next_event ?? true) {
-      const next = nextNewerMultiBand(this._playbackOrder, current);
-      if (next) {
-        this._playBand(next);
-        return;
-      }
+    // A merged event is several segments: finish them before leaving the row.
+    // The next one is already prepared (media-view prefetches it), so this
+    // hands over without another visit to the preparation overlay.
+    if (this._segIdx + 1 < this._segments.length) {
+      this._segIdx++;
+      this._segSeek = undefined;
+      return;
     }
-    // Multi view has no single timeline to continue; return to the live grid.
-    this._closePlayback();
+    // Then keep rolling into the footage that FOLLOWS the event, exactly like
+    // the single-camera views do. These cameras record continuously, so what
+    // happens after an event is usually the interesting part. Dropping the clip
+    // end puts the media-view into continuous playback from that instant; the
+    // player stays where it is (`_playback` is what keeps it mounted).
+    this._followFrom = this._segments.length
+      ? this._segments[this._segments.length - 1].end
+      : current.end;
+    this._segments = [];
+    this._segIdx = 0;
+    this._segSeek = undefined;
   };
 
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -595,6 +710,26 @@ export class MultiView extends LitElement {
     );
   };
 
+  // The clip player's fullscreen button: open that camera's fullscreen TIMELINE
+  // (the same one a tile's fullscreen opens) at the moment on screen, so the
+  // footage carries on from there with the ruler alongside it. The clip here is
+  // closed first — leaving fullscreen returns to this page, not to a clip that
+  // would restart.
+  private _onFsHandoff = (e: CustomEvent<{ camera: string; time: number }>): void => {
+    // Come back to THIS page as it is (see _suspendedForFs): the scroll must be
+    // captured now, while the page is still attached and laid out.
+    this._saveScroll();
+    this._suspendedForFs = true;
+    this._closePlayback();
+    this.dispatchEvent(
+      new CustomEvent('camera-fullscreen-at', {
+        detail: e.detail,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  };
+
   // A grid tile's fullscreen button -> drill into that camera's single-camera
   // timeline (fully orchestrated by the card: live tick, rewind→delayed-follow)
   // and auto-enter fullscreen, so it's EXACTLY the timeline fullscreen. The card
@@ -623,7 +758,19 @@ export class MultiView extends LitElement {
     );
     const accent = this.config.accent_color ?? '#fc9df3';
     const b = this._playback;
+    // Which row the strip/list highlights — identifies the CLIP.
     const playKey = b ? `${b.type}@${b.start}` : '';
+    // What the player is keyed on — identifies the CAMERA. Keying the player
+    // per clip remounted it, and a fresh <video> with it, on every autoplay
+    // advance, which is the one thing iOS punishes: detaching a <video> does
+    // not free its decoder, the pipelines are capped, and the app wedges (one
+    // orphaned clip session at 17:02 on 2026-09-22, app silent from 17:01:24,
+    // while the BACKEND stayed provably healthy throughout). Advancing between
+    // events is the same move the segment playlist already makes without a
+    // remount: new targetTime/clipEndTime, and _loadSegment resets every
+    // per-clip field at its top. A CAMERA change still remounts, which is what
+    // the original key was really protecting (the poster/hold-frame latches).
+    const mountKey = b ? b.camera : '';
     const d = b ? this._data.get(b.camera) : undefined;
     // Fresh object each render so the grid re-renders when data/minute change.
     const newest: Record<string, MultiBand | undefined> = {};
@@ -631,7 +778,7 @@ export class MultiView extends LitElement {
 
     // Tablet (wide): UniFi-app split — events LIST on the left, cameras on the
     // right. Mobile (stacked) keeps the top-strip layout below.
-    if (!this.stacked) return this._renderTablet(entries, accent, b, playKey, d, newest);
+    if (!this.stacked) return this._renderTablet(entries, accent, b, playKey, mountKey, d, newest);
 
     return html`
       <upc-event-strip
@@ -645,6 +792,7 @@ export class MultiView extends LitElement {
         .itemTextSize=${(this.config.list_text_size ?? 12) + 1}
         .playingKey=${playKey}
         .lastPlayedKey=${this._lastPlayedKey}
+        .keepLastPlayed=${this._keepLastPlayed}
         .expanded=${this._expanded}
         .gridColumns=${2}
         .accent=${accent}
@@ -655,7 +803,7 @@ export class MultiView extends LitElement {
         ? b
           ? html`<div class="playoverlay" @click=${this._closePlayback}>
               ${keyed(
-                playKey,
+                mountKey,
                 html`<div class="playbox" @click=${(ev: Event) => ev.stopPropagation()}>
                   ${this._renderPlayer(b, d, accent)}
                   <span class="play-cam">${b.cameraName}</span>
@@ -667,7 +815,7 @@ export class MultiView extends LitElement {
         : html`<div class="body">
         ${b
           ? keyed(
-              playKey,
+              mountKey,
               html`<div class="playwrap">
                 ${this._renderPlayer(b, d, accent)}
                 <span class="play-cam">${b.cameraName}</span>
@@ -698,6 +846,7 @@ export class MultiView extends LitElement {
     accent: string,
     b: MultiBand | undefined,
     playKey: string,
+    mountKey: string,
     d: CameraData | undefined,
     newest: Record<string, MultiBand | undefined>,
   ) {
@@ -746,6 +895,7 @@ export class MultiView extends LitElement {
                 .timeSize=${cfg.strip_time_size ?? 12}
                 .playingKey=${playKey}
                 .lastPlayedKey=${this._lastPlayedKey}
+                .keepLastPlayed=${this._keepLastPlayed}
                 .expanded=${true}
                 .gridThumbWidth=${tabW}
                 .dateFontSize=${cfg.date_font_size ?? 13}
@@ -758,7 +908,7 @@ export class MultiView extends LitElement {
           ${b
             ? html`<div class="playoverlay" @click=${this._closePlayback}>
                 ${keyed(
-                  playKey,
+                  mountKey,
                   html`<div class="playbox" @click=${(ev: Event) => ev.stopPropagation()}>
                     ${this._renderPlayer(b, d, accent)}
                     <span class="play-cam">${b.cameraName}</span>
@@ -791,7 +941,7 @@ export class MultiView extends LitElement {
               .activeDurationSize=${cfg.list_active_duration_size ?? 12}
               .activeDurationColor=${cfg.list_active_duration_color ?? '#000'}
               .activeBg=${cfg.list_active_bg ?? cfg.list_highlight_color ?? '#fff'}
-              .playingKey=${playKey}
+              .playingKey=${playKey || (this._keepLastPlayed ? this._lastPlayedKey : '')}
               .dateFontSize=${cfg.date_font_size ?? 13}
               .dateFontColor=${cfg.date_font_color ?? '#ffffff'}
               .dividerColor=${accent}
@@ -803,7 +953,7 @@ export class MultiView extends LitElement {
         <div class="body">
           ${b
             ? keyed(
-                playKey,
+                mountKey,
                 html`<div class="playwrap">
                   ${this._renderPlayer(b, d, accent)}
                   <span class="play-cam">${b.cameraName}</span>
@@ -832,14 +982,29 @@ export class MultiView extends LitElement {
   /** The clip player, identical in both homes: the in-place .playwrap
    *  (collapsed page) and the .playbox lightbox over the expanded grid. */
   private _renderPlayer(b: MultiBand, d: CameraData | undefined, accent: string) {
+    // One PLAYLIST SEGMENT at a time. Falling back to the raw band range keeps
+    // a lone short event working when the playlist came out empty (its footage
+    // is newer than the NVR has flushed).
+    const seg = this._segments[this._segIdx];
+    // Past the end of the event: no clip end, which is the media-view's signal
+    // to play continuously from `targetTime` instead of a bounded clip.
+    const following = this._followFrom !== undefined;
+    const target = following
+      ? this._followFrom!
+      : this._segSeek ?? seg?.start ?? Math.max(b.start - (d?.preMs ?? 0), 0);
+    const end = following ? 0 : seg?.end ?? Math.min(b.end + (d?.postMs ?? 0), Date.now());
     return html`<upc-media-view
       .hass=${this.hass}
       .nvrId=${this._nvrIdFor(b.camera)}
       .cameraId=${b.camera}
       .gaps=${[]}
       .footageSpans=${d?.spans ?? []}
-      .targetTime=${Math.max(b.start - (d?.preMs ?? 0), 0)}
-      .clipEndTime=${Math.min(b.end + (d?.postMs ?? 0), Date.now())}
+      .targetTime=${target}
+      .clipEndTime=${end}
+      .clipPlaylist=${this._segments}
+      .clipPlaylistIndex=${this._segIdx}
+      .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
+      @playlist-seek=${this._onPlaylistSeek}
       .scrubbing=${false}
       .live=${false}
       .stacked=${this.stacked}
@@ -847,7 +1012,10 @@ export class MultiView extends LitElement {
       .previewDir=${''}
       .accent=${accent}
       .now=${Date.now()}
+      .fsHandoff=${true}
+      @fullscreen-handoff=${this._onFsHandoff}
       @clip-ended=${this._onClipEnded}
+      @clip-cancelled=${this._closePlayback}
     ></upc-media-view>`;
   }
 }

@@ -16,6 +16,7 @@
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, queryAll, state } from 'lit/decorators.js';
+import { cache } from 'lit/directives/cache.js';
 import type {
   CameraEntry,
   CardConfig,
@@ -37,7 +38,7 @@ import {
 } from './data/time-scale';
 import { fetchFootageGaps } from './data/gaps';
 import { navigate } from './data/navigate';
-import { groupBands } from './data/event-groups';
+import { clipSegments, groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
@@ -54,7 +55,7 @@ const BAND_REFRESH_MS = 30_000;
 // The card calls the sync service itself when the manifest is stale (job not
 // running / not run yet), at most once per SYNC_THROTTLE_MS.
 const SYNC_THROTTLE_MS = 2 * 60_000;
-const VERSION = '2.0.2';
+const VERSION = '2.1.0';
 
 // A playback-time step at least this large is a SKIP, not playback advancing;
 // the ruler glides across it. Well above the sub-second cadence of normal
@@ -119,6 +120,11 @@ export class UnifiProtectTimelineCard extends LitElement {
   @state() private _thumbVersion = 0; // bumped when a thumbnail finishes loading
   @state() private _playingBand?: DetectionBand; // event currently being played
   @state() private _clipEnd = 0; // when playing an event, its end (epoch ms); 0 = unbounded
+  // A merged event row can span half an hour of raw events. It is PLAYED as an
+  // ordered playlist of short bounded clips (one small export each) rather than
+  // one export of the whole span — see clipSegments() for the measurements.
+  @state() private _segments: FootageSpan[] = [];
+  @state() private _segIdx = 0;
   // The NVR's event list, consolidated for display (UniFi-style gap-merge):
   // each band may carry `members` = the raw events it merges.
   @state() private _manifestBands: DetectionBand[] = [];
@@ -672,7 +678,10 @@ export class UnifiProtectTimelineCard extends LitElement {
   /** Multi page → full single-camera timeline, in-card (slide in from the
    *  right). Same per-camera reset as _selectCamera + the single-mode init
    *  that _init() skips for multi. */
-  private _drillTo(camera: string, fullscreen = false): void {
+  /** `at`: open at that moment and play on from it instead of opening live —
+   *  the multi page's clip player hands off here when its fullscreen button is
+   *  pressed, so the fullscreen timeline continues the clip where it was. */
+  private _drillTo(camera: string, fullscreen = false, at?: number): void {
     this._drill = camera;
     this._drillFs = fullscreen;
     this._activeCamera = camera;
@@ -686,6 +695,13 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._postMs = 0;
     this._lastSyncTrigger = 0;
     this._resetToLive();
+    if (at !== undefined && this._domain && at < Date.now() - 3_000) {
+      // Same state a deliberate seek leaves behind (see _onRewind): not live,
+      // no clip, the ruler centred on `at` — continuous playback starts there.
+      this._liveMode = false;
+      this._targetTime = at;
+      this._domain = domainForPlayhead(at, spanOf(this._domain), this._phFrac());
+    }
     void this._fetchGaps(true);
     void this._fetchManifest();
     // Fullscreen drill (grid tile FS): skip the slide — the media-view goes
@@ -797,7 +813,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       list_divider_color: '',
       arrow_color: 'rgba(0,0,0,0.6)',
       live_arrow_bottom: 14,
-      autoplay_next_event: true,
       tick_color: '#4f4f4f',
       tick_size: 8,
       recorded_color: '#6e476a',
@@ -807,6 +822,10 @@ export class UnifiProtectTimelineCard extends LitElement {
       thumb_size: 87,
       thumb_size_active: 105,
       event_merge_gap_seconds: 60,
+      merged_playback: 'continuous',
+      clip_segment_seconds: 120,
+      clip_segment_join_seconds: 10,
+      max_clip_seconds: 600,
       list_text_size: 12,
       list_text_color: '',
       list_duration_color: '',
@@ -901,7 +920,14 @@ export class UnifiProtectTimelineCard extends LitElement {
     clearInterval(this._tick);
     clearInterval(this._bandInterval);
     clearTimeout(this._syncRefetchTimer);
+    // A pending settle is a release that already HAPPENED — commit it rather
+    // than drop it, or `_scrubbing` stays true and the view comes back parked on
+    // the scrub preview's frozen frame (the multi page keeps its state across a
+    // re-attach, so nothing else would clear it).
     clearTimeout(this._scrubSettleTimer);
+    const commit = this._pendingScrubCommit;
+    this._pendingScrubCommit = undefined;
+    commit?.();
     this._scrubPreviewScheduler.reset();
     this._hostRo?.disconnect();
     window.removeEventListener('pointerdown', this._outsideCalClose, true);
@@ -969,7 +995,7 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._liveMode = true;
     this._livePaused = false;
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
   }
 
   /** Server-side cache dir: explicit config, else /protect_thumbs/<cam id>.
@@ -1109,9 +1135,9 @@ export class UnifiProtectTimelineCard extends LitElement {
     if (this._liveMode || !this._domain) {
       this._onLive();
     } else {
-      clearTimeout(this._scrubSettleTimer);
+      this._cancelSettle();
       this._playingBand = undefined; // the band belonged to the old camera
-      this._clipEnd = 0; // ...and so did any bounded event clip
+      this._clearClip(); // ...and so did any bounded event clip
       this._livePaused = false;
       this._scrubbing = false;
       this._targetTime = Math.min(playheadTimeOf(this._domain, this._phFrac()), Date.now());
@@ -1201,7 +1227,7 @@ export class UnifiProtectTimelineCard extends LitElement {
   private _selectCalDay(y: number, m: number, day: number): void {
     this._closeCal();
     if (!this._domain) return;
-    clearTimeout(this._scrubSettleTimer); // date jump overrides a pending settle
+    this._cancelSettle(); // date jump overrides a pending settle
     const dayStart = new Date(y, m, day, 0, 0, 0, 0).getTime();
     if (this._mode === 'list') {
       const list = this.renderRoot.querySelector('upc-events-list') as EventsList | null;
@@ -1226,7 +1252,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       return;
     }
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
     this._scrubbing = false;
     this._livePaused = false;
     this._liveMode = false;
@@ -1320,7 +1346,7 @@ export class UnifiProtectTimelineCard extends LitElement {
   // ---- timeline events ----------------------------------------------------
 
   private _onScrubStart = (): void => {
-    clearTimeout(this._scrubSettleTimer); // new gesture supersedes a pending settle
+    this._cancelSettle(); // new gesture supersedes a pending settle
     this._scrubPreviewScheduler.reset();
     this._scrubbing = true;
     // Deliberately does NOT leave live: merely grabbing the timeline must not
@@ -1332,17 +1358,17 @@ export class UnifiProtectTimelineCard extends LitElement {
   /** Gesture ended still pinned at the live edge (rubber-band): nothing was
    *  scrubbed, live playback was never interrupted — just drop the scrub flag. */
   private _onScrubCancel = (): void => {
-    clearTimeout(this._scrubSettleTimer);
+    this._cancelSettle();
     this._scrubPreviewScheduler.reset();
     this._scrubbing = false;
   };
 
   private _onScrub = (e: CustomEvent<{ time: number }>): void => {
-    clearTimeout(this._scrubSettleTimer);
+    this._cancelSettle();
     this._scrubbing = true;
     this._liveMode = false; // any scrub motion (incl. wheel/trackpad) leaves live now
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
     this._scrubPreviewScheduler.push(e.detail.time);
   };
 
@@ -1350,14 +1376,26 @@ export class UnifiProtectTimelineCard extends LitElement {
   // export/playback — feels natural and avoids loading a clip the user is
   // about to scrub away from.
   private _scrubSettleTimer?: ReturnType<typeof setTimeout>;
+  // The commit that timer will run. Kept so a detach can still COMMIT it: the
+  // release already happened, and throwing it away left `_scrubbing` true for
+  // good — the stage parked on the scrub preview's frozen frame after HA
+  // re-attached the cached view.
+  private _pendingScrubCommit?: () => void;
+
+  /** Supersede a pending settle (a newer action decides the state instead). */
+  private _cancelSettle(): void {
+    clearTimeout(this._scrubSettleTimer);
+    this._pendingScrubCommit = undefined;
+  }
 
   private _onScrubEnd = (e: CustomEvent<{ time: number }>): void => {
     this._scrubPreviewScheduler.flush(e.detail.time);
     this._playingBand = undefined;
-    clearTimeout(this._scrubSettleTimer);
+    this._cancelSettle();
     const commit = (): void => {
+      this._pendingScrubCommit = undefined;
       this._scrubbing = false;
-      this._clipEnd = 0;
+      this._clearClip();
       this._livePaused = false;
       // Released within ~3s of now => treat as live; otherwise historical, so a
       // small deliberate rewind (5s, 30s) plays a clip instead of snapping live.
@@ -1365,7 +1403,10 @@ export class UnifiProtectTimelineCard extends LitElement {
     };
     const delay = this._config?.scrub_settle_ms ?? 700;
     if (delay <= 0) commit();
-    else this._scrubSettleTimer = setTimeout(commit, delay);
+    else {
+      this._pendingScrubCommit = commit;
+      this._scrubSettleTimer = setTimeout(commit, delay);
+    }
   };
 
   private _onDomainChange = (e: CustomEvent<TimeDomain>): void => {
@@ -1377,7 +1418,7 @@ export class UnifiProtectTimelineCard extends LitElement {
   private _onLive = (): void => {
     if (!this._domain) return;
     this._scrubPreviewScheduler.reset();
-    clearTimeout(this._scrubSettleTimer); // jump-to-live overrides a pending settle
+    this._cancelSettle(); // jump-to-live overrides a pending settle
     this._now = Date.now();
     const from = this._domain;
     const to = domainForPlayhead(this._now, spanOf(from), this._phFrac());
@@ -1390,7 +1431,7 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._liveMode = true;
     this._livePaused = false;
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
   };
 
   // The live view's "back 15s" control: drop out of live into delayed-follow at
@@ -1398,27 +1439,18 @@ export class UnifiProtectTimelineCard extends LitElement {
   private _onRewind = (e: CustomEvent<{ time: number }>): void => {
     if (!this._domain) return;
     this._scrubPreviewScheduler.reset();
-    clearTimeout(this._scrubSettleTimer);
+    this._cancelSettle();
     this._liveMode = false;
     this._livePaused = false;
     this._scrubbing = false;
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
     this._targetTime = e.detail.time;
     const from = this._domain;
     const to = domainForPlayhead(e.detail.time, spanOf(from), this._phFrac());
     this._domain = to;
     this._glideRulers(from, to);
   };
-
-  /** The next event NEWER than `after` (the row directly above it in the list). */
-  private _nextNewerBand(after: DetectionBand): DetectionBand | undefined {
-    let best: DetectionBand | undefined;
-    for (const b of this._viewBands) {
-      if (b.start > after.start && (!best || b.start < best.start)) best = b;
-    }
-    return best;
-  }
 
   // The playing footage drives the timeline position/time (not the HASS clock):
   // the video is buffered/delayed, so we follow the actual frame being shown.
@@ -1465,37 +1497,72 @@ export class UnifiProtectTimelineCard extends LitElement {
   private _playBand(band: DetectionBand): void {
     if (!this._domain) return;
     this._scrubPreviewScheduler.reset();
-    clearTimeout(this._scrubSettleTimer); // playing an event overrides a pending settle
+    this._cancelSettle(); // playing an event overrides a pending settle
     this._scrubbing = false;
     this._liveMode = false;
     this._playingBand = band;
-    this._clipEnd = Math.min(band.end + this._postMs, Date.now());
-    this._targetTime = Math.max(band.start - this._preMs, 0);
+    // Built once per selection (the end cap is wall-clock); a lone event yields
+    // a single segment, so short events behave exactly as they always have.
+    this._segments = clipSegments(band, {
+      mode: this._config?.merged_playback ?? 'continuous',
+      maxMs: (this._config?.clip_segment_seconds ?? 120) * 1000,
+      joinMs: (this._config?.clip_segment_join_seconds ?? 10) * 1000,
+      preMs: this._preMs,
+      postMs: this._postMs,
+      endCapMs: Date.now(),
+    });
+    this._segIdx = 0;
+
+    const seg = this._segments[0];
+    this._clipEnd = seg?.end ?? Math.min(band.end + this._postMs, Date.now());
+    this._targetTime = seg?.start ?? Math.max(band.start - this._preMs, 0);
     this._domain = domainForPlayhead(band.start, spanOf(this._domain), this._phFrac());
   }
+
+  /** Leave bounded-clip playback: no clip end, no playlist. */
+  private _clearClip(): void {
+    this._clipEnd = 0;
+    this._segments = [];
+    this._segIdx = 0;
+  }
+
+  /** Move to another segment of the merged event being played (seek bar drag
+   *  past the loaded clip, or the end of a segment). */
+  private _playSegment(index: number, from?: number): void {
+    const seg = this._segments[index];
+    if (!seg) return;
+    this._segIdx = index;
+    this._clipEnd = seg.end;
+    this._targetTime = from ?? seg.start;
+  }
+
+  private _onPlaylistSeek = (e: CustomEvent<{ time: number; index: number }>): void => {
+    this._playSegment(Math.max(0, Math.min(this._segments.length - 1, e.detail.index)), e.detail.time);
+  };
 
   // Tap on an events-list row -> play that event's (padded) clip.
   private _onEventSelected = (e: CustomEvent<DetectionBand>): void => {
     this._playBand(e.detail);
   };
 
-  // A bounded event clip finished playing. In list mode, either step to the next
-  // newer event (autoplay_next_event, default) or keep playing the timeline
-  // footage continuously from where the clip ended. Switching to Timeline while
-  // a clip runs takes the same continue-playing path (no jump to the next).
+  // A bounded event clip finished playing. ONE behaviour everywhere: keep
+  // rolling into the footage that follows the event. These cameras record
+  // continuously, so what comes after an event is usually the interesting part
+  // — and jumping to some other event instead is both surprising and expensive
+  // (every jump is another NVR export and another decode on the phone).
   private _onClipEnded = (): void => {
     if (!this._playingBand) return;
-    if (this._mode === 'list' && (this._config?.autoplay_next_event ?? true)) {
-      const next = this._nextNewerBand(this._playingBand);
-      if (next) {
-        this._playBand(next);
-        return;
-      }
+    // Finish the merged event's remaining segments first. The next one has
+    // already been prepared by the media-view's prefetch.
+    if (this._segIdx + 1 < this._segments.length) {
+      this._playSegment(this._segIdx + 1);
+      return;
     }
-    // Keep playing the footage from where the clip ended (no jump to next event).
+    // Clearing the clip end drops the media-view into continuous playback from
+    // this instant (see its updated(): no clipEndTime => _startFollow).
     this._targetTime = this._playingBand.end;
     this._playingBand = undefined;
-    this._clipEnd = 0;
+    this._clearClip();
   };
 
   /** The multi-camera page (card_version: multi): same ha-card + header shell
@@ -1530,6 +1597,8 @@ export class UnifiProtectTimelineCard extends LitElement {
           .stacked=${stacked}
           @camera-open=${(e: CustomEvent<string>) => this._drillTo(e.detail)}
           @camera-fullscreen=${(e: CustomEvent<string>) => this._drillTo(e.detail, true)}
+          @camera-fullscreen-at=${(e: CustomEvent<{ camera: string; time: number }>) =>
+            this._drillTo(e.detail.camera, true, e.detail.time)}
         ></upc-multi-view>
       </ha-card>
     `;
@@ -1722,8 +1791,23 @@ export class UnifiProtectTimelineCard extends LitElement {
   render() {
     if (!this._config) return nothing;
     // Multi page — unless drilled into a camera, which renders the normal
-    // single-camera UI below (state prepared by _drillTo).
-    if (this._isMulti && !this._drill) return this._renderMulti();
+    // single-camera UI (state prepared by _drillTo). The multi page is CACHED
+    // across a drill rather than rebuilt: its DOM is set aside while the
+    // camera page is up and reinserted afterwards, so coming back from a clip's
+    // fullscreen hand-off shows the same page — same grid/strip, same loaded
+    // pages, same highlight (multi-view restores the scroll itself). The camera
+    // page stays in its own part, built fresh on every drill exactly as before.
+    if (this._isMulti) {
+      return html`${cache(this._drill ? nothing : this._renderMulti())}${this._drill
+        ? this._renderSingle()
+        : nothing}`;
+    }
+    return this._renderSingle();
+  }
+
+  /** The single-camera page: a camera card, or the multi page drilled in. */
+  private _renderSingle() {
+    if (!this._config) return nothing;
     if (!this._domain) return html`<ha-card><div class="header">Loading…</div></ha-card>`;
     if (!this._nvrId) {
       return html`
@@ -1958,6 +2042,9 @@ export class UnifiProtectTimelineCard extends LitElement {
               .footageSpans=${this._footageSpans}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}
+              .clipPlaylist=${this._segments}
+              .clipPlaylistIndex=${this._segIdx}
+              .maxClipSeconds=${this._config.max_clip_seconds ?? 600}
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
               .liveAudioStart=${this._config.live_audio_start ?? 'muted'}
@@ -1974,6 +2061,7 @@ export class UnifiProtectTimelineCard extends LitElement {
               @playback-time=${this._onPlaybackTime}
         @playback-seek=${this._onPlaybackSeek}
               @clip-ended=${this._onClipEnded}
+              @playlist-seek=${this._onPlaylistSeek}
               @live-playing=${this._onLivePlaying}
               @go-live=${this._onLive}
               @rewind=${this._onRewind}

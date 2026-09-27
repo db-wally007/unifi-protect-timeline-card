@@ -498,6 +498,141 @@ def protect_thumbs_sync():
         )
 
 
+# ---- motion-driven immediacy ------------------------------------------------
+# The cron above is the RECONCILER, not the delivery path: it re-queries the NVR
+# window and rebuilds the manifest unconditionally, which is what makes this job
+# self-healing (a missed motion edge, an event the NVR revised after the fact, a
+# burst that arrived while HA was restarting, the rolling manifest trim and the
+# hourly thumbnail purge all get picked up without any special case). Measured
+# at 0.28 s of event-loop CPU per run — 0.47% of a core at one run a minute — so
+# it is kept at a minute BECAUSE it is cheap, not in spite of it.
+#
+# What the cron cannot do is be fast: an event surfaces up to 60 s late. So a
+# motion edge starts a FOLLOWER that syncs immediately and then keeps syncing on
+# a backoff while the burst is live, which puts a new event in the manifest a
+# couple of seconds after it happens. The follower is pure latency optimisation:
+# if it never ran at all, nothing would be lost — the next cron tick still
+# catches everything. That is deliberate, and it is why resolving the sensors by
+# convention below is safe.
+
+# Backoff between syncs while following a burst. The NVR does not always have
+# the event (or its thumbnail) the instant motion is reported, hence the retry.
+MOTION_BACKOFF_S = [0, 3, 6, 12, 20, 30]
+# Stop following one burst after this long; the cron owns it from then on.
+MOTION_FOLLOW_MAX_S = 300
+
+
+def _motion_sensors():
+    """The motion binary_sensor of each configured camera.
+
+    `unifi_protect_motion_sensors` (comma separated) wins if set. Otherwise the
+    UniFi Protect naming is assumed: the camera object_id minus its channel
+    suffix, plus `_motion` — `camera.front_door_high_resolution_channel` ->
+    `binary_sensor.front_door_motion`. Resolving at module load keeps the
+    trigger static (no dependency on unifiprotect having finished setting up),
+    and a wrong guess costs only immediacy, never correctness.
+    """
+    raw = _conf("motion_sensors")
+    if raw:
+        out = []
+        for chunk in str(raw).replace("\n", ",").split(","):
+            item = chunk.strip()
+            if item:
+                out.append(item if "." in item else "binary_sensor." + item)
+        return out
+    out = []
+    for cam_id in CAMERAS:
+        slug = CAMERAS[cam_id]
+        for suffix in ("_high_resolution_channel", "_medium_resolution_channel",
+                       "_low_resolution_channel", "_package_camera"):
+            if slug.endswith(suffix):
+                slug = slug[: -len(suffix)]
+                break
+        out.append("binary_sensor." + slug + "_motion")
+    return out
+
+
+MOTION_SENSORS = _motion_sensors()
+# A never-true expression keeps the decorator valid when nothing is configured.
+MOTION_TRIGGER = " or ".join(
+    ["%s == 'on'" % e for e in MOTION_SENSORS]) or "pyscript.no_motion_sensors == 'on'"
+
+
+def _is_on(entity):
+    """`entity` is on. state.get() RAISES NameError for an entity that does not
+    exist (a typo, or the integration not loaded yet); that reads as off here —
+    the cron is the safety net either way."""
+    try:
+        return state.get(entity) == "on"
+    except NameError:
+        return False
+
+
+def _burst_live():
+    """True while any camera still has motion, or an event we have not seen
+    closed yet — i.e. while another sync could still add something."""
+    for entity in MOTION_SENSORS:
+        if _is_on(entity):
+            return True
+    for cam_id in CAMERAS:
+        manifest = _read_json(os.path.join(BASE_DIR, CAMERAS[cam_id], "manifest.json"))
+        for entry in (manifest or {}).get("events") or []:
+            if entry.get("ongoing"):
+                return True
+    return False
+
+
+@state_trigger(MOTION_TRIGGER)
+def protect_thumbs_on_motion(**kwargs):
+    """Motion started: sync now, then follow the burst on a backoff."""
+    # One follower at a time. A second camera lighting up mid-burst does not
+    # need its own: a sync covers every camera in a single NVR query, and
+    # _burst_live() watches all of them.
+    task.unique("protect_thumbs_follow", kill_me=True)
+    started = datetime.now(timezone.utc).timestamp()
+    step = 0
+    while True:
+        # Via the service, not a direct call: protect_thumbs_sync() opens with
+        # task.unique(kill_me=True), which would kill THIS task if a cron run
+        # were already in flight. As a separate task it just no-ops instead,
+        # and that run produces the same data anyway.
+        service.call("pyscript", "protect_thumbs_sync")
+        if not _burst_live():
+            return
+        if datetime.now(timezone.utc).timestamp() - started >= MOTION_FOLLOW_MAX_S:
+            log.debug("protect_thumbs: burst still live after %ss — cron takes over",
+                      MOTION_FOLLOW_MAX_S)
+            return
+        delay = MOTION_BACKOFF_S[min(step, len(MOTION_BACKOFF_S) - 1)]
+        step += 1
+        if delay:
+            task.sleep(delay)
+
+
+@time_trigger("startup")
+@service
+def protect_thumbs_check_motion_sensors():
+    """Whether the motion triggers actually resolved — a silent typo would
+    otherwise just look like "events are a bit slow". Runs at startup and on
+    demand: service: pyscript.protect_thumbs_check_motion_sensors."""
+    if not MOTION_SENSORS:
+        log.warning("protect_thumbs: no motion sensors resolved — events will "
+                    "appear on the one-minute cron only")
+        return
+    missing = []
+    for entity in MOTION_SENSORS:
+        try:
+            state.get(entity)
+        except NameError:
+            missing.append(entity)
+    if missing:
+        log.warning("protect_thumbs: motion sensors not found: %s — set "
+                    "unifi_protect_motion_sensors to fix; events still arrive "
+                    "on the one-minute cron", ", ".join(missing))
+    else:
+        log.info("protect_thumbs: following motion on %s", ", ".join(MOTION_SENSORS))
+
+
 @service
 def protect_thumbs_list_cameras():
     """Log every Protect camera's id / name / mac so you can fill in

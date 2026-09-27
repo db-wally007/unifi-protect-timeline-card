@@ -850,12 +850,22 @@ export class ScrubberTimeline extends LitElement {
       el.removeEventListener('pointercancel', this._onPointerUp);
       el.removeEventListener('pointerleave', this._onPointerLeave);
       el.removeEventListener('wheel', this._onWheel);
+      el.removeEventListener('lostpointercapture', this._onLostCapture);
     }
     this._ro?.disconnect();
     cancelAnimationFrame(this._frame);
     cancelAnimationFrame(this._animRaf);
     this._cancelMomentum();
     this._cancelSeek();
+    // A gesture or glide cut off here never gets its release. Cancelling the
+    // glide above without closing its session is what left the card wedged in
+    // scrub mode after HA detached a cached view mid-seek: the stage kept the
+    // frozen preview frame, and the card's `scrubbing` never went false. Close
+    // it at wherever the playhead stopped — the event still reaches the card,
+    // which is detached along with us — and forget any pointer still down.
+    this._pointers.clear();
+    this._dragStartDomain = undefined;
+    if (this._scrubOpen) this._emitScrubEnd();
     window.removeEventListener('pointerdown', this._outsideZoomClose, true);
   }
 
@@ -901,7 +911,23 @@ export class ScrubberTimeline extends LitElement {
     el.addEventListener('pointercancel', this._onPointerUp);
     el.addEventListener('pointerleave', this._onPointerLeave);
     el.addEventListener('wheel', this._onWheel, { passive: false });
+    el.removeEventListener('lostpointercapture', this._onLostCapture);
+    el.addEventListener('lostpointercapture', this._onLostCapture);
   }
+
+  /** Capture was taken away WITHOUT a release (the element was hidden or
+   *  re-rendered mid-press) — the pointerup will land somewhere else, so this
+   *  is the last we hear of the pointer. Treat it as a cancel, never as a tap:
+   *  a tap here would seek to whatever thumbnail happens to be under it. A
+   *  normal release also fires this, but after _onPointerUp has already
+   *  forgotten the pointer, so it returns straight away. */
+  private _onLostCapture = (e: PointerEvent): void => {
+    if (!this._pointers.has(e.pointerId)) return;
+    this._pointers.delete(e.pointerId);
+    if (this._pointers.size) return;
+    this._dragStartDomain = undefined;
+    if (this._scrubOpen) this._emitScrubEnd();
+  };
 
   private _refreshRect(): void {
     this._rect = this._scrubEl.getBoundingClientRect();
@@ -953,6 +979,13 @@ export class ScrubberTimeline extends LitElement {
 
   private _onPointerDown = (e: PointerEvent): void => {
     const el = this._scrubEl;
+    // A PRIMARY pointer going down means no other pointer is active (a mouse is
+    // always primary; a touch is primary only when it is the first finger), so
+    // anything still in the map is a pointer whose release never reached us —
+    // capture lost, the element detached mid-press. Left there, it makes every
+    // later tap the "second finger" of a pinch: the release is swallowed by the
+    // multi-pointer branch of _onPointerUp and the timeline ignores all taps.
+    if (e.isPrimary && this._pointers.size) this._pointers.clear();
     try {
       el.setPointerCapture(e.pointerId);
     } catch {

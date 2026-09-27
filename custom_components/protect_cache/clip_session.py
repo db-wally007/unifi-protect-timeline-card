@@ -46,8 +46,9 @@ import logging
 import os
 import secrets
 import shutil
-import subprocess
 import time
+from contextlib import suppress
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -68,7 +69,25 @@ SESSIONS_DIR = "protect_sessions"
 # These exist so one pathological request can't run away.
 MAX_CONCURRENT_SESSIONS = 8
 SESSION_TTL = timedelta(minutes=30)
-MAX_CLIP_SECONDS = 1800  # 30 min ~= 1.5 GB (3 GB transient) at the measured 52 MB/min
+
+# A merged display event is NOT a clip: the card's gap-merge turned 43 raw motion
+# events into one 37m56s row, and asking for that span in one request measured
+# 34.9 s and 1.29 GB on disk (plus the same again through the remux) — while the
+# NVR also feeds the live streams. The card now plays such a row as a playlist of
+# ~120 s segments, so this ceiling is a backstop against a bug or a hand-written
+# config, not a normal path. Measured rate: ~50 MB per minute of footage.
+MAX_CLIP_SECONDS = 600  # 10 min ~= 525 MB, ~17 s to prepare
+
+# How long ONE export may take before it is abandoned. uiprotect asks the NVR
+# with timeout=0 (no timeout at all), so without this a wedged export holds a
+# request, a worker and a session directory indefinitely.
+EXPORT_TIMEOUT_S = 180
+
+# Concurrent BUILDS. The work is one NVR export plus a whole-file remux, so
+# letting eight run at once multiplies disk traffic and NVR load precisely when
+# the user is already waiting. Extra requests queue instead — and identical ones
+# do not even queue, they share the build in flight (see _inflight).
+MAX_CONCURRENT_BUILDS = 2
 
 # The export is streamed to disk by uiprotect (aiofiles), so HA's own memory
 # stays flat — otherwise we'd merely have moved the 370 MB problem off the phone
@@ -77,36 +96,62 @@ RAW_NAME = "raw.mp4"
 CLIP_NAME = "clip.mp4"
 
 
-def _ffmpeg_faststart(raw: str, out: str) -> None:
-    """Move `moov` to the front. Stream copy — no re-encode, ~0.3 s for 239 MB."""
+async def _ffmpeg_faststart(raw: str, out: str) -> None:
+    """Move `moov` to the front. Stream copy — no re-encode, ~0.3 s for 239 MB.
+
+    An asyncio subprocess, NOT `subprocess.run` in an executor: HA runs its
+    aiohttp app with `handler_cancellation=True`, so a client that gives up
+    cancels this coroutine — but a thread already inside `subprocess.run` cannot
+    be cancelled, so every abandoned request used to leave its ffmpeg grinding
+    through a multi-hundred-MB file. Retapping a slow clip therefore piled up
+    work that nothing could stop. Here cancellation propagates: the process is
+    killed and the partial output removed.
+    """
     tmp = f"{out}.tmp"
+    proc: asyncio.subprocess.Process | None = None
     try:
-        result = subprocess.run(
-            [
-                "ffmpeg", "-y", "-v", "error",
-                "-i", raw,
-                "-c", "copy",
-                "-movflags", "+faststart",
-                # -f is REQUIRED: the temp name ends in `.tmp`, and without an
-                # extension it recognises ffmpeg refuses to pick a muxer
-                # ("Unable to choose an output format").
-                "-f", "mp4",
-                tmp,
-            ],
-            check=False,
-            capture_output=True,
-            timeout=300,
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-v", "error",
+            "-i", raw,
+            "-c", "copy",
+            "-movflags", "+faststart",
+            # -f is REQUIRED: the temp name ends in `.tmp`, and without an
+            # extension it recognises ffmpeg refuses to pick a muxer
+            # ("Unable to choose an output format").
+            "-f", "mp4",
+            tmp,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode != 0:
+        try:
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+        except TimeoutError as err:
+            raise RuntimeError("ffmpeg remux timed out") from err
+        if proc.returncode != 0:
             # Surface ffmpeg's own message — a bare exit code says nothing.
-            detail = result.stderr.decode("utf-8", "replace").strip().splitlines()
-            raise RuntimeError(f"ffmpeg failed ({result.returncode}): {detail[0] if detail else '?'}")
+            detail = stderr.decode("utf-8", "replace").strip().splitlines()
+            raise RuntimeError(
+                f"ffmpeg failed ({proc.returncode}): {detail[0] if detail else '?'}"
+            )
         # Publish atomically: the URL is only ever handed out after this, but a
         # rename also means a crashed remux can never leave a servable stub.
-        os.replace(tmp, out)
+        await asyncio.to_thread(os.replace, tmp, out)
     finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        if proc is not None and proc.returncode is None:
+            with suppress(ProcessLookupError):
+                proc.kill()
+            with suppress(Exception):
+                await proc.wait()
+        if await asyncio.to_thread(os.path.exists, tmp):
+            await asyncio.to_thread(os.unlink, tmp)
+
+
+@dataclass
+class _Build:
+    """One in-flight build and how many clients are still waiting for it."""
+
+    task: asyncio.Task[tuple[str, int]]
+    waiters: int = 0
 
 
 class ClipSessionManager:
@@ -119,6 +164,15 @@ class ClipSessionManager:
         # remux happen OUTSIDE it so concurrent viewers don't queue behind each
         # other — multi-user is the whole point of per-session dirs.
         self._bookkeeping = asyncio.Lock()
+        # Sessions currently being built. The sweep must not evict one of these:
+        # at capacity it deletes the OLDEST directory, which can be a build in
+        # progress — the export then writes on happily to an unlinked inode and
+        # the remux fails on a file nobody can serve.
+        self._building: set[str] = set()
+        self._build_slots = asyncio.Semaphore(MAX_CONCURRENT_BUILDS)
+        # Identical in-flight requests (same camera + range), so the retaps that
+        # a slow export invites share one build instead of starting another.
+        self._inflight: dict[str, _Build] = {}
 
     # ---- paths ------------------------------------------------------------
 
@@ -158,6 +212,8 @@ class ClipSessionManager:
         alive.sort()
         while len(alive) >= MAX_CONCURRENT_SESSIONS:
             _, victim = alive.pop(0)
+            if os.path.basename(victim) in self._building:
+                continue  # never evict a session someone is still waiting for
             _LOGGER.debug("Evicting oldest clip session %s (at capacity)", victim)
             shutil.rmtree(victim, ignore_errors=True)
         return len(alive)
@@ -171,6 +227,11 @@ class ClipSessionManager:
                 lambda: os.makedirs(self.session_dir(sid), exist_ok=True)
             )
             return sid
+
+    def _forget(self, key: str, build: _Build) -> None:
+        """Drop a finished build from the in-flight map (done-callback)."""
+        if self._inflight.get(key) is build:
+            self._inflight.pop(key, None)
 
     async def destroy(self, sid: str) -> bool:
         """Remove one session directory. Safe to call twice."""
@@ -190,14 +251,71 @@ class ClipSessionManager:
         clip = self.clip_path(sid)
 
         # output_file= streams to disk inside uiprotect rather than buffering
-        # the whole export in memory.
-        await api.get_camera_video(camera_id, start, end, output_file=Path(raw))
-        if not os.path.exists(raw) or os.path.getsize(raw) == 0:
+        # the whole export in memory. The timeout is ours: uiprotect passes
+        # timeout=0 to the NVR, i.e. it would wait forever.
+        try:
+            async with asyncio.timeout(EXPORT_TIMEOUT_S):
+                await api.get_camera_video(camera_id, start, end, output_file=Path(raw))
+        except TimeoutError as err:
+            raise RuntimeError(
+                f"NVR export timed out after {EXPORT_TIMEOUT_S}s"
+            ) from err
+        size = await asyncio.to_thread(lambda: os.path.getsize(raw) if os.path.exists(raw) else 0)
+        if size == 0:
             raise RuntimeError("NVR returned an empty export")
 
-        await self.hass.async_add_executor_job(_ffmpeg_faststart, raw, clip)
-        await self.hass.async_add_executor_job(os.unlink, raw)
-        return os.path.getsize(clip)
+        await _ffmpeg_faststart(raw, clip)
+        await asyncio.to_thread(os.unlink, raw)
+        return await asyncio.to_thread(os.path.getsize, clip)
+
+    async def prepare(
+        self, api: Any, camera_id: str, start: datetime, end: datetime
+    ) -> tuple[str, int]:
+        """A ready session for this range: `(session_id, bytes)`.
+
+        Identical concurrent requests share one build — a slow export invites
+        retaps, and each used to start its own export of the same range.
+        """
+        key = f"{camera_id}|{start.isoformat()}|{end.isoformat()}"
+        build = self._inflight.get(key)
+        if build is None or build.task.done():
+            build = _Build(
+                task=asyncio.create_task(self._build_session(api, camera_id, start, end))
+            )
+            self._inflight[key] = build
+            build.task.add_done_callback(lambda _t: self._forget(key, build))
+
+        # Waiters are counted so the build outlives ONE client giving up (the
+        # retap case: the same range is asked for again a moment later) but not
+        # ALL of them — an export nobody is waiting for is pure load on the NVR
+        # and the disk, which is how this wedged the instance in the first place.
+        build.waiters += 1
+        try:
+            return await asyncio.shield(build.task)
+        finally:
+            build.waiters -= 1
+            if build.waiters <= 0 and not build.task.done():
+                _LOGGER.debug("No client left waiting for %s — cancelling build", key)
+                build.task.cancel()
+
+    async def _build_session(
+        self, api: Any, camera_id: str, start: datetime, end: datetime
+    ) -> tuple[str, int]:
+        """Allocate a directory and fill it, cleaning up on any failure."""
+        async with self._build_slots:
+            sid = await self.create()
+            self._building.add(sid)
+            try:
+                size = await self.build(sid, api, camera_id, start, end)
+            except BaseException:
+                # BaseException, not Exception: a cancelled request (the client
+                # navigated away, or a newer clip superseded this one) must not
+                # leave a multi-hundred-MB directory behind for the sweep.
+                await self.destroy(sid)
+                raise
+            finally:
+                self._building.discard(sid)
+            return sid, size
 
 
 class ProtectClipSessionView(HomeAssistantView):
@@ -262,12 +380,10 @@ class ProtectClipSessionView(HomeAssistantView):
                 f"Invalid camera ID: {camera_id}", web.HTTPNotFound.status_code
             )
 
-        sid = await self.manager.create()
         try:
-            size = await self.manager.build(sid, data.api, protect_camera_id, start, end)
+            sid, size = await self.manager.prepare(data.api, protect_camera_id, start, end)
         except Exception as err:  # noqa: BLE001 - report any export/remux failure as 502
-            await self.manager.destroy(sid)
-            _LOGGER.error("Clip session %s failed: %s", sid, err)
+            _LOGGER.error("Clip session failed (%s %s..%s): %s", camera_id, start, end, err)
             return self.json_message(
                 f"Could not prepare clip: {err}", web.HTTPBadGateway.status_code
             )

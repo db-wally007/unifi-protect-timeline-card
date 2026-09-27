@@ -11,6 +11,7 @@
 // path into a short-lived signed path via the auth/sign_path WS command.
 
 import type { HomeAssistant } from './types';
+import { APPLE_WEBKIT } from './platform';
 
 // Base URLs of the server-side caches maintained by the pyscript jobs. These
 // are NOT under /local: the files live in config/.cache/ (the one directory HA
@@ -125,6 +126,13 @@ export async function startClipSession(
 
 /** Drop a session's working directory. Best-effort: the server sweeps anyway. */
 export function endClipSession(hass: HomeAssistant, sessionId: string): void {
+  // IOS-FREEZE-2026-09-26: never on Apple WebKit. Every iPhone hang captured
+  // followed this DELETE (a `keepalive` request), and the first clip after
+  // opening the page — the only one with no DELETE before it — never hung.
+  // Nothing depends on it: the server reaps sessions itself (30-minute TTL,
+  // oldest-first eviction past MAX_CONCURRENT_SESSIONS), so skipping it only
+  // leaves a few files on disk a little longer.
+  if (APPLE_WEBKIT) return;
   void authFetch(hass, `/api/protect_clip/session/${encodeURIComponent(sessionId)}`, {
     method: 'DELETE',
     keepalive: true, // survives the view being torn down mid-flight

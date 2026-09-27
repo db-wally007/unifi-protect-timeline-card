@@ -33,13 +33,15 @@ import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
-import { buildVideoUrl, signPath, startClipSession, endClipSession } from './data/ha-urls';
+import { startClipSession, endClipSession, type ClipSession } from './data/ha-urls';
+import { APPLE_WEBKIT } from './data/platform';
 import { inGap } from './data/gaps';
 import {
   clipWatchdogAction,
   isCurrentClipSource,
   isPresentedClipFrame,
 } from './data/clip-playback';
+import { segmentIndexAt } from './data/event-groups';
 import {
   LiveHealthTracker,
   liveProgressValue,
@@ -73,6 +75,16 @@ interface HaLivePlayerElement extends HTMLElement {
 // chunks — and every chunk boundary is a leap-frog swap, i.e. one more place
 // playback can stall. Set back to true if adaptive/smart recording returns.
 const CUT_CHUNKS_AT_EVENTS = false;
+
+// IOS-FREEZE-2026-09-26 (see data/platform.ts): on Apple WebKit a video is never
+// left in the `ended` state — clips and follow chunks stop a moment before
+// their natural end — and a <video> is never drawn into a canvas. Neither was
+// the cause of the iPhone hang on its own (the 06:19 capture hung with the clip
+// paused 0.28 s early), but both remove media-stack work at the exact moment
+// the hang happens, on the engine iOS 26 has documented video hangs in.
+// How far before the end (seconds of MEDIA, at 1x) to stop. timeupdate fires
+// every ~250 ms on WebKit, so this has to be wider than one tick.
+const APPLE_END_MARGIN_S = 0.45;
 
 // How close to live a scrub has to be before the EXPERIMENTAL tip tier asks the
 // NVR for a fresh real-time clip. Comfortably wider than the tip's own 60s
@@ -126,6 +138,9 @@ const LIVE_STABLE_MS = 750;
 const LIVE_STALL_MS = 3_000;
 const LIVE_WEBRTC_STALL_MS = 3_000;
 const LIVE_AUDIO_VERIFY_MS = 350;
+// How long to keep the bridge up waiting for BOTH players to report a
+// program-date-time before giving up and cutting anyway.
+const BRIDGE_CLOCK_WAIT_MS = 3000;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
@@ -170,6 +185,21 @@ export class MediaView extends LitElement {
   // When > 0, play a single bounded clip ending at this epoch-ms (the event's
   // end) instead of a chunked window — so the player length = the event length.
   @property({ type: Number }) clipEndTime = 0;
+  // A merged event is played as a PLAYLIST of bounded clips, because its span is
+  // a display span, not a clip: the 2026-09-19 garden group was 43 raw events
+  // over 37m56s, and asking the NVR for that in one request measured 34.9s and
+  // 1.29 GB. The host owns the cursor; this is the whole ordered list, purely so
+  // the seek bar can span the group instead of the loaded segment, and so the
+  // NEXT segment can be prepared while the current one plays (a segment change
+  // otherwise freezes on "Preparing clip…" for the 0.6-4.1s it takes).
+  // Empty = a standalone clip: the bar spans the loaded video, as before.
+  @property({ attribute: false }) clipPlaylist: readonly FootageSpan[] = [];
+  @property({ type: Number }) clipPlaylistIndex = 0;
+  // Backstop for one request (seconds). Nothing should reach it now that groups
+  // play as a playlist; it is here so a bug or a hand-written config can never
+  // ask the NVR for a multi-gigabyte export again. Keep <= the server's
+  // MAX_CLIP_SECONDS (custom_components/protect_cache/clip_session.py).
+  @property({ type: Number }) maxClipSeconds = 600;
   // Accent color (matches the card's accent_color).
   @property() accent = '';
   // Delayed-follow target: how many seconds BEHIND live the continuous recording
@@ -187,6 +217,11 @@ export class MediaView extends LitElement {
   // Used by the multi page to open a live camera fullscreen from a grid tile
   // (same player/controls as the timeline), returning to the grid on exit.
   @property({ type: Boolean }) startFs = false;
+  // The host has a better fullscreen than this bare player: the fullscreen
+  // button hands off (`fullscreen-handoff`, with the camera and the moment on
+  // screen) instead of going fullscreen here. The multi page uses it to open
+  // the camera's own fullscreen TIMELINE at that moment.
+  @property({ type: Boolean }) fsHandoff = false;
   // The host slots a scrubber into `fs-timeline` — the UniFi-style overlay
   // ruler down the right edge of the FULLSCREEN player. It has to render inside
   // this element's subtree: fullscreen is either this host (element fullscreen)
@@ -257,6 +292,14 @@ export class MediaView extends LitElement {
   private _livePlayerGeneration = 0;
   @state() private _liveRestartKey = 0;
   @state() private _highLiveReady = false;
+  // One bridge handover per live session. Reset only by _resetLiveSession (a
+  // fresh live entry / camera change), NOT by _restartLivePlayer — a mid-session
+  // restart must not bring the bridge back and swap a second time.
+  @state() private _bridgeRetired = false;
+  private _bridgeSwapTimer?: ReturnType<typeof setTimeout>;
+  // When the high player first reported stable — the clock-wait deadline runs
+  // from here, not from the mount, so a slow cold start does not eat the budget.
+  private _highStableAt = 0;
   private _liveMountedAt = 0;
   private _liveStartupAttempts = 0;
   private _livePreviewWarmTimer?: ReturnType<typeof setTimeout>;
@@ -271,6 +314,11 @@ export class MediaView extends LitElement {
   @state() private _clipTime = 0; // clip playhead (s) for the M:SS / M:SS readout
   @state() private _clipDuration = 0; // clip length (s)
   @state() private _preparing = false; // server is exporting+remuxing the clip
+  // True while the clip being prepared is the NEXT SEGMENT of the merged event
+  // already on screen: the last frame is held and the overlay is transparent,
+  // instead of the black preparation screen a freshly selected event gets.
+  @state() private _segmentSwitch = false;
+  private _lastPlaylistKey = '';
   @state() private _clipBuffering = false;
   private _clipFrameGeneration = 0;
   private _clipFrameTimer?: ReturnType<typeof setTimeout>;
@@ -288,6 +336,14 @@ export class MediaView extends LitElement {
   // missed DELETE (force-quit, lost network) costs a directory for SESSION_TTL.
   private _sessionId?: string;
   private _sessionAbort?: AbortController;
+  // The NEXT playlist segment, prepared while the current one still plays, so a
+  // segment change does not stall on its export. Keyed by range so a superseded
+  // prefetch is recognised and its server-side directory released.
+  private _prefetch?: {
+    key: string;
+    abort: AbortController;
+    promise: Promise<ClipSession | undefined>;
+  };
   private _followCtrlTimer?: ReturnType<typeof setTimeout>;
   private _followToken = 0;
   // Recovery for a chunk that never becomes playable. Every step between "src
@@ -318,6 +374,30 @@ export class MediaView extends LitElement {
   private _followPlayhead = 0; // next content time (epoch ms) to fetch from
   private _followSwapArmed = false; // pre-swap fired for the active chunk
   private _followRetry?: ReturnType<typeof setTimeout>;
+  // The server clip session behind each slot's src, and the request that is
+  // preparing the next one. Chunks used to be fetched straight from the NVR
+  // export proxy into a 30 MB in-memory Blob — the one delivery the iPhone app
+  // would not reliably play, while it played the SAME footage as a prepared
+  // session file (faststart, served with HTTP Range) every time. So continuous
+  // playback now rides the clip pipeline too: the phone streams it like any
+  // clip and never holds a whole chunk in memory.
+  private _followSession: Record<'a' | 'b', string | undefined> = { a: undefined, b: undefined };
+  private _followAbort: Record<'a' | 'b', AbortController | undefined> = {
+    a: undefined,
+    b: undefined,
+  };
+  // Consecutive failures since a chunk last became ready (see _followFailed).
+  private _followFails = 0;
+  // When _checkStage last restarted playback (see there).
+  private _stageRestarts: number[] = [];
+  // Backoff between attempts at a chunk that FAILED (a request that errored or
+  // a video that errored). The list length IS the budget: past it playback
+  // stops with a message. Without a budget a chunk the device cannot play was
+  // re-exported every ~1.3 s forever — measured 29 downloads (~870 MB) in 40 s —
+  // which is what drowned the iPhone app ~20-30 s after a clip ended.
+  private static readonly FOLLOW_RETRY_DELAYS_MS = [1000, 3000, 8000];
+  // A prepare that takes longer than this is abandoned (and counts as a failure).
+  private static readonly FOLLOW_FETCH_TIMEOUT_MS = 45_000;
   // The NVR can't export the most recent ~8s (footage not finalized); hold the
   // chunk end this far behind wall-clock.
   private static readonly FOLLOW_AVAIL_LAG_MS = 8000;
@@ -368,6 +448,16 @@ export class MediaView extends LitElement {
   private _seekSamples: number[] = [];
 
   private _loadedForTime?: number;
+  // Set by connectedCallback on a RE-attach; updated() rebuilds the stage.
+  private _reattached = false;
+  // Continuous playback's position when it was torn down (see disconnectedCallback).
+  private _resumeAt?: number;
+  // Recorded footage was playing when the card was hidden: resume it on return.
+  private _resumeOnShow = false;
+  // Stage watchdog (see _checkStage).
+  private _stageWatch?: ReturnType<typeof setInterval>;
+  private _stageStuckSince = 0;
+  private _stageLastCt = -1;
   private _videoToken = 0;
   private _clipStart = 0; // real epoch ms the current segment was requested from
 
@@ -455,6 +545,25 @@ export class MediaView extends LitElement {
       background: #000;
       z-index: 3;
       pointer-events: none;
+    }
+    /* IOS-FREEZE-2026-09-26: the finished clip's own <video>, moved here at
+       the rollover so its last frame stays up while continuous footage loads
+       (Apple WebKit, where copying a frame into the canvas above is off). A
+       sibling of .stage for the same reason as .freeze. */
+    .parked {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: #000;
+    }
+    .parked[hidden] {
+      display: none;
+    }
+    .parked > video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     .stage {
       position: relative;
@@ -907,6 +1016,44 @@ export class MediaView extends LitElement {
       z-index: 4;
       background: #000;
     }
+    /* Segment change inside one merged event: the held frame stays visible
+       underneath (z-index 3), so the overlay only carries a spinner over a
+       soft dark blob — no black flash for a 2-3s export. */
+    .clip-status.over-frame {
+      background: transparent;
+      gap: 14px;
+    }
+    .clip-status.over-frame .scrim {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 190px;
+      height: 150px;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 50%;
+      filter: blur(34px);
+      z-index: 0;
+    }
+    .clip-status.over-frame .spinner,
+    .clip-status.over-frame .clip-cancel {
+      position: relative;
+      z-index: 1;
+    }
+    /* The overlay itself stays pointer-events:none so the stage keeps its
+       tap-to-toggle; only the button takes input. */
+    .clip-cancel {
+      pointer-events: auto;
+      margin-top: 4px;
+      padding: 7px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
     .clip-buffering {
       z-index: 4;
       background: transparent;
@@ -1001,15 +1148,32 @@ export class MediaView extends LitElement {
         this._streamReady = true;
       });
     }
+    this._stageWatch = setInterval(() => this._checkStage(), 1000);
+    // RE-attach (HA re-showing a cached view, a popup's content moved back in):
+    // disconnectedCallback tore every player down, but nothing about the
+    // properties changed, so updated() would otherwise leave an empty stage —
+    // the multi page keeps its drilled-in state across this, and came back to
+    // a picture that never moved again. Rebuild whatever was on screen.
+    if (this.hasUpdated) {
+      this._reattached = true;
+      this.requestUpdate();
+    }
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    clearInterval(this._stageWatch);
+    this._dropParkedClip();
+    // Where continuous playback had got to, so a re-attach resumes THERE and
+    // not back at the instant that was originally tapped.
+    this._resumeAt = this._followContentTime();
+    this._loadedForTime = undefined;
     this._resetAudioSession();
     clearTimeout(this._hideTimer);
     clearTimeout(this._followCtrlTimer);
     clearTimeout(this._scrubFineTimer);
     clearTimeout(this._livePreviewWarmTimer);
+    clearTimeout(this._bridgeSwapTimer);
     this._releaseFrame(); // stop the held-frame watcher's rAF loop
     document.removeEventListener('fullscreenchange', this._onFsChange);
     this.removeEventListener('pointerdown', this._keepCtrlAlive, true);
@@ -1017,6 +1181,7 @@ export class MediaView extends LitElement {
     this._visObserver?.disconnect();
     this._visObserver = undefined;
     this._stopLivePoll();
+    this._dropPrefetch(); // a prepared-but-unused segment is a server directory
     this._cancelLoad(); // don't leave an NVR export running for a dead view
     this._stopFollow();
     this._setClipSrc();
@@ -1054,9 +1219,18 @@ export class MediaView extends LitElement {
       this.clipEndTime > 0 &&
       (changed.has('clipEndTime') || changed.has('targetTime') || changed.has('cameraId'));
     if (enteringBoundedClip) {
-      // A clip has an honest preparation screen. Never cover it with a frame
-      // from LIVE, delayed history, or the previously selected event.
-      this._releaseFrame();
+      // Moving between segments of the SAME merged event is not a new clip —
+      // it is the same camera a moment later, so the picture on screen stays up
+      // (frozen) for the 2-3s the next segment takes, and the overlay is only a
+      // spinner over it. Selecting a DIFFERENT event still gets the honest
+      // preparation screen: never cover that with a frame from LIVE, delayed
+      // history, or the event before it.
+      const key = this._playlistKey();
+      this._segmentSwitch =
+        !!key && key === this._lastPlaylistKey && !changed.has('cameraId') && !!this._videoSrc;
+      this._lastPlaylistKey = key;
+      if (this._segmentSwitch) this._holdFrame();
+      else this._releaseFrame();
     } else if (
       changed.has('scrubbing') ||
       changed.has('live') ||
@@ -1074,7 +1248,13 @@ export class MediaView extends LitElement {
       // Deliberately not derived from `changed.get('live')`: the card can flip
       // live in a separate update from scrubbing, so that test silently failed
       // and left the first scrub with nothing to show but black.
-      this._holdFrame(leavingScrub, !leavingScrub);
+      // The poster is a picture of NOW: allowed only when LIVE is one side of
+      // this transition. It used to be allowed for every non-scrub transition,
+      // which included clip -> continuous footage: on the iPhone (where the
+      // frame copy is off) the viewer saw the clip end, black while the
+      // snapshot downloaded, then the CURRENT camera picture, then playback
+      // jumping back to where the clip ended.
+      this._holdFrame(leavingScrub, !leavingScrub && (this.live || changed.get('live') === true));
     }
     // Leaving live (or switching camera) unmounts the explicit player. Release
     // it HERE, while it is still in the tree — by updated() Lit has already
@@ -1143,8 +1323,21 @@ export class MediaView extends LitElement {
     if (visible === !this._hidden) return; // no state change
     this._hidden = !visible;
     if (this._hidden) {
+      // Remember whether recorded footage was PLAYING — closing a popup pauses
+      // it, and re-opening the popup is returning to it.
+      this._resumeOnShow =
+        !this.live &&
+        !this.scrubbing &&
+        ((this._followActive !== null && !this._followPaused) ||
+          (!!this._video && !!this._videoSrc && !this._video.paused));
       this._resetAudioSession();
       this._muteAndPauseAll();
+      // Leaving re-arms the bridge for the next visit. HA CACHES views, so this
+      // element comes back with its fields intact — without this the latch
+      // stayed set after the first handover and every later visit showed black
+      // while the (by then cold) high stream started.
+      this._bridgeRetired = false;
+      this._highStableAt = 0;
       if (this._liveStream) this._restartLivePlayer();
     }
     else this._resumeAfterVisible();
@@ -1180,10 +1373,18 @@ export class MediaView extends LitElement {
    *  paused live before the hide (`_livePausedState`, untouched by the forced
    *  hide-pause since the poll was stopped). Play DIRECTLY here rather than via
    *  _hideLiveTimeline: restarting the poll re-reports the still-paused frame as
-   *  a pause, which would gate _hideLiveTimeline's own resume. Historical clips
-   *  stay paused — we don't auto-resume a clip the user didn't return to. */
+   *  a pause, which would gate _hideLiveTimeline's own resume.
+   *  Recorded footage that was PLAYING when hidden resumes too. It used to stay
+   *  paused ("the user didn't return to it"), but becoming visible again IS the
+   *  return — re-opening the popup — and what it looked like was a picture that
+   *  had frozen for no reason, with the playhead stopped. */
   private _resumeAfterVisible(): void {
-    if (!this._liveStream) return;
+    if (!this._liveStream) {
+      const resume = this._resumeOnShow;
+      this._resumeOnShow = false;
+      if (resume && !this.scrubbing) this._resumeRecorded();
+      return;
+    }
     const v = this._liveVideo();
     if (v) {
       v.muted = this._liveMuted;
@@ -1191,6 +1392,105 @@ export class MediaView extends LitElement {
     }
     this._startLivePoll();
     this._hideLiveTimeline();
+  }
+
+  /** Restart the recorded player that the hide paused. A follow chunk that is
+   *  still loading needs nothing — its own chain plays it when it is ready. */
+  private _resumeRecorded(): void {
+    const slot = this._followActive;
+    if (slot) {
+      const v = this._followVideo(slot);
+      if (v && this._followMeta[slot].ready && !v.ended && !this._followPaused) {
+        v.muted = this._followMuted;
+        this._playFollowVideo(v);
+      }
+      return;
+    }
+    const v = this._video;
+    if (v && this._videoSrc && v.paused && !v.ended) {
+      v.muted = this._clipMuted;
+      v.play().catch(() => undefined);
+    }
+  }
+
+  /** Content time (epoch ms) of the continuous-playback frame on screen. */
+  private _followContentTime(): number | undefined {
+    const slot = this._followActive;
+    if (!slot) return undefined;
+    const v = this._followVideo(slot);
+    const m = this._followMeta[slot];
+    if (!v || !m.ready || !isFinite(v.duration) || v.duration <= 0) return undefined;
+    return m.end - v.duration * 1000 + v.currentTime * 1000;
+  }
+
+  /** Last line of defence for continuous playback.
+   *
+   *  The follow engine is a pure event chain. Its own watchdog only covers a
+   *  chunk that never becomes READY; after that there is exactly one play(), so
+   *  anything that pauses or stalls a ready chunk — a visibility flicker, a
+   *  decoder hiccup, a rejected play() that was not an autoplay block — parked
+   *  the chunk's first frame (the keyframe lead-in, a few seconds BEFORE the
+   *  tapped time) on screen with the playhead stopped, and nothing ever moved
+   *  it again. Once a second: a chunk that is ready, not ended, not paused by
+   *  the user and not advancing gets a play() nudge after 2.5 s, and a clean
+   *  restart from the frame on screen after 6 s. Every state in which "not
+   *  advancing" is legitimate — user pause, tap-to-play, waiting on the next
+   *  chunk at the live edge, loading, scrubbing, hidden — is excluded. */
+  private _checkStage(): void {
+    const slot = this._followActive;
+    const v = slot ? this._followVideo(slot) : null;
+    if (
+      !slot ||
+      !v ||
+      this._hidden ||
+      document.hidden ||
+      this.live ||
+      this.scrubbing ||
+      this._loadingVideo ||
+      this._followPaused ||
+      this._tapToPlay ||
+      this._followSwapArmed ||
+      !!this._error ||
+      !this._followMeta[slot].ready ||
+      v.ended
+    ) {
+      this._stageStuckSince = 0;
+      this._stageLastCt = -1;
+      return;
+    }
+    const ct = v.currentTime;
+    const moving = !v.paused && ct !== this._stageLastCt;
+    this._stageLastCt = ct;
+    if (moving) {
+      this._stageStuckSince = 0;
+      return;
+    }
+    const now = performance.now();
+    if (!this._stageStuckSince) {
+      this._stageStuckSince = now;
+      return;
+    }
+    const stuck = now - this._stageStuckSince;
+    if (stuck < 2500) return;
+    if (stuck < 6000) {
+      if (v.paused) this._playFollowVideo(v);
+      return;
+    }
+    const at = this._followContentTime() ?? this.targetTime;
+    this._stageStuckSince = 0;
+    this._stageLastCt = -1;
+    // Budgeted too: a restart re-exports two chunks, and a device that stalls
+    // every time must end on a message, not on a restart every 7 s forever.
+    this._stageRestarts = this._stageRestarts.filter((t) => now - t < 120_000);
+    if (this._stageRestarts.length >= 2) {
+      this._reportPlaybackProblem(`continuous playback stalled ${Math.round(stuck / 1000)}s — giving up`);
+      v.pause();
+      this._error = 'Playback keeps stalling on this device. Tap an event or the timeline to try again.';
+      return;
+    }
+    this._stageRestarts.push(now);
+    this._reportPlaybackProblem(`continuous playback stalled ${Math.round(stuck / 1000)}s — restarting`);
+    void this._startFollow(at);
   }
 
   private _hideTimer?: ReturnType<typeof setTimeout>;
@@ -1273,7 +1573,10 @@ export class MediaView extends LitElement {
     const highVideo = this._highLiveVideo();
     if (video.muted !== this._liveMuted) video.muted = this._liveMuted;
     this._reportLivePlaying(!video.paused);
-    const monitoredVideo = this._useWebRtcLive ? highVideo : video;
+    // While a bridge covers the stage, `video` IS the bridge — health has to be
+    // judged on the HIGH player or it would call the bridge "stable" and swap
+    // to a stream that has not started.
+    const monitoredVideo = this._bridgeActive ? highVideo : video;
     if (!monitoredVideo) return;
     const health = this._liveHealth.sample({
       identity: monitoredVideo,
@@ -1284,10 +1587,8 @@ export class MediaView extends LitElement {
       seeking: monitoredVideo.seeking,
       videoWidth: monitoredVideo.videoWidth,
     });
-    if (this._useWebRtcLive && health.stable && !this._highLiveReady) {
-      releaseVideosIn(this.renderRoot.querySelector('.live-bridge'));
-      this._highLiveReady = true;
-    }
+    if (health.stable && !this._highStableAt) this._highStableAt = performance.now();
+    if (this._bridgeActive && health.stable) this._handOverFromBridge();
     if (health.stable) this._liveStartupAttempts = 0;
     if (health.stable) this._scheduleLivePreviewWarm();
     if (health.stalled && !monitoredVideo.paused && !this._livePausedState) {
@@ -1364,6 +1665,14 @@ export class MediaView extends LitElement {
       }
     }
     if (changed.has('_isFs') && this.stacked) this._syncFsDialog();
+    // The player dialog only exists in STACKED layout, and firstUpdated opened
+    // it exactly once. A card that measures itself as stacked only AFTER its
+    // first render (layout: auto does, and so does rotating a phone) got the
+    // dialog CLOSED — and a closed <dialog> is display:none, so live and every
+    // kind of playback ran with no picture at all.
+    if (this.stacked && !this._isFs && !this._modalOn && this._fsDlg && !this._fsDlg.open) {
+      this._fsDlg.open = true;
+    }
     // HOLDFRAME-2026-08-05d: keep the poster preload warm ONLY while live is on
     // screen, and only every POSTER_REFRESH_MS so it costs one small fetch every
     // ten seconds rather than one per state update (entity_picture's token
@@ -1467,13 +1776,18 @@ export class MediaView extends LitElement {
       this._spriteReady = false;
       void this._warmPreview();
     }
+    // Consumed exactly once, by whichever branch below owns the stage now.
+    const reattached = this._reattached;
+    this._reattached = false;
     if (this._liveStream) {
       // <ha-camera-stream> renders the live feed; hide its seek bar (live has no
       // meaningful progress) while keeping play/volume/mute/fullscreen, and poll
       // its play/pause so the card can freeze the playhead when paused.
       if (changed.has('live') || changed.has('_streamReady')) {
         this._cancelLoad(); // back to live: stop any historical export in flight
+        this._dropParkedClip();
         this._error = undefined;
+        this._endSegmentRun();
         this._stopFollow();
         this._hideLiveTimeline();
         this._startLivePoll();
@@ -1491,8 +1805,11 @@ export class MediaView extends LitElement {
       this._stopFollow();
       this._setClipSrc();
       this._loadedForTime = undefined;
+      this._resumeAt = undefined; // the scrub picks the new position
+      this._dropParkedClip();
       this._loadingVideo = false;
       this._error = undefined;
+      this._endSegmentRun();
       void this._updatePreview();
       return;
     }
@@ -1509,6 +1826,7 @@ export class MediaView extends LitElement {
         void this._loadSegment(this.now, true);
       }
     } else if (
+      reattached ||
       changed.has('scrubbing') ||
       changed.has('targetTime') ||
       changed.has('live') ||
@@ -1533,12 +1851,25 @@ export class MediaView extends LitElement {
         } else {
           // Continuous DELAYED-FOLLOW from the chosen time: hold ~delaySeconds
           // behind live via gapless leap-frogged chunks. Never jumps to live.
+          // After a re-attach, carry on from where it had got to instead.
+          const from = reattached && this._resumeAt !== undefined ? this._resumeAt : this.targetTime;
+          // Rolling over from a clip that just finished: on Apple WebKit keep
+          // its last frame on screen until the footage is moving (see .parked).
+          if (APPLE_WEBKIT && this._videoSrc && !reattached) this._parkClipVideo();
           this._cancelLoad();
           this._setClipSrc();
-          void this._startFollow(this.targetTime);
+          void this._startFollow(from);
         }
       }
+      this._resumeAt = undefined;
     }
+  }
+
+  /** Leave a merged event's segment run: the next clip is a fresh selection,
+   *  so it gets the honest preparation screen, not a held frame. */
+  private _endSegmentRun(): void {
+    this._segmentSwitch = false;
+    this._lastPlaylistKey = '';
   }
 
   // ---- scrub preview --------------------------------------------------------
@@ -2196,8 +2527,13 @@ export class MediaView extends LitElement {
    *  (live fallback when no live stream element is available). */
   private async _loadSegment(startMs: number, trailing = false): Promise<void> {
     const token = ++this._videoToken;
+    this._clipFinished = false;
+    this._dropParkedClip();
     if (this._video) releaseVideo(this._video);
-    if (!trailing) this._releaseFrame();
+    // A segment change inside one merged event KEEPS the frame willUpdate just
+    // captured — releasing it here would put the black flash straight back.
+    // The watcher drops it as soon as the next segment presents a frame.
+    if (!trailing && !this._segmentSwitch) this._releaseFrame();
     this._cancelClipFrameWatch();
     this._setClipSrc();
     this._error = undefined;
@@ -2223,6 +2559,22 @@ export class MediaView extends LitElement {
     } else {
       end = Math.min(this.clipEndTime, this.now);
     }
+    // The NVR cannot export the last few seconds (not finalized yet) — the
+    // follow engine has always held FOLLOW_AVAIL_LAG_MS back for this, and an
+    // ONGOING event's end IS wall-clock, so the bounded path needs it too.
+    end = Math.min(end, this.now - MediaView.FOLLOW_AVAIL_LAG_MS);
+    // Backstop, not a policy: a merged group is played as a playlist of capped
+    // segments, so nothing should arrive here oversized. If something does, clip
+    // it rather than handing the NVR a multi-gigabyte export (measured: 1500s =
+    // 34.9s and 1.29 GB, with the same again through the remux).
+    const maxMs = Math.max(2, this.maxClipSeconds) * 1000;
+    if (end - start > maxMs) {
+      console.warn(
+        `[unifi-timeline] clip range ${Math.round((end - start) / 1000)}s exceeds ` +
+          `max_clip_seconds (${this.maxClipSeconds}s) — truncating`,
+      );
+      end = start + maxMs;
+    }
     this._endClipSession(); // supersede any previous clip's session
     if (end - start < 1500) {
       this._setClipSrc();
@@ -2247,15 +2599,12 @@ export class MediaView extends LitElement {
     // faststart file served with real Range, so the phone holds only its buffer.
     const ctl = new AbortController();
     this._sessionAbort = ctl;
+    // A fetch has no timeout of its own, uiprotect asks the NVR with timeout=0,
+    // and a backgrounded WKWebView can leave the promise pending for good — so
+    // without this the overlay can spin until the app is killed.
+    const deadline = setTimeout(() => ctl.abort(new DOMException('deadline', 'TimeoutError')), MediaView.PREPARE_DEADLINE_MS);
     try {
-      const session = await startClipSession(
-        this.hass,
-        this.nvrId,
-        this.cameraId,
-        start,
-        end,
-        ctl.signal,
-      );
+      const session = await this._takePrefetched(start, end, ctl.signal);
       if (token !== this._videoToken) {
         endClipSession(this.hass, session.session_id); // raced by a newer clip
         return;
@@ -2279,14 +2628,116 @@ export class MediaView extends LitElement {
       this._armClipFrameWatch('load');
     } catch (err) {
       if (token !== this._videoToken) return; // superseded or torn down
-      if ((err as Error)?.name === 'AbortError') return;
+      const name = (err as Error)?.name;
+      if (name === 'TimeoutError' || ctl.signal.reason?.name === 'TimeoutError') {
+        console.warn('[unifi-timeline] clip session timed out', err);
+        this._failClip('The NVR is taking too long to prepare this clip.');
+        return;
+      }
+      if (name === 'AbortError') return; // cancelled by the user or superseded
       console.warn('[unifi-timeline] clip session failed', err);
       this._failClip('Clip unavailable for this time range.');
     } finally {
+      clearTimeout(deadline);
       if (this._sessionAbort === ctl) this._sessionAbort = undefined;
-      if (token === this._videoToken) this._preparing = false;
+      if (token === this._videoToken) {
+        this._preparing = false;
+      }
     }
   }
+
+  // ---- playlist prefetch ----------------------------------------------------
+  // A merged group plays as consecutive bounded clips, and each one has to be
+  // exported before it can start (0.6s for a 14s segment, 4.1s for a 120s one).
+  // Preparing the NEXT segment while the current one still plays turns that into
+  // a seamless hand-over; without it playback freezes on the overlay at every
+  // segment boundary.
+
+  private static readonly PREPARE_DEADLINE_MS = 60_000;
+  // Start the next segment's export this long before the current one ends.
+  private static readonly PREFETCH_LEAD_MS = 20_000;
+
+  private static _rangeKey(start: number, end: number): string {
+    return `${Math.round(start)}-${Math.round(end)}`;
+  }
+
+  /** Identity of the merged event being played — same key across its segments,
+   *  different for another event. Empty for a standalone clip. */
+  private _playlistKey(): string {
+    const p = this.clipPlaylist;
+    return p.length > 1 ? `${p[0].start}:${p.length}` : '';
+  }
+
+  /** The session for [start, end]: the prefetched one when it matches, else a
+   *  fresh request. A non-matching prefetch is released, never left behind. */
+  private async _takePrefetched(
+    start: number,
+    end: number,
+    signal: AbortSignal,
+  ): Promise<ClipSession> {
+    const key = MediaView._rangeKey(start, end);
+    const pending = this._prefetch;
+    if (pending?.key === key) {
+      this._prefetch = undefined;
+      // Adopt the caller's signal: the deadline (and Cancel) must reach a
+      // prefetch that is still running, or waiting on it has no way out.
+      signal.addEventListener('abort', () => pending.abort.abort(), { once: true });
+      const session = await pending.promise;
+      if (session) return session;
+      if (signal.aborted) throw signal.reason ?? new DOMException('aborted', 'AbortError');
+      // The prefetch failed on its own; try once more in the foreground.
+    } else if (pending) {
+      this._dropPrefetch();
+    }
+    return startClipSession(this.hass, this.nvrId, this.cameraId, start, end, signal);
+  }
+
+  /** Prepare the next playlist segment if playback is close enough to its end. */
+  private _maybePrefetchNext(remainingS: number): void {
+    const next = this.clipPlaylist[this.clipPlaylistIndex + 1];
+    if (!next || this._preparing) return;
+    if (remainingS * 1000 > MediaView.PREFETCH_LEAD_MS) return;
+    const end = Math.min(next.end, this.now - MediaView.FOLLOW_AVAIL_LAG_MS);
+    if (end - next.start < 1500) return;
+    const key = MediaView._rangeKey(next.start, end);
+    if (this._prefetch?.key === key) return;
+    this._dropPrefetch();
+    const abort = new AbortController();
+    const promise = startClipSession(
+      this.hass,
+      this.nvrId,
+      this.cameraId,
+      next.start,
+      end,
+      abort.signal,
+    ).catch(() => undefined);
+    this._prefetch = { key, abort, promise };
+  }
+
+  /** Abandon a prefetch: stop the request AND delete whatever it already made. */
+  private _dropPrefetch(): void {
+    const pending = this._prefetch;
+    this._prefetch = undefined;
+    if (!pending) return;
+    pending.abort.abort();
+    void pending.promise.then((session) => {
+      if (session) endClipSession(this.hass, session.session_id);
+    });
+  }
+
+  /** The Cancel button on the preparation overlay. Supersedes the in-flight
+   *  request (so its late resolution is ignored) and lets the server go. */
+  private _cancelPrepare = (): void => {
+    this._videoToken++;
+    this._endClipSession();
+    this._dropPrefetch();
+    this._preparing = false;
+    this._loadingVideo = false;
+    this._clipBuffering = false;
+    this._setClipSrc();
+    this._error = 'Preparing cancelled.';
+    this.dispatchEvent(new CustomEvent('clip-cancelled', { bubbles: true, composed: true }));
+  };
 
   /** Release the current clip's server-side working directory. */
   private _endClipSession(): void {
@@ -2329,6 +2780,23 @@ export class MediaView extends LitElement {
     if (isFinite(v.duration) && v.duration > 0) this._clipProgress = v.currentTime / v.duration;
     this._clipTime = v.currentTime;
     if (isFinite(v.duration)) this._clipDuration = v.duration;
+    if (isFinite(v.duration) && v.duration > 0) {
+      this._maybePrefetchNext(v.duration - v.currentTime);
+    }
+    // IOS-FREEZE-2026-09-26: on Apple WebKit, stop just BEFORE the end so the
+    // element is paused, never `ended`, when it is released for what comes next.
+    if (
+      APPLE_WEBKIT &&
+      this.clipEndTime > 0 &&
+      !this._clipFinished &&
+      !v.paused &&
+      isFinite(v.duration) &&
+      v.duration > 1 &&
+      v.duration - v.currentTime < APPLE_END_MARGIN_S * Math.max(1, v.playbackRate)
+    ) {
+      v.pause();
+      this._finishClip();
+    }
   };
 
   /** Seconds -> "M:SS" (e.g. 5 -> "0:05", 75 -> "1:15"). */
@@ -2337,6 +2805,48 @@ export class MediaView extends LitElement {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  // ---- playlist position ----------------------------------------------------
+  // With a playlist the bar has to span the GROUP, not the loaded segment: the
+  // row says "37m56s", so a bar that fills up in 2 minutes and restarts is a
+  // lie. Positions are measured in PLAYED time (the sum of segment lengths),
+  // which equals wall-clock time in `continuous` mode and activity time when
+  // idle is skipped — in both cases it is what the viewer actually watches.
+
+  private get _hasPlaylist(): boolean {
+    return this.clipPlaylist.length > 1;
+  }
+
+  private get _playlistTotalS(): number {
+    let total = 0;
+    for (const s of this.clipPlaylist) total += s.end - s.start;
+    return total / 1000;
+  }
+
+  /** Played seconds before the current segment starts. */
+  private get _playlistOffsetS(): number {
+    let before = 0;
+    for (let i = 0; i < this.clipPlaylistIndex && i < this.clipPlaylist.length; i++) {
+      before += this.clipPlaylist[i].end - this.clipPlaylist[i].start;
+    }
+    // The loaded clip can start LATER than its segment (a seek re-exports from
+    // the seek point), so count the skipped head as already played.
+    const seg = this.clipPlaylist[this.clipPlaylistIndex];
+    if (seg && this._clipStart > seg.start) before += this._clipStart - seg.start;
+    return before / 1000;
+  }
+
+  /** Played time -> absolute epoch ms, walking the segments. */
+  private _timeAtPlayed(playedS: number): number {
+    let left = playedS * 1000;
+    for (const s of this.clipPlaylist) {
+      const len = s.end - s.start;
+      if (left < len) return s.start + left;
+      left -= len;
+    }
+    const last = this.clipPlaylist[this.clipPlaylist.length - 1];
+    return last ? last.end : 0;
   }
 
   // ---- clip seek bar (drag/click to scrub the fully-buffered blob) ----------
@@ -2349,10 +2859,40 @@ export class MediaView extends LitElement {
     const frac = this._forceRotate
       ? Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
       : Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    if (this._hasPlaylist) {
+      this._seekPlaylistTo(frac);
+      return;
+    }
     this._seekClipTo(frac * v.duration);
     this._clipProgress = frac;
     this._clipTime = v.currentTime;
     this._clipDuration = v.duration;
+  }
+
+  /** Seek the whole group. Inside the loaded segment this is a native seek —
+   *  instant, and the prepared file's HTTP Range means only the bytes around
+   *  the target are fetched. Past its edges the host has to move the cursor,
+   *  which costs one export (0.6-4.1s measured); the request then starts AT the
+   *  seek point, so it is never bigger than the rest of that segment. */
+  private _seekPlaylistTo(frac: number): void {
+    const v = this._video;
+    const target = this._timeAtPlayed(frac * this._playlistTotalS);
+    const loadedEnd = v && isFinite(v.duration) ? this._clipStart + v.duration * 1000 : 0;
+    if (v && target >= this._clipStart && target < loadedEnd) {
+      this._seekClipTo((target - this._clipStart) / 1000);
+      this._clipProgress = frac;
+      this._clipTime = v.currentTime;
+      this._clipDuration = v.duration;
+      return;
+    }
+    this._clipProgress = frac; // move the knob now; the segment follows
+    this.dispatchEvent(
+      new CustomEvent('playlist-seek', {
+        detail: { time: target, index: segmentIndexAt(this.clipPlaylist, target) },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private _onSeekDown = (e: PointerEvent): void => {
@@ -2551,11 +3091,20 @@ export class MediaView extends LitElement {
   // hand back to the card to pick the next event or fall into delayed-follow.
   private _onEnded = (event: Event): void => {
     if (this.clipEndTime <= 0 || !this._isCurrentClipEvent(event)) return;
+    this._finishClip();
+  };
+
+  // IOS-FREEZE-2026-09-26: the clip has been finished (stopped early on Apple
+  // WebKit, or ended naturally elsewhere) — report it exactly once per clip.
+  private _clipFinished = false;
+  private _finishClip(): void {
+    if (this._clipFinished) return;
+    this._clipFinished = true;
     this._cancelClipFrameWatch();
     this._clipBuffering = false;
     this._endClipSession();
     this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
-  };
+  }
 
   private _onVideoReady = (event: Event): void => {
     const v = this._isCurrentClipEvent(event);
@@ -2609,6 +3158,7 @@ export class MediaView extends LitElement {
     // auth expiry to retry), so an error here means the clip is unplayable.
     this._loadingVideo = false;
     this._clipBuffering = false;
+    this._preparing = false;
     this._cancelClipFrameWatch();
     this._error = message;
   }
@@ -2641,8 +3191,15 @@ export class MediaView extends LitElement {
     this._followWatchTries = { a: 0, b: 0 };
     this._tapToPlay = false;
     this._followActive = null;
-    if (this._followSrcA?.startsWith('blob:')) URL.revokeObjectURL(this._followSrcA);
-    if (this._followSrcB?.startsWith('blob:')) URL.revokeObjectURL(this._followSrcB);
+    // Abandon any chunk still being prepared and release the sessions behind
+    // both slots — each one is a file on the server.
+    for (const slot of ['a', 'b'] as const) {
+      this._followAbort[slot]?.abort();
+      this._followAbort[slot] = undefined;
+      const id = this._followSession[slot];
+      this._followSession[slot] = undefined;
+      if (id) endClipSession(this.hass, id);
+    }
     this._followSrcA = undefined;
     this._followSrcB = undefined;
     this._followMeta.a = { start: 0, end: 0, ready: false, leadIn: 0 };
@@ -2655,10 +3212,12 @@ export class MediaView extends LitElement {
    *  floor (~12s); slot A loads the first chunk, then B prefetches the next. */
   private async _startFollow(startMs: number): Promise<void> {
     this._stopFollow();
+    this._endSegmentRun();
     const token = ++this._followToken;
     this._error = undefined;
     this._loadingVideo = true;
     this._followPaused = false; // a fresh rewind plays; keep the mute preference
+    this._followFails = 0;
     this._nearLive = false; // recomputed on the first timeupdate
     this._followActive = 'a'; // mount the stage now (spinner until A buffers)
     this._flashFollowCtrl(); // flash the controls so they're discoverable
@@ -2669,17 +3228,19 @@ export class MediaView extends LitElement {
     const meta = await this._fetchFollowChunk('a', start, token);
     if (token !== this._followToken) return;
     // Footage for this instant isn't finalized yet — retry; A activates on load.
-    if (!meta) this._scheduleFollowRetry('a', start, token);
+    if (meta === null) this._scheduleFollowRetry('a', start, token);
   }
 
-  /** Fetch the chunk starting at `startMs` into `slot`: end at the next tier
+  /** Prepare the chunk starting at `startMs` into `slot`: end at the next tier
    *  boundary (single-quality export), capped at the availability edge and a max
-   *  length. Returns the chunk range, or null when nothing is available yet. */
+   *  length. Returns the chunk range; null when nothing is available yet (no
+   *  request was made — cheap to retry) or when superseded; `false` when the
+   *  request FAILED, which _followFailed has already dealt with. */
   private async _fetchFollowChunk(
     slot: 'a' | 'b',
     startMs: number,
     token: number,
-  ): Promise<{ start: number; end: number } | null> {
+  ): Promise<{ start: number; end: number } | null | false> {
     let start = startMs;
     // Skip a camera-offline gap: jump the playhead to where footage resumes.
     const g = this.gaps.find((gap) => start >= gap.start && start < gap.end);
@@ -2690,29 +3251,43 @@ export class MediaView extends LitElement {
     const availEdge = this.now - MediaView.FOLLOW_AVAIL_LAG_MS;
     if (end > availEdge) end = availEdge;
     if (end - start < 1500) return null; // not enough finalized footage yet
-    const raw = buildVideoUrl(this.nvrId, this.cameraId, start, end);
-    const signed = await signPath(this.hass, raw, 300);
-    if (token !== this._followToken) return null;
-    // Fetch the whole (small, ~0.2s) chunk as a BLOB rather than streaming it:
-    // the export proxy has no HTTP range support, so a streamed <video> can only
-    // seek within already-buffered bytes — seeking past the keyframe lead-in
-    // silently clamps to 0 and the chunk replays it (drift). A fully-downloaded
-    // blob is range-seekable in memory, so the lead-in skip lands every time.
-    let objUrl: string;
+    // A prepared clip SESSION, not the raw export proxy: the session is the same
+    // footage remuxed with its index up front and served with HTTP Range, so the
+    // <video> streams it and seeks past the keyframe lead-in natively. (The
+    // proxy has no Range support, which is why chunks used to be pulled whole
+    // into a Blob — the delivery the iPhone app would not reliably play.)
+    this._followAbort[slot]?.abort();
+    const ctl = new AbortController();
+    this._followAbort[slot] = ctl;
+    const deadline = setTimeout(
+      () => ctl.abort(new DOMException('deadline', 'TimeoutError')),
+      MediaView.FOLLOW_FETCH_TIMEOUT_MS,
+    );
+    let session: ClipSession;
     try {
-      const resp = await fetch(signed);
-      if (!resp.ok || token !== this._followToken) return null;
-      const blob = await resp.blob();
-      if (token !== this._followToken) return null;
-      objUrl = URL.createObjectURL(blob);
-    } catch {
+      session = await startClipSession(this.hass, this.nvrId, this.cameraId, start, end, ctl.signal);
+    } catch (err) {
+      // Superseded (a newer chunk, a stop, a teardown): not a failure.
+      if (token !== this._followToken || this._followAbort[slot] !== ctl) return null;
+      const why = ctl.signal.reason?.name === 'TimeoutError' ? 'timed out' : String(err);
+      this._followFailed(slot, start, token, `prepare ${why}`);
+      return false;
+    } finally {
+      clearTimeout(deadline);
+      if (this._followAbort[slot] === ctl) this._followAbort[slot] = undefined;
+    }
+    if (token !== this._followToken) {
+      endClipSession(this.hass, session.session_id); // raced by a stop / newer start
       return null;
     }
-    const prev = slot === 'a' ? this._followSrcA : this._followSrcB;
-    if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+    // The slot's previous chunk has finished playing (only a standby or a fresh
+    // slot is ever refilled); release its file once the <video> has let go.
+    const prevSession = this._followSession[slot];
+    this._followSession[slot] = session.session_id;
+    if (prevSession) setTimeout(() => endClipSession(this.hass, prevSession), 5000);
     this._followMeta[slot] = { start, end, ready: false, leadIn: 0 };
-    if (slot === 'a') this._followSrcA = objUrl;
-    else this._followSrcB = objUrl;
+    if (slot === 'a') this._followSrcA = session.url;
+    else this._followSrcB = session.url;
     void this._kickFollowSlot(slot, token); // don't wait on preload goodwill
     return { start, end };
   }
@@ -2790,11 +3365,10 @@ export class MediaView extends LitElement {
       if (!v || m.ready) return;
       const active = slot === this._followActive;
       if (this._followWatchTries[slot] >= 2) {
-        // Both nudges failed. Re-fetch the chunk outright — the blob or the
-        // decoder is the problem, not the element.
+        // Both nudges failed. Re-fetch the chunk outright — the file or the
+        // decoder is the problem, not the element. Budgeted like any failure.
         this._followWatchTries[slot] = 0;
-        if (active) this._loadingVideo = true;
-        this._scheduleFollowRetry(slot, m.start, token);
+        this._followFailed(slot, m.start, token, `slot ${slot} never became playable`);
         return;
       }
       if (this._followWatchTries[slot] === 0) {
@@ -2819,7 +3393,7 @@ export class MediaView extends LitElement {
     const from = this._followPlayhead;
     void this._fetchFollowChunk(standby, from, token).then((meta) => {
       if (token !== this._followToken) return;
-      if (!meta) this._scheduleFollowRetry(standby, from, token);
+      if (meta === null) this._scheduleFollowRetry(standby, from, token);
     });
   }
 
@@ -2829,9 +3403,62 @@ export class MediaView extends LitElement {
       if (token !== this._followToken) return;
       void this._fetchFollowChunk(slot, startMs, token).then((meta) => {
         if (token !== this._followToken) return;
-        if (!meta) this._scheduleFollowRetry(slot, startMs, token);
+        if (meta === null) this._scheduleFollowRetry(slot, startMs, token);
       });
     }, 700);
+  }
+
+  /** A chunk FAILED — its request errored, its <video> errored, or it never
+   *  became playable. Retry with backoff, and give up with a message once
+   *  FOLLOW_RETRY_DELAYS_MS is spent. Every attempt is a full NVR export, so an
+   *  unbounded retry here is not "resilience": it is a device the footage can
+   *  never play downloading it forever. */
+  private _followFailed(slot: 'a' | 'b', startMs: number, token: number, why: string): void {
+    if (token !== this._followToken) return;
+    const delays = MediaView.FOLLOW_RETRY_DELAYS_MS;
+    this._followFails++;
+    this._reportPlaybackProblem(`continuous playback: ${why} (attempt ${this._followFails})`);
+    clearTimeout(this._followRetry);
+    this._followRetry = undefined;
+    if (this._followFails > delays.length) {
+      this._followToken++; // strand every callback still in flight
+      for (const s of ['a', 'b'] as const) this._followAbort[s]?.abort();
+      this._dropParkedClip();
+      this._loadingVideo = false;
+      this._error = 'This footage could not be played. Tap an event or the timeline to try again.';
+      return;
+    }
+    if (slot === this._followActive) this._loadingVideo = true;
+    this._followRetry = setTimeout(() => {
+      if (token !== this._followToken) return;
+      void this._fetchFollowChunk(slot, startMs, token).then((meta) => {
+        if (token !== this._followToken) return;
+        if (meta === null) this._scheduleFollowRetry(slot, startMs, token);
+      });
+    }, delays[this._followFails - 1]);
+  }
+
+  /** Put a playback failure in the Home Assistant log, with the device it
+   *  happened on. The failures that matter most happen on phones, where there is
+   *  no console to read; this is what makes them diagnosable afterwards.
+   *  Capped per page load so a failure can never turn into log spam. */
+  private static _problemsReported = 0;
+  private _reportPlaybackProblem(message: string): void {
+    console.warn(`[unifi-timeline] ${message}`);
+    if (MediaView._problemsReported >= 10 || !this.hass) return;
+    MediaView._problemsReported++;
+    void this.hass
+      .callWS({
+        type: 'call_service',
+        domain: 'system_log',
+        service: 'write',
+        service_data: {
+          message: `unifi-protect-timeline-card: ${message} — ${this.cameraId} — ${navigator.userAgent}`,
+          level: 'warning',
+          logger: 'unifi_protect_timeline_card',
+        },
+      })
+      .catch(() => undefined);
   }
 
   /** A follow slot finished buffering. Active slot -> start playing + prefetch
@@ -2865,6 +3492,7 @@ export class MediaView extends LitElement {
     m.ready = true;
     clearTimeout(this._followWatch[slot]); // this slot made it
     this._followWatchTries[slot] = 0;
+    this._followFails = 0; // the budget is for CONSECUTIVE failures
     const v = this._followVideo(slot);
     if (!v) return;
     if (slot === this._followActive) {
@@ -2884,6 +3512,10 @@ export class MediaView extends LitElement {
     const v = this._followVideo(slot);
     const m = this._followMeta[slot];
     if (!v || !isFinite(v.duration)) return;
+    // Continuous footage is on screen and moving: the parked clip frame can go.
+    if (this._parked && m.ready && !v.paused && v.currentTime > m.leadIn + 0.05) {
+      this._dropParkedClip();
+    }
     // content(ct) = end − duration + ct (the clip ends at `end`).
     const real = m.end - v.duration * 1000 + v.currentTime * 1000;
     this.dispatchEvent(
@@ -2894,6 +3526,23 @@ export class MediaView extends LitElement {
     const near = this.now - real < this._nearLiveMs;
     if (near !== this._nearLive) this._nearLive = near; // reactive -> prompt UI
     if (near && this._followRate !== 1) this._setFollowRate(1);
+    // IOS-FREEZE-2026-09-26: on Apple WebKit a chunk must never reach `ended`
+    // (its slot is refilled with the next chunk right after). Hand over a moment
+    // early; if the next chunk is not ready yet, pause here and let
+    // _followSlotReady complete the swap the moment it is.
+    if (
+      APPLE_WEBKIT &&
+      !v.paused &&
+      !this._followSwapArmed &&
+      v.duration - v.currentTime < APPLE_END_MARGIN_S * Math.max(1, v.playbackRate)
+    ) {
+      const standby = slot === 'a' ? 'b' : 'a';
+      if (this._followMeta[standby].ready) this._swapFollow();
+      else {
+        v.pause();
+        this._followSwapArmed = true;
+      }
+    }
   }
 
   private _onFollowEnded(slot: 'a' | 'b'): void {
@@ -2928,14 +3577,24 @@ export class MediaView extends LitElement {
   }
 
   private _onFollowError(slot: 'a' | 'b'): void {
-    if (this._followMeta[slot].start === 0) return; // empty/placeholder src
-    if (slot !== this._followActive) {
-      this._followMeta[slot].ready = false;
-      return;
-    }
-    // Active chunk failed — re-fetch from the same point (decoder hiccup); a
-    // persistent failure just keeps retrying rather than surfacing an error.
-    this._scheduleFollowRetry(slot, this._followMeta[slot].start, this._followToken);
+    const m = this._followMeta[slot];
+    if (m.start === 0) return; // empty/placeholder src
+    // Only an error from the source the slot is SUPPOSED to hold counts. Clearing
+    // or replacing a src makes WebKit report an error for the old one, and that
+    // must not be charged to the chunk that replaced it.
+    const v = this._followVideo(slot);
+    const want = slot === 'a' ? this._followSrcA : this._followSrcB;
+    if (!v || !want || v.src !== new URL(want, location.href).href) return;
+    // Either slot: a standby that failed would otherwise leave the next swap
+    // waiting on it forever. Both go through the same budgeted retry.
+    m.ready = false;
+    const err = v.error;
+    this._followFailed(
+      slot,
+      m.start,
+      this._followToken,
+      `slot ${slot} video error ${err?.code ?? '?'}${err?.message ? ` (${err.message})` : ''}`,
+    );
   }
 
   // ---- delayed-follow custom controls (play/pause, mute, fullscreen) --------
@@ -2948,6 +3607,56 @@ export class MediaView extends LitElement {
   // player down and builds another. The <video> goes blank the moment its src
   // drops, so the stage flashed black for a second or two. The UniFi app never
   // does: it holds the last frame until the next one is ready.
+  // IOS-FREEZE-2026-09-26: the finished clip's own <video>, kept on screen at
+  // the rollover (see .parked). Apple WebKit only.
+  @state() private _parkedOn = false;
+  private _parked?: HTMLVideoElement;
+  private _parkedTimer?: ReturnType<typeof setTimeout>;
+
+  /** Keep the finished clip's last frame up while continuous playback loads,
+   *  by MOVING its <video> into the .parked layer beside the stage (the stage
+   *  itself is about to be replaced). No copy, no snapshot, no network — the
+   *  element simply keeps showing the frame it already has. It stops being
+   *  `video.clip`, so nothing else treats it as the current clip, and every
+   *  event it fires is ignored (_isCurrentClipEvent no longer matches it). */
+  private _parkClipVideo(): void {
+    const v = this._video;
+    const layer = this.renderRoot.querySelector('.parked');
+    if (!v || !layer || v.readyState < 2 || v.videoWidth === 0) return;
+    this._dropParkedClip();
+    v.pause();
+    const at = v.currentTime;
+    v.classList.remove('clip');
+    layer.appendChild(v);
+    // Moving the element makes iOS re-attach its video layer, and what it then
+    // shows is the most recent KEYFRAME, not the frame it was paused on — on
+    // these ~4-5 s-GOP cameras that was a frame from the 4th second of a 7 s
+    // clip (reported 2026-09-26; the Mac keeps the exact frame). Seeking back to
+    // the same instant makes it decode forward to that frame again.
+    try {
+      v.currentTime = at;
+    } catch {
+      /* element went away */
+    }
+    this._parked = v;
+    this._parkedOn = true;
+    // Backstop: never outlive a continuous start that stalls or fails.
+    this._parkedTimer = setTimeout(() => this._dropParkedClip(), 15_000);
+  }
+
+  /** Remove the parked clip (continuous playback is on screen, or the view
+   *  moved on). Released without a DELETE on Apple WebKit (see ha-urls). */
+  private _dropParkedClip(): void {
+    clearTimeout(this._parkedTimer);
+    this._parkedTimer = undefined;
+    const v = this._parked;
+    this._parked = undefined;
+    this._parkedOn = false;
+    if (!v) return;
+    releaseVideo(v);
+    v.remove();
+  }
+
   @state() private _frozen = false;
   @query('canvas.freeze') private _freezeCanvas?: HTMLCanvasElement;
   @query('img.freeze') private _freezeImg?: HTMLImageElement;
@@ -3048,7 +3757,13 @@ export class MediaView extends LitElement {
     // flash on the jump-to-live arrow. "Lowest priority" is enforced where it
     // belongs — on RELEASE: the watcher drops the hold the moment any player
     // OTHER than the one we copied from is presenting.
-    const v = this._visibleVideo();
+    // IOS-FREEZE-2026-09-26: never draw a <video> into a canvas on Apple WebKit.
+    // The copy is a synchronous cross-process readback of a full-resolution
+    // hardware frame, taken at the very instant the outgoing player is being
+    // torn down — the moment the iPhone app hung. It mostly fails there anyway
+    // (hardware frames draw black), so nothing of value is lost; the sprite
+    // canvas and the poster fallback below still apply.
+    const v = APPLE_WEBKIT ? undefined : this._visibleVideo();
     // HOLDFRAME-2026-08-05: the SPRITE CANVAS is a copy source too. During a
     // sprite-mode scrub it is literally what is on screen, and at scrub-END it
     // holds the frame for the time just scrubbed TO — which is precisely the
@@ -3351,6 +4066,23 @@ export class MediaView extends LitElement {
 
   private _toggleFs = (e: Event): void => {
     e.stopPropagation();
+    // Hand off to the host's fullscreen timeline, carrying the exact moment on
+    // screen so it continues from there rather than from the clip's start.
+    if (this.fsHandoff && !this._isFs && !document.fullscreenElement) {
+      const clip = this._video;
+      const at =
+        this._followContentTime() ??
+        (clip && this._videoSrc ? this._clipStart + clip.currentTime * 1000 : this.targetTime);
+      clip?.pause();
+      this.dispatchEvent(
+        new CustomEvent('fullscreen-handoff', {
+          detail: { camera: this.cameraId, time: at },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      return;
+    }
     // MOBILE: iPhone Safari won't fullscreen a non-video element and forbids JS
     // orientation lock, and its NATIVE video fullscreen ignores our wish and
     // stays PORTRAIT on an orientation-locked phone. So promote the whole player
@@ -3416,9 +4148,101 @@ export class MediaView extends LitElement {
 
   // ---- LIVE custom controls (native controls off; same bar as delayed-follow) --
 
+  /** A medium bridge is on screen: the high player has not proved itself yet,
+   *  a medium entity exists, and this live session has not already handed over.
+   *  The last clause is what stops a second, unexpected swap — a mid-session
+   *  player restart re-arms `_highLiveReady`, and without the latch the bridge
+   *  would pop back and swap again. */
+  private get _bridgeActive(): boolean {
+    return (
+      !this._highLiveReady &&
+      !this._bridgeRetired &&
+      !!this.liveBridgeCameraId &&
+      !!this.hass?.states[this.liveBridgeCameraId]
+    );
+  }
+
+  /** Wall-clock time of the frame a player is SHOWING right now.
+   *
+   *  HA's HLS playlists carry EXT-X-PROGRAM-DATE-TIME, so hls.js can map the
+   *  displayed frame to an absolute instant (`playingDate`). That is the whole
+   *  basis of a seamless handover: two independent live streams sit at
+   *  different latencies, so cutting between them without aligning first makes
+   *  the picture jump forwards or backwards by whatever that difference is.
+   *  Returns null for WebRTC, which carries no such timestamps. */
+  private _playingDateOf(root: Element | null): number | null {
+    if (!root) return null;
+    const find = (el: Element | null): Element | null => {
+      if (!el) return null;
+      if (el.tagName === 'HA-HLS-PLAYER') return el;
+      const kids = [...(el.shadowRoot?.children ?? []), ...el.children];
+      for (const k of kids) {
+        const hit = find(k as Element);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const player = find(root) as (Element & { _hlsPolyfillInstance?: { playingDate?: Date } }) | null;
+    const d = player?._hlsPolyfillInstance?.playingDate;
+    return d ? d.getTime() : null;
+  }
+
+  /** Align the high player to the instant the bridge is showing, then hand over.
+   *  Seeking is clamped to what the high player actually has buffered — running
+   *  past the live edge would stall it, which is worse than a few tenths of
+   *  residual drift. */
+  private _handOverFromBridge(): void {
+    if (this._bridgeRetired) return;
+    const hv = this._highLiveVideo();
+    const bridgeAt = this._playingDateOf(this.renderRoot.querySelector('.live-bridge'));
+    const highAt = this._playingDateOf(this.renderRoot.querySelector('.live-player'));
+    // hls.js only knows `playingDate` once a fragment carrying
+    // EXT-X-PROGRAM-DATE-TIME is actually playing, which is typically a beat
+    // AFTER the first frame. Swapping before then is the uncontrolled cut this
+    // whole mechanism exists to avoid, so keep the bridge up and retry on the
+    // next poll (250 ms) rather than hand over blind.
+    const waitedMs = performance.now() - (this._highStableAt || performance.now());
+    if ((!hv || bridgeAt === null || highAt === null) && waitedMs < BRIDGE_CLOCK_WAIT_MS) return;
+    this._bridgeRetired = true; // latch: exactly one handover per session
+    if (!hv || bridgeAt === null || highAt === null) {
+      this._releaseBridge(); // clocks never showed up — cut anyway, do not hang
+      return;
+    }
+    const deltaS = (bridgeAt - highAt) / 1000;
+    if (Math.abs(deltaS) < 0.12 || Math.abs(deltaS) > 15) {
+      this._releaseBridge(); // already aligned, or too far apart to trust
+      return;
+    }
+    let target = hv.currentTime + deltaS;
+    for (let i = 0; i < hv.seekable.length; i++) {
+      // stay inside the buffer, and a hair back from the edge
+      target = Math.min(Math.max(target, hv.seekable.start(i)), hv.seekable.end(i) - 0.1);
+    }
+    try {
+      hv.currentTime = target;
+    } catch {
+      this._releaseBridge();
+      return;
+    }
+    // Only drop the bridge once the seek has actually landed, or the viewer
+    // sees the pre-seek frame for a moment — the jump we are removing.
+    const done = (): void => {
+      clearTimeout(this._bridgeSwapTimer);
+      hv.removeEventListener('seeked', done);
+      this._releaseBridge();
+    };
+    hv.addEventListener('seeked', done, { once: true });
+    this._bridgeSwapTimer = setTimeout(done, 700);
+  }
+
+  private _releaseBridge(): void {
+    releaseVideosIn(this.renderRoot.querySelector('.live-bridge'));
+    this._highLiveReady = true;
+  }
+
   private _liveVideo(): HTMLVideoElement | null {
     const high = this._highLiveVideo();
-    if (!this._useWebRtcLive || this._highLiveReady) return high;
+    if (!this._bridgeActive) return high;
     return this._bridgeLiveVideo() ?? high;
   }
 
@@ -3496,6 +4320,9 @@ export class MediaView extends LitElement {
     this._livePausedState = false;
     this._liveMuted = this._audioUserChoice !== 'unmuted';
     this._highLiveReady = false;
+    this._bridgeRetired = false;
+    this._highStableAt = 0;
+    clearTimeout(this._bridgeSwapTimer);
     this._liveMountedAt = performance.now();
     this._liveStartupAttempts = 0;
     clearTimeout(this._livePreviewWarmTimer);
@@ -3805,21 +4632,49 @@ export class MediaView extends LitElement {
         <button class="vfs" @click=${this._toggleFs} title="Fullscreen">
           <ha-icon icon=${this._isFs ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}></ha-icon>
         </button>
-        ${clip
-          ? html`<div class="vseek-row">
-              <span class="vtime"
-                >${this._fmtClock(this._clipTime)} / ${this._fmtClock(this._clipDuration)}</span
-              >
-              <div class="vseek" @pointerdown=${this._onSeekDown}>
-                <div class="vseek-track">
-                  <div class="vseek-fill" style="width:${this._clipProgress * 100}%"></div>
-                  <div class="vseek-knob" style="left:${this._clipProgress * 100}%"></div>
-                </div>
-              </div>
-            </div>`
-          : html`<div class="vctrl-spacer"></div>`}
+        ${clip ? this._renderSeekRow() : html`<div class="vctrl-spacer"></div>`}
       </div>
     `;
+  }
+
+  /** The preparation overlay. No progress figure is possible — the transfer is
+   *  NVR->server, with nothing client-side to measure — but it MUST show that
+   *  something is happening and offer a way out: a bare spinner is what turned
+   *  one slow export into a tap-storm of them, each starting another.
+   *  Over a held frame (moving inside one merged event) it drops the label and
+   *  the black backdrop for a blurred scrim, so a 2-3s segment change does not
+   *  flash the picture away. */
+  private _renderPreparing() {
+    if (this._segmentSwitch) {
+      return html`<div class="overlay clip-status over-frame">
+        <div class="scrim"></div>
+        <div class="spinner"></div>
+        <button class="clip-cancel" @click=${this._cancelPrepare}>Cancel</button>
+      </div>`;
+    }
+    return html`<div class="overlay clip-status">
+      <div class="spinner"></div>
+      <span>Preparing clip…</span>
+      <button class="clip-cancel" @click=${this._cancelPrepare}>Cancel</button>
+    </div>`;
+  }
+
+  /** Time readout + seek bar. With a playlist both cover the whole merged
+   *  event; standalone they cover the loaded clip, exactly as before. */
+  private _renderSeekRow() {
+    const playlist = this._hasPlaylist;
+    const total = playlist ? this._playlistTotalS : this._clipDuration;
+    const at = playlist ? this._playlistOffsetS + this._clipTime : this._clipTime;
+    const frac = playlist ? (total > 0 ? Math.min(1, at / total) : 0) : this._clipProgress;
+    return html`<div class="vseek-row">
+      <span class="vtime">${this._fmtClock(at)} / ${this._fmtClock(total)}</span>
+      <div class="vseek" @pointerdown=${this._onSeekDown}>
+        <div class="vseek-track">
+          <div class="vseek-fill" style="width:${frac * 100}%"></div>
+          <div class="vseek-knob" style="left:${frac * 100}%"></div>
+        </div>
+      </div>
+    </div>`;
   }
 
   /** True while the host's slotted overlay timeline is on screen. */
@@ -3892,6 +4747,7 @@ export class MediaView extends LitElement {
         ?hidden=${!this._frozen || !this._holdPoster}
         alt=""
       />
+      <div class="parked" ?hidden=${!this._parkedOn}></div>
     `;
     if (!this.stacked) return html`${stage}${freeze}${this._renderFsTimeline()}`;
     return html`<dialog
@@ -3936,7 +4792,7 @@ export class MediaView extends LitElement {
                               .controls=${false}
                               .muted=${false}
                             ></ha-web-rtc-player>
-                            ${!this._highLiveReady && bridgeStateObj
+                            ${this._bridgeActive && bridgeStateObj
                               ? html`<ha-camera-stream
                                   class="live-bridge"
                                   .hass=${this.hass}
@@ -3947,13 +4803,23 @@ export class MediaView extends LitElement {
                                 ></ha-camera-stream>`
                               : nothing}`
                         : html`<ha-hls-player
-                            class="live-player"
-                            autoplay
-                            playsinline
-                            .entityid=${this.cameraId}
-                            .controls=${false}
-                            .muted=${false}
-                          ></ha-hls-player>`,
+                              class="live-player"
+                              autoplay
+                              playsinline
+                              .entityid=${this.cameraId}
+                              .controls=${false}
+                              .muted=${false}
+                            ></ha-hls-player>
+                            ${this._bridgeActive && bridgeStateObj
+                              ? html`<ha-camera-stream
+                                  class="live-bridge"
+                                  .hass=${this.hass}
+                                  .stateObj=${bridgeStateObj}
+                                  .controls=${false}
+                                  .muted=${this._liveMuted}
+                                  allow-exoplayer
+                                ></ha-camera-stream>`
+                              : nothing}`,
                     )}
                 ${this._renderCtrlBar('live')}`
             : html`<div class="msg error">Camera entity not found.</div>`}
@@ -4075,10 +4941,7 @@ export class MediaView extends LitElement {
             ? html`<div class="msg">Footage unavailable — camera was offline.</div>`
             : this._loadingVideo
               ? this._preparing
-                ? // No percentage any more: the transfer happens NVR->server, so
-                  // there is nothing client-side to measure. Export dominates
-                  // (~5.6s for a 5-minute clip), the remux is ~0.3s.
-                  html`<div class="overlay clip-status"><div class="spinner"></div>Preparing clip…</div>`
+                ? this._renderPreparing()
                 : html`<div class="overlay clip-status"><div class="spinner"></div>Loading clip…</div>`
               : this._error
                 ? html`<div class="msg error">${this._error}</div>`
@@ -4116,7 +4979,9 @@ export class MediaView extends LitElement {
           @error=${this._onVideoError}
         ></video>
         ${this._loadingVideo
-          ? html`<div class="overlay clip-status"><div class="spinner"></div>Loading clip…</div>`
+          ? this._preparing || this._segmentSwitch
+            ? this._renderPreparing()
+            : html`<div class="overlay clip-status"><div class="spinner"></div>Loading clip…</div>`
           : this._clipBuffering
             ? html`<div class="overlay clip-buffering" aria-label="Buffering clip">
                 <div class="spinner"></div>

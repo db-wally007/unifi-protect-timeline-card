@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.1.0] - 2026-09-27
+
+### Added
+
+- Merged events play as a playlist of short clips instead of one export of the whole span
+  (`merged_playback`, `clip_segment_seconds`, `clip_segment_join_seconds`, `max_clip_seconds`).
+  The next segment is prepared before the current one ends, and the seek bar spans the whole event.
+- When a clip ends, playback continues into the footage that follows it, in every view.
+- Multi-camera page: a clip's fullscreen button opens that camera's fullscreen timeline at the
+  moment on screen; leaving fullscreen returns to the same page, scrolled to and highlighting the
+  clip that was playing (grid, list and phone carousel).
+- A preparation overlay with a Cancel button, and a transparent overlay (no black flash) when
+  moving between segments of one event.
+- Playback failures are written to the Home Assistant log with the device's user agent (capped per
+  page load), so failures on phones can be diagnosed afterwards.
+- `protect_thumbs`: motion-triggered event refresh, so new events appear within seconds.
+
+### Changed
+
+- Continuous playback chunks are prepared by the server as clip sessions (index at the front,
+  served with HTTP Range) instead of being downloaded whole into the page.
+- Scrub preview: one consistent tier — 640x360 atlas tiles at one frame per ~7 s everywhere; the
+  newest block is exported from the same recording channel as older footage.
+- Live: the medium stream bridges the start of the high-resolution stream and hands over in time
+  sync.
+- `autoplay_next_event` is removed; continuous rollover replaces it.
+
+### Fixed
+
+- The iPhone app losing its connection to Home Assistant after a clip. On Apple WebKit the card no
+  longer deletes finished clip sessions (the server reaps them), never leaves a video in its
+  `ended` state, never copies a video frame into a canvas, and holds the clip's last frame during
+  the rollover instead of a black screen or a current snapshot.
+- A continuous-playback chunk the device could not play was re-downloaded every ~1.3 s forever; it
+  now retries with backoff and stops with a message.
+- A long merged event no longer asks the NVR for one huge export (a 37-minute row made Home
+  Assistant unresponsive).
+- Taps ignored after a lost pointer release; scrub mode stuck after the view was detached; playback
+  not resuming after a popup was re-shown or a view re-attached; blank video in stacked layout when
+  the layout changed after the first render.
+- `protect_scrub`: full directory walks replaced with native matching (large CPU reduction); clip
+  session builds are bounded, deduplicated and cancellable.
+
 ## [2.0.2] - 2026-08-09
 
 ### Added

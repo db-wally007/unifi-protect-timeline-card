@@ -41,6 +41,10 @@ export class EventStrip extends LitElement {
   // the playback overlay closes, so you can tell which clip you just watched
   // (the carousel doesn't need it: its player never overlays the clips).
   @property() lastPlayedKey = '';
+  // Highlight lastPlayedKey in the carousel/column too, not only in the grid —
+  // set when coming back from a clip's fullscreen hand-off, so the clip you
+  // were watching is marked wherever the page was left.
+  @property({ type: Boolean }) keepLastPlayed = false;
   // Grid-list presentation (reflected so the parent can size the pane).
   @property({ type: Boolean, reflect: true }) expanded = false;
   @property({ type: Number }) gridColumns = 2; // expanded grid columns
@@ -459,13 +463,26 @@ export class EventStrip extends LitElement {
     this.dispatchEvent(new CustomEvent('toggle-expand', { bubbles: true, composed: true }));
   };
 
+  /** Bring one clip into view — centred in whatever scrolls it (the grid, the
+   *  tablet column, the phone carousel, or the page itself). Returns false when
+   *  this strip does not hold that clip. */
+  revealKey(key: string): boolean {
+    if (!key) return false;
+    const thumb = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(key)}"]`);
+    const item = thumb?.closest('button');
+    if (!item) return false;
+    item.scrollIntoView({ block: 'center', inline: 'center' });
+    return true;
+  }
+
   /** One event item — identical in both presentations (the expanded grid only
    *  changes the layout around it, never the item itself). */
   private _renderClip(b: MultiBand, key: string, url: string | undefined) {
     // The grid also keeps the border on the LAST-played clip (after the
     // overlay closed); the carousel highlights only while actually playing.
     const highlighted =
-      this.playingKey === key || (this.expanded && this.lastPlayedKey === key);
+      this.playingKey === key ||
+      ((this.expanded || this.keepLastPlayed) && this.lastPlayedKey === key);
     return html`
       <button
         class="clip ${highlighted ? 'playing' : ''}"

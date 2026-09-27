@@ -183,6 +183,29 @@ export interface CardConfig {
   // merged duration), replicating how the UniFi app groups continuous activity.
   // Default 60. 0 = no grouping (raw 1:1 events, the pre-1.27 behavior).
   event_merge_gap_seconds?: number;
+  // How a MERGED event (one row covering many raw events) is played back. A
+  // group can span half an hour, which is not a clip — it is played as a
+  // playlist of short segments, one small export each.
+  //   continuous (default) — the whole span, idle included: the seek bar stays
+  //                          1:1 with the clock and nothing is hidden.
+  //   activity             — only the members' recorded spans; idle is skipped,
+  //                          so the clock jumps forward at each gap.
+  merged_playback?: 'continuous' | 'activity';
+  // Longest single segment of a merged-event playlist, in seconds (default 120).
+  // This is the unit the NVR is asked to export: measured on a 2688x1512 camera,
+  // 120s prepares in ~4.1s / 97 MB, 600s in ~17s / 525 MB, 1500s in ~35s /
+  // 1.29 GB. Lower = quicker first frame and smaller exports, but more segment
+  // boundaries (each costs one prepare when playback crosses it).
+  clip_segment_seconds?: number;
+  // `merged_playback: activity` only: neighbouring events closer than this many
+  // seconds are played as ONE segment rather than paying a separate export for a
+  // few idle seconds (default 10).
+  clip_segment_join_seconds?: number;
+  // Hard ceiling on any single clip request, in seconds (default 600). Nothing
+  // should reach it once a group plays as a playlist — it exists so a bug or a
+  // hand-written config can never ask the NVR for a multi-gigabyte export again.
+  // Must not exceed MAX_CLIP_SECONDS in custom_components/protect_cache.
+  max_clip_seconds?: number;
   // Events-list view: row 1 (event start time) text size in px (default 12).
   list_text_size?: number;
   // Events-list view: row 1 text color (any CSS color; default theme secondary
@@ -200,11 +223,6 @@ export interface CardConfig {
   list_active_bg?: string; // playing-row background, default #fff
   // Deprecated alias for list_active_bg (background of the playing row).
   list_highlight_color?: string;
-  // When an event clip (played from the Events list) finishes, step to the next
-  // newer event (true, default) or instead keep playing the timeline footage
-  // continuously from where the clip ended (false). Timeline-mode playback is
-  // unaffected either way.
-  autoplay_next_event?: boolean;
   // Max simultaneous thumbnail fetches from the NVR (default 2). Lower = gentler
   // on the NVR; higher = faster to fill but more load. Applies to both views.
   thumbnail_concurrency?: number;

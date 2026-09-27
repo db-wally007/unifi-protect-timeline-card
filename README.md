@@ -125,6 +125,10 @@ Single mode unless noted.
 | `default_span_minutes` | number | — | Initial visible span in minutes instead of the 0–100 scale, clamped to 4–60. Only consulted when `default_timeline_zoom` is absent |
 | `scrub_settle_ms` | number | `700` | Delay between releasing a drag and playback starting. Taps play immediately; `0` disables the delay |
 | `event_merge_gap_seconds` | number | `60` | Consecutive NVR events closer than this are shown as one event, the way the Protect app does it. `0` = raw 1:1. Both modes |
+| `merged_playback` | `continuous` \| `activity` | `continuous` | How a merged event plays. `continuous` = the whole span, idle included, so the seek bar stays 1:1 with the clock; `activity` = only the recorded events, skipping the idle between them |
+| `clip_segment_seconds` | number | `120` | Longest single segment of a merged event's playlist — the unit the NVR is asked to export. Lower = quicker first frame, more segment boundaries |
+| `clip_segment_join_seconds` | number | `10` | `merged_playback: activity` only: events closer than this play as one segment instead of paying a separate export |
+| `max_clip_seconds` | number | `600` | Hard ceiling on any single clip request. A backstop — keep it at or below `MAX_CLIP_SECONDS` in `custom_components/protect_cache` |
 
 ### Events list
 
@@ -140,7 +144,6 @@ Single mode unless noted.
 | `list_active_bg` | string | `#fff` | Playing-row background |
 | `list_divider_color` | string | = `accent_color` | Day-divider line (single mode) |
 | `tablet_events_thumbnail_size` | number | `145` | Event thumbnail width in the wide layout. Also sets the events column width and the gallery tile width, in **both** modes |
-| `autoplay_next_event` | boolean | `true` | When a clip ends, play the immediately newer event. Single mode uses that camera's list and continues timeline playback after the newest clip. Multi mode uses the merged all-camera list and returns to the live grid after the newest clip. `false` disables event-to-event autoplay |
 
 ### Thumbnails and cache
 
@@ -262,6 +265,7 @@ cameras:
 | `grid_aspect` | string | `16/9` | Live tile aspect ratio |
 
 `accent_color`, `title*`, `back_button*`, `date_font_*`, `list_*`, `event_merge_gap_seconds`,
+`merged_playback`, `clip_segment_seconds`, `clip_segment_join_seconds`, `max_clip_seconds`,
 `thumbnail_concurrency`, `chunk_seconds`, `page_background` and `height` all work here too.
 `thumbnail_cache_dir` and `scrub_preview_dir` are ignored — multi mode derives each camera's cache
 path from its own entity id.

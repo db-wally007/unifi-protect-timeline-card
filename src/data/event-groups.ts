@@ -8,6 +8,7 @@
 // that: the manifest stays a 1:1 raw mirror (the event DB), and grouping is a
 // presentation step in the card.
 
+import { buildFootageSpans, type FootageSpan } from './footage-map';
 import type { DetectionBand } from './types';
 
 // Smart-detect labels outrank plain motion when naming a merged group (matches
@@ -69,6 +70,100 @@ function toGroup(members: DetectionBand[]): DetectionBand {
     ongoing: ongoing || undefined,
     members,
   };
+}
+
+// A merged group is a DISPLAY span, not a clip. The 2026-09-19 garden group was
+// 43 raw events across 37m56s; asking the NVR for that as one export measured
+// 34.9s and 1.29 GB on disk (plus the same again through the faststart remux),
+// and every retap during that wait started another one. So a group is PLAYED as
+// a playlist of short segments, each its own small clip session: measured 0.60s
+// to prepare a 14s segment, 4.14s for a 120s one.
+//
+// `continuous` splits the whole span (idle included) so the seek bar stays 1:1
+// with the clock; `activity` plays only the members' padded spans. Both cameras
+// modes matter less than they look: every camera here records `always`, so idle
+// footage costs the same ~50 MB/min as event footage — skipping it saves 21% on
+// the worst group and 7% on a typical one.
+
+export type MergedPlaybackMode = 'continuous' | 'activity';
+
+export interface ClipSegmentOptions {
+  mode: MergedPlaybackMode;
+  /** Hard cap on one segment's length (ms) — the unit of one clip session. */
+  maxMs: number;
+  /** `activity`: neighbouring spans closer than this are played as one segment
+   *  instead of paying a separate export for a few idle seconds. */
+  joinMs: number;
+  /** Camera recording padding, as the manifest reports it. */
+  preMs: number;
+  postMs: number;
+  /** Latest instant the NVR can be asked for (now - availability lag): the tail
+   *  of an ONGOING group is not flushed yet and exports short or not at all. */
+  endCapMs: number;
+}
+
+// media-view refuses anything shorter than 1.5s, and a sub-second tail is not
+// worth an export — fold it into its neighbour by splitting spans EVENLY.
+const MIN_SEGMENT_MS = 1500;
+
+/** Split one span into as few equal parts as the cap allows (even parts avoid a
+ *  2-second tail segment after a 120s one). */
+function splitSpan(span: FootageSpan, maxMs: number): FootageSpan[] {
+  const len = span.end - span.start;
+  if (len <= maxMs) return [span];
+  const parts = Math.ceil(len / maxMs);
+  const step = len / parts;
+  return Array.from({ length: parts }, (_, i) => ({
+    start: Math.round(span.start + i * step),
+    end: Math.round(span.start + (i + 1) * step),
+  }));
+}
+
+/** The ordered clip segments a merged group is played as. One segment = one
+ *  clip session. Empty when nothing of the group is playable yet (an event that
+ *  started seconds ago, still inside the NVR's un-flushed window). */
+export function clipSegments(band: DetectionBand, opts: ClipSegmentOptions): FootageSpan[] {
+  const cap = Math.max(MIN_SEGMENT_MS, opts.maxMs);
+  const outerStart = Math.max(0, band.start - opts.preMs);
+  const outerEnd = Math.min(band.end + opts.postMs, opts.endCapMs);
+  if (outerEnd - outerStart < MIN_SEGMENT_MS) return [];
+
+  let spans: FootageSpan[];
+  if (opts.mode === 'activity' && band.members && band.members.length > 1) {
+    // buildFootageSpans pads each member and merges the overlaps; joining then
+    // closes the short idle gaps the padding did not already bridge.
+    const padded = buildFootageSpans(band.members, opts.preMs, opts.postMs);
+    spans = [];
+    for (const s of padded) {
+      const last = spans[spans.length - 1];
+      if (last && s.start - last.end <= opts.joinMs) last.end = Math.max(last.end, s.end);
+      else spans.push({ ...s });
+    }
+  } else {
+    spans = [{ start: outerStart, end: outerEnd }];
+  }
+
+  return spans
+    .map((s) => ({ start: Math.max(s.start, outerStart), end: Math.min(s.end, outerEnd) }))
+    .filter((s) => s.end - s.start >= MIN_SEGMENT_MS)
+    .flatMap((s) => splitSpan(s, cap));
+}
+
+/** Index of the segment covering `t`, else the nearest one — the seek bar maps
+ *  a drag anywhere on the group back to a segment this way. */
+export function segmentIndexAt(segments: readonly FootageSpan[], t: number): number {
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i];
+    if (t >= s.start && t < s.end) return i;
+    const d = t < s.start ? s.start - t : t - s.end;
+    if (d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  return best;
 }
 
 /** The member a time falls in, else the member nearest to it — which thumbnail

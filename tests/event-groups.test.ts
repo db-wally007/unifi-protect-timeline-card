@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupBands, nearestMember } from '../src/data/event-groups';
+import { clipSegments, groupBands, nearestMember, segmentIndexAt } from '../src/data/event-groups';
 import type { DetectionBand } from '../src/data/types';
 
 const S = 1000;
@@ -99,5 +99,88 @@ describe('nearestMember', () => {
   it('falls back to the band itself when there are no members', () => {
     const b = band(0, 10);
     expect(nearestMember(b, 5 * S)).toBe(b);
+  });
+});
+
+describe('clipSegments', () => {
+  const base = {
+    mode: 'continuous' as const,
+    maxMs: 120 * S,
+    joinMs: 10 * S,
+    preMs: 2 * S,
+    postMs: 2 * S,
+    endCapMs: Number.MAX_SAFE_INTEGER,
+  };
+
+  it('plays a short lone event as exactly one padded segment', () => {
+    const g = groupBands([band(100, 110)], GAP)[0];
+    expect(clipSegments(g, base)).toEqual([{ start: 98 * S, end: 112 * S }]);
+  });
+
+  it('continuous: covers the whole span, gaps included, capped and contiguous', () => {
+    // The shape that broke: one row, span far longer than any single export.
+    const g = groupBands([band(1000, 1030), band(1300, 1330), band(1600, 1630)], GAP * 10)[0];
+    const segs = clipSegments(g, base);
+    expect(segs.length).toBeGreaterThan(1);
+    for (const s of segs) expect(s.end - s.start).toBeLessThanOrEqual(base.maxMs);
+    // No holes: each segment starts where the previous ended.
+    for (let i = 1; i < segs.length; i++) expect(segs[i].start).toBe(segs[i - 1].end);
+    expect(segs[0].start).toBe(998 * S); // band.start - preMs
+    expect(segs[segs.length - 1].end).toBe(1632 * S);
+  });
+
+  it('continuous: splits EVENLY so a long span has no runt tail segment', () => {
+    const g = groupBands([band(0, 250)], GAP)[0];
+    const segs = clipSegments(g, base);
+    expect(segs).toHaveLength(3); // 254s / 120s -> 3 parts, not 2 + a 14s runt
+    const lengths = segs.map((s) => s.end - s.start);
+    expect(Math.max(...lengths) - Math.min(...lengths)).toBeLessThanOrEqual(1);
+  });
+
+  it('activity: skips the idle stretches between members', () => {
+    const g = groupBands([band(1000, 1030), band(1300, 1330)], GAP * 10)[0];
+    const segs = clipSegments(g, { ...base, mode: 'activity' });
+    expect(segs).toEqual([
+      { start: 998 * S, end: 1032 * S },
+      { start: 1298 * S, end: 1332 * S },
+    ]);
+  });
+
+  it('activity: joins members separated by less than joinMs into one export', () => {
+    // 8s apart after padding -> one segment; a separate 60s gap stays split.
+    const g = groupBands([band(1000, 1030), band(1042, 1060), band(1120, 1150)], GAP)[0];
+    const segs = clipSegments(g, { ...base, mode: 'activity' });
+    expect(segs).toEqual([
+      { start: 998 * S, end: 1062 * S },
+      { start: 1118 * S, end: 1152 * S },
+    ]);
+  });
+
+  it('clamps the tail of an ONGOING group to what the NVR has flushed', () => {
+    const g = groupBands([band(0, 300)], GAP)[0];
+    const segs = clipSegments(g, { ...base, endCapMs: 200 * S });
+    expect(segs[segs.length - 1].end).toBe(200 * S);
+  });
+
+  it('returns nothing when the flushed part is too short to play', () => {
+    const g = groupBands([band(100, 130)], GAP)[0];
+    expect(clipSegments(g, { ...base, endCapMs: 99 * S })).toEqual([]);
+  });
+});
+
+describe('segmentIndexAt', () => {
+  const segs = [
+    { start: 0, end: 10 * S },
+    { start: 10 * S, end: 20 * S },
+    { start: 60 * S, end: 70 * S },
+  ];
+
+  it('finds the segment containing the time', () => {
+    expect(segmentIndexAt(segs, 15 * S)).toBe(1);
+  });
+
+  it('falls to the nearest segment for a time inside a skipped gap', () => {
+    expect(segmentIndexAt(segs, 25 * S)).toBe(1);
+    expect(segmentIndexAt(segs, 55 * S)).toBe(2);
   });
 });

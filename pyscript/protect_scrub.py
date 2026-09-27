@@ -86,9 +86,12 @@ NOTE: no generator expressions anywhere — pyscript's interpreter does not
 implement them (use list comprehensions).
 """
 
+import fnmatch
 import json
 import os
+import re
 import subprocess
+import time
 from datetime import datetime, timezone
 
 # ---- install configuration — KEEP THIS BLOCK IDENTICAL IN BOTH FILES --------
@@ -202,6 +205,43 @@ HEAD_MIN_S = 20            # don't export a head shorter than this (just after a
 # name, URL == range == bytes: a stale index can only make the preview OLDER,
 # never wrong.
 HEAD_PREFIX = "h"
+# Recording tier the HEAD is exported from. MUST match the tier completed
+# blocks use, or the newest ~10 minutes previews at a visibly different quality
+# from everything older — the head is the region people scrub most, so that
+# seam is the first thing anyone notices.
+#
+# This was briefly set to 2 for cost (the head is the one export that REPEATS,
+# every run, over the whole elapsed part of the current block). Channel 2 is
+# natively 640x360 so it ships far less and skips the 2688->640 downscale.
+# Measured 2026-09-23 over identical 300s spans:
+#     night    ch0 = 14.2 MB / 61 frames / 2688 wide   ch2 = 4.2 MB / 301 / 640
+#     daylight ch0 = 49.1 MB / 61 frames / 2688 wide   ch2 = 4.4 MB / 302 / 640
+# Daylight is the case that matters: the head re-export is ~11x the bytes.
+# There is NO middle tier to compromise on — channel 1 returns BYTE-IDENTICAL
+# output to channel 2 on this NVR (same size, same frame count), so the only
+# choice is 0 or 2.
+#
+# It was reverted to 0 because "cheaper and samples finer" was the wrong frame
+# of reference. FAST_SPRITE_STRIDE thins the preview to one tile per ~7s either
+# way, so channel 2's denser sampling buys nothing the card ever shows; what
+# survives is PER-FRAME quality, and a native low-tier 640x360 encode is
+# measurably softer than the same frame supersampled down from 2688. Measured
+# off the card's own preview canvas: mean |gradient| 1.366 (head, ch2) vs
+# 1.609 (completed block, ch0) — ~15% less detail on an identical 640x360 tile
+# with an identically sized burnt-in timestamp. After the switch: 1.748 (head)
+# vs 1.647 (block), i.e. the seam is gone.
+#
+# Cost, measured as whole-container CPU over FULL aligned 10-minute cycles in
+# daylight (each window contains exactly one block-boundary run, which is the
+# expensive one — an unaligned window makes this comparison meaningless):
+#     HEAD_CHANNEL = 2 -> 35.4% of one core
+#     HEAD_CHANNEL = 0 -> 51.8% of one core
+# So uniformity near live costs ~16 points of one core, continuously. The way
+# to get that back is to stop RE-exporting the whole elapsed block every run
+# and export only the new ~60s as an additional part (see KEEP_HEADS and the
+# `map`/part machinery) — note _fast_sprite_sheets is currently skipped for a
+# mapped head, so that tier would have to learn per-part atlases first.
+HEAD_CHANNEL = 0
 KEEP_HEADS = 3             # head generations kept (~3 min, ~1 MB): enough for a
                            # client holding a 60s-stale index plus one missed run
 MAX_EXPORTS_PER_RUN = 10   # backfill spreads over many 1-minute runs
@@ -269,7 +309,16 @@ MAX_OVERVIEW_PER_RUN = 3   # own small budget so a fine-block backfill can't
 #     MAX_TEXTURE_SIZE is 8192 — and 4096 is a common mobile cap, past which the
 #     texture upload can fail outright. Keep SPRITE_COLS * SPRITE_TILE_W and
 #     SPRITE_ROWS * SPRITE_TILE_H under 2560.
-SPRITES_ENABLED = True
+# OFF as of 2026-09-22. This tier was 28.3 GB of a 34 GB cache (83%) for one
+# frame every 2.4 s, and it could never cover the HEAD — the current block is
+# re-exported every minute, so its sheets would cost ~11 MB per camera per
+# minute. That asymmetry was visible: the last ten minutes previewed at 480x270
+# / one frame per 11.7 s while older footage got 640x360 / 2.4 s. With the fine
+# tier gone the atlas below is the ONLY tier, so every part of the timeline
+# previews identically — see FAST_SPRITE_* for the geometry that replaced it.
+# Turning this back on does NOT delete these constants' meaning: the sheets are
+# rebuilt from the cached mp4s, no NVR traffic.
+SPRITES_ENABLED = False
 # FULL SOURCE RESOLUTION as of 2026-08-04. 480x270 was visibly softer than the
 # near-live video tier (which is the 640x360 mp4), and the seam was obvious the
 # moment scrubbing crossed out of the head region into sprite territory. Since
@@ -309,12 +358,23 @@ SPRITE_SUFFIX = ".sprite.json"  # sidecar; its presence means "sheets complete"
 # Fine blocks and heads retain their denser source cadence after decimation so
 # current-hour motion remains responsive without fetching their fine sheets.
 FAST_SPRITES_ENABLED = True
-FAST_SPRITE_TILE_W = 480
-FAST_SPRITE_TILE_H = 270
-FAST_SPRITE_COLS = 5
-FAST_SPRITE_ROWS = 5
+# 2026-09-22: this is now the ONLY preview tier, so it MATCHES THE VIDEO TIER
+# EXACTLY — 640x360, the size of the cached mp4s every other preview surface
+# uses (tips, head fallback, playback). That is not a detail: a tile narrower
+# than the video is magnified more on the same stage, so the camera's burnt-in
+# timestamp visibly grows and softens the moment a drag crosses from video into
+# tiles. 512x288 was tried first and the seam was immediately obvious — the same
+# mistake 480x270 made in August, recorded a few lines above. 4 x 640 = 2560 and
+# 4 x 360 = 1440, the packing already measured fastest on the tablet.
+FAST_SPRITE_TILE_W = 640
+FAST_SPRITE_TILE_H = 360
+FAST_SPRITE_COLS = 4
+FAST_SPRITE_ROWS = 4
 FAST_SPRITE_QUALITY = 6
-FAST_SPRITE_STRIDE = 5
+# Every 3rd source frame. Blocks and heads both carry 0.42 frames per second of
+# real time (the head's re-encode pins it to the same cadence), so ONE stride
+# gives one photo every ~7 s everywhere — no seam where the head begins.
+FAST_SPRITE_STRIDE = 3
 FAST_SPRITE_VERSION = 1
 FAST_SPRITE_SUFFIX = ".fast-sprite.json"
 FAST_SPRITE_SIG = "%sx%s:%sx%s:q%s:stride%s" % (
@@ -362,6 +422,64 @@ TIP_ENCODE = True
 # Same constraints as protect_thumbs.py: pyscript sandboxes builtins.open, so all
 # file I/O is low-level os.open/os.read/os.write; os.listdir is loop-protected by
 # HA and runs via task.executor (it accepts stdlib callables).
+#
+# NOTHING HERE MAY WALK A FULL DIRECTORY LISTING IN INTERPRETED CODE. The cache
+# holds ~24k files PER CAMERA (35 GB across three) and this job runs every
+# minute, so the name-classification loops this file used to run were measured
+# (2026-09-21) holding the HA event loop at 88-96% of a core for 15-20s of every
+# minute — the container's whole 24/7 CPU sawtooth. pyscript AST-interprets each
+# iteration, and native Python does the same scan in 24 ms.
+#
+# So the listing is handed WHOLE to a C-level matcher and only the handful of
+# names that come back are ever walked in pyscript: `_ints` for the name->int
+# sets (re.findall + map(int) + set are all C), `_glob` for everything else.
+
+def _mark(marks, label):
+    """Record a phase boundary for the breakdown logged at the end of a run.
+
+    Two clocks, because they answer different questions: wall says how long the
+    phase took, thread CPU says how much of that was this job BURNING the event
+    loop rather than awaiting an export. Only the second one costs Home
+    Assistant anything. Costs two syscalls per phase; logged at debug.
+    """
+    marks.append((label, time.monotonic(), time.thread_time()))
+
+
+def _log_marks(marks):
+    if len(marks) < 2:
+        return
+    parts = []
+    for i in range(1, len(marks)):
+        label, wall, cpu = marks[i]
+        parts.append("%s %.2fs/%.2fcpu" % (
+            label, wall - marks[i - 1][1], cpu - marks[i - 1][2]))
+    log.debug("protect_scrub: phases — total %.2fs/%.2fcpu | %s",
+              marks[-1][1] - marks[0][1], marks[-1][2] - marks[0][2], " ".join(parts))
+
+
+def _name_blob(names):
+    """The listing as one newline-joined string, for the `_ints` scanners.
+
+    Filenames may legally contain newlines on Linux; ours never do (they are
+    machine-generated digits and fixed prefixes), and a stray one could only
+    mis-parse itself.
+    """
+    return "\n".join(names)
+
+
+def _ints(blob, pattern):
+    """Set of the ints captured by `pattern` (one group, anchored, MULTILINE).
+
+    The match, the int conversion and the set build all happen inside C — the
+    interpreter never sees a per-file iteration.
+    """
+    return set(map(int, re.findall(pattern, blob, re.M)))
+
+
+def _glob(names, pattern):
+    """The names matching a shell pattern, via fnmatch's C matcher."""
+    return fnmatch.filter(names, pattern)
+
 
 def _ensure_dir(path):
     os.makedirs(path, exist_ok=True)
@@ -613,38 +731,24 @@ def _purge_sprites(cam_dir, names, stems):
     SPRITE-PREVIEW-2026-08-04."""
     if not stems:
         return
-    for nm in names:
-        hit = False
-        for stem in stems:
-            if nm == stem + SPRITE_SUFFIX:
-                hit = True
-            elif nm.startswith(stem + ".s") and nm.endswith(".jpg"):
-                hit = True
-        if not hit:
-            continue
-        try:
-            os.remove(os.path.join(cam_dir, nm))
-        except OSError:
-            pass
+    for stem in stems:
+        for nm in _glob(names, stem + SPRITE_SUFFIX) + _glob(names, stem + ".s*.jpg"):
+            try:
+                os.remove(os.path.join(cam_dir, nm))
+            except OSError:
+                pass
 
 
 def _purge_fast_sprites(cam_dir, names, stems):
     """Delete fast-atlas sheets + sidecars for supplied overview stems."""
     if not stems:
         return
-    for nm in names:
-        hit = False
-        for stem in stems:
-            if nm == stem + FAST_SPRITE_SUFFIX:
-                hit = True
-            elif nm.startswith(stem + ".f") and nm.endswith(".jpg"):
-                hit = True
-        if not hit:
-            continue
-        try:
-            os.remove(os.path.join(cam_dir, nm))
-        except OSError:
-            pass
+    for stem in stems:
+        for nm in _glob(names, stem + FAST_SPRITE_SUFFIX) + _glob(names, stem + ".f*.jpg"):
+            try:
+                os.remove(os.path.join(cam_dir, nm))
+            except OSError:
+                pass
 
 
 def _read_events_meta(slug):
@@ -708,12 +812,12 @@ def _block_segments(start_ms, end_ms, events, pre_ms, post_ms):
 
 def _cleanup_split(cam_dir, name):
     """Remove a block's split representation (sidecar + part files)."""
-    for nm in task.executor(os.listdir, cam_dir):
-        if nm.startswith(f"{name}.p") or nm == f"{name}.map.json":
-            try:
-                os.remove(os.path.join(cam_dir, nm))
-            except OSError:
-                pass
+    names = task.executor(os.listdir, cam_dir)
+    for nm in _glob(names, f"{name}.p*") + _glob(names, f"{name}.map.json"):
+        try:
+            os.remove(os.path.join(cam_dir, nm))
+        except OSError:
+            pass
 
 
 def _head_stem(nm):
@@ -743,7 +847,9 @@ def _reap_heads(cam_dir, keep, protect=None):
     covers exactly its advertised range, so the frame is correct, just older)."""
     gens = {}
     legacy = []
-    for nm in task.executor(os.listdir, cam_dir):
+    # Every head-generation name starts with HEAD_PREFIX, and so does the legacy
+    # "head.*" set — one C-level filter, then a few names in the interpreter.
+    for nm in _glob(task.executor(os.listdir, cam_dir), HEAD_PREFIX + "*"):
         if nm.split(".")[0] == "head":
             legacy.append(nm)  # pre-immutable head.mp4 / head.map.json / parts
             continue
@@ -772,7 +878,7 @@ def _reap_tips(cam_dir, keep, now_ms=0, protect=None):
     TIP_MAX_AGE_S when `now_ms` is given — by then the cron's head covers that
     range and the tip is dead weight). Same stem rule as _reap_heads."""
     gens = {}
-    for nm in task.executor(os.listdir, cam_dir):
+    for nm in _glob(task.executor(os.listdir, cam_dir), TIP_PREFIX + "*"):
         stem = nm.split(".")[0]
         if not stem.startswith(TIP_PREFIX):
             continue
@@ -829,7 +935,8 @@ def _export_overview(api, cam_id, c, start_ms):
     return _store_block(path, data, force_encode=True)
 
 
-def _export_block_split(api, cam_id, c, start_ms, end_ms, name):
+def _export_block_split(api, cam_id, c, start_ms, end_ms, name, channel=0,
+                        force_encode=False):
     """Export [start_ms, end_ms) as one <name>.mp4 when its content is uniform,
     or — when events cut it into segments — as SEPARATE part files
     <name>.p<k>.mp4 plus a <name>.map.json sidecar listing each part's real
@@ -844,16 +951,16 @@ def _export_block_split(api, cam_id, c, start_ms, end_ms, name):
     if len(segs) == 1:
         # Uniform block (all idle, or one continuous event) — single export,
         # linear mapping is fine, no sidecar.
-        data = _export_range(api, cam_id, start_ms, end_ms)
+        data = _export_range(api, cam_id, start_ms, end_ms, channel=channel)
         task.sleep(EXPORT_GAP_S)
-        if not (data and _store_block(final, data)):
+        if not (data and _store_block(final, data, force_encode=force_encode)):
             return (False, 1)
         _cleanup_split(c["dir"], name)  # stale parts from an older split export
         return (True, 1)
     used = 0
     segments = []
     for k, (s, en) in enumerate(segs):
-        data = _export_range(api, cam_id, s, en)
+        data = _export_range(api, cam_id, s, en, channel=channel)
         used += 1
         task.sleep(EXPORT_GAP_S)
         if not data:
@@ -1036,6 +1143,8 @@ def protect_scrub_sync():
         log.error("protect_scrub: uiprotect client unavailable; aborting")
         return
 
+    marks = []
+    _mark(marks, "init")
     now = datetime.now(timezone.utc)
     now_ms = int(now.timestamp() * 1000)
     block_ms = BLOCK_S * 1000
@@ -1055,90 +1164,73 @@ def protect_scrub_sync():
         state = _read_json(os.path.join(cam_dir, "state.json")) or {}
         attempts = {int(k): v for k, v in (state.get("attempts") or {}).items()}
 
-        # One directory pass: plain blocks (<start>.mp4), split blocks (their
-        # <start>.map.json sidecar marks completeness — parts are written first),
-        # and stale temp files from interrupted runs (>1h old).
+        # What is on disk: plain blocks (<start>.mp4), split blocks (their
+        # <start>.map.json sidecar marks completeness — parts are written
+        # first), the overview tier, and the sprite sidecars.
+        #
+        # Read as C-level regex passes over the whole listing, never a loop over
+        # it — see the note above _name_blob. This directory holds ~24k files.
         names = task.executor(os.listdir, cam_dir)
-        plain = set()
-        map_starts = set()
-        overview = set()
+        blob = _name_blob(names)
+        ov = re.escape(OVERVIEW_PREFIX)
+        plain = _ints(blob, r"^(\d+)\.mp4$")
+        map_starts = _ints(blob, r"^(\d+)\.map\.json$")
+        overview = _ints(blob, "^" + ov + r"(\d+)\.mp4$")
         # SPRITE-PREVIEW-2026-08-04: units whose sheets are complete (the
         # sidecar is written last, so its presence is the marker). A change to
         # the tile geometry or quality invalidates all of them — detected by
         # comparing SPRITE_SIG against what state.json recorded.
-        sprites = set()
-        o_sprites = set()
         sprite_stale = SPRITES_ENABLED and state.get("sprite_sig") != SPRITE_SIG
-        fast_sprites = set()
-        fast_o_sprites = set()
+        sfx = re.escape(SPRITE_SUFFIX)
+        sprites = set() if sprite_stale else _ints(blob, r"^(\d+)" + sfx + "$")
+        o_sprites = set() if sprite_stale else _ints(blob, "^" + ov + r"(\d+)" + sfx + "$")
         fast_sprite_stale = (
             FAST_SPRITES_ENABLED
             and state.get("fast_sprite_sig") != FAST_SPRITE_SIG)
+        fsfx = re.escape(FAST_SPRITE_SUFFIX)
+        fast_sprites = set() if fast_sprite_stale else _ints(blob, r"^(\d+)" + fsfx + "$")
+        fast_o_sprites = (
+            set() if fast_sprite_stale
+            else _ints(blob, "^" + ov + r"(\d+)" + fsfx + "$"))
         fast_sprite_started = int(
             state.get("fast_sprite_started") or last_o)
         if fast_sprite_stale:
             fast_sprite_started = last_o
-        for nm in names:
-            if (nm.endswith(FAST_SPRITE_SUFFIX)
-                    or (".f" in nm and nm.endswith(".jpg"))):
-                if fast_sprite_stale:
-                    try:
-                        os.remove(os.path.join(cam_dir, nm))
-                    except OSError:
-                        pass
-                    continue
-                if not nm.endswith(FAST_SPRITE_SUFFIX):
-                    continue
-                stem = nm[: -len(FAST_SPRITE_SUFFIX)]
-                if stem.isdigit():
-                    fast_sprites.add(int(stem))
-                elif (stem.startswith(OVERVIEW_PREFIX)
-                        and stem[len(OVERVIEW_PREFIX):].isdigit()):
-                    fast_o_sprites.add(int(stem[len(OVERVIEW_PREFIX):]))
-            elif nm.endswith(SPRITE_SUFFIX) or (".s" in nm and nm.endswith(".jpg")):
-                if sprite_stale:
-                    # Built at a different geometry/quality — drop it so this
-                    # unit is re-rendered at the current setting.
-                    try:
-                        os.remove(os.path.join(cam_dir, nm))
-                    except OSError:
-                        pass
-                    continue
-                if not nm.endswith(SPRITE_SUFFIX):
-                    continue
-                stem = nm[: -len(SPRITE_SUFFIX)]
-                if stem.isdigit():
-                    sprites.add(int(stem))
-                elif (stem.startswith(OVERVIEW_PREFIX)
-                        and stem[len(OVERVIEW_PREFIX):].isdigit()):
-                    o_sprites.add(int(stem[len(OVERVIEW_PREFIX):]))
-            elif nm.endswith(".mp4") and nm[:-4].isdigit():
-                plain.add(int(nm[:-4]))
-            elif (nm.startswith(OVERVIEW_PREFIX) and nm.endswith(".mp4")
-                    and nm[len(OVERVIEW_PREFIX):-4].isdigit()):
-                overview.add(int(nm[len(OVERVIEW_PREFIX):-4]))
-            elif nm.endswith(".map.json") and nm[: -len(".map.json")].isdigit():
-                map_starts.add(int(nm[: -len(".map.json")]))
-            elif nm.endswith(".tmp.mp4") or nm.endswith(".tmp"):
-                fp = os.path.join(cam_dir, nm)
+        # A signature change invalidates every sheet of that tier: drop them so
+        # the units are re-rendered at the current geometry/quality. Rare, and
+        # the only path that touches the (many) .jpg names at all.
+        if fast_sprite_stale:
+            for nm in _glob(names, "*" + FAST_SPRITE_SUFFIX) + _glob(names, "*.f*.jpg"):
                 try:
-                    if os.path.getmtime(fp) < now.timestamp() - 3600:
-                        os.remove(fp)
+                    os.remove(os.path.join(cam_dir, nm))
                 except OSError:
                     pass
+        if sprite_stale:
+            for nm in _glob(names, "*" + SPRITE_SUFFIX) + _glob(names, "*.s*.jpg"):
+                try:
+                    os.remove(os.path.join(cam_dir, nm))
+                except OSError:
+                    pass
+        # Temp files from interrupted runs, once they are older than an hour.
+        for nm in _glob(names, "*.tmp") + _glob(names, "*.tmp.mp4"):
+            fp = os.path.join(cam_dir, nm)
+            try:
+                if os.path.getmtime(fp) < now.timestamp() - 3600:
+                    os.remove(fp)
+            except OSError:
+                pass
         on_disk = plain | map_starts
 
         # Rolling window: delete expired blocks — every file whose name leads
         # with an expired block start (.mp4, .p<k>.mp4 parts, .map.json).
         expired = {b for b in on_disk if b < first_start}
-        if expired:
-            for nm in names:
-                lead = nm.split(".")[0]
-                if lead.isdigit() and int(lead) in expired:
-                    try:
-                        os.remove(os.path.join(cam_dir, nm))
-                    except OSError:
-                        pass
+        for b in expired:
+            # "<start>.*" is exactly the old "first dot-segment is this block".
+            for nm in _glob(names, "%d.*" % b):
+                try:
+                    os.remove(os.path.join(cam_dir, nm))
+                except OSError:
+                    pass
         on_disk -= expired
         map_starts -= expired
 
@@ -1206,6 +1298,7 @@ def protect_scrub_sync():
             if start not in on_disk and attempts.get(start, 0) < EXPORT_MAX_ATTEMPTS:
                 missing.append((start, cam_id))
             start -= block_ms
+    _mark(marks, "scan")
 
     # HEAD BLOCK first (the region people scrub the most): a rolling partial
     # export of the CURRENT incomplete block, [block start, now - HEAD_LAG_S],
@@ -1219,13 +1312,23 @@ def protect_scrub_sync():
     for cam_id, c in cams.items():
         if head_end - head_start >= HEAD_MIN_S * 1000:
             name = f"{HEAD_PREFIX}{head_start}-{head_end}"
-            ok, _used = _export_block_split(api, cam_id, c, head_start, head_end, name)
+            # force_encode is redundant at HEAD_CHANNEL 0 (2688-wide input is
+            # re-encoded anyway) but stays explicit: it is what guarantees the
+            # head goes through the SAME scale=640:360 / crf 27 / -r 25 pass as
+            # a completed block, whatever tier HEAD_CHANNEL names. That single
+            # shared pass is why head and block now land on an identical tile
+            # cadence (7.14 s/tile measured on both) instead of merely a
+            # similar one.
+            ok, _used = _export_block_split(api, cam_id, c, head_start, head_end, name,
+                                            channel=HEAD_CHANNEL, force_encode=True)
+            _mark(marks, "h.export." + c["slug"][:6])
             if ok:
                 mapped = os.path.exists(os.path.join(c["dir"], f"{name}.map.json"))
                 fast_sprite = (
                     FAST_SPRITES_ENABLED
                     and not mapped
                     and _fast_sprite_sheets(c["dir"], name))
+                _mark(marks, "h.sprite." + c["slug"][:6])
                 c["head"] = {
                     "start": head_start,
                     "end": head_end,
@@ -1246,6 +1349,8 @@ def protect_scrub_sync():
         # range; the tip service reaps its own, this catches the ones left
         # behind when scrubbing stops (age-based, so an idle camera goes clean).
         _reap_tips(c["dir"], KEEP_TIPS, now_ms)
+        _mark(marks, "h.reap." + c["slug"][:6])
+    _mark(marks, "heads")
 
     # Newest blocks first across ALL cameras — every camera gets recent coverage
     # early in a backfill; the per-run budget just continues next minute.
@@ -1302,9 +1407,15 @@ def protect_scrub_sync():
         else:
             c["o_attempts"][o_start] = c["o_attempts"].get(o_start, 0) + 1
 
-    # FAST-SCRUB ATLAS. Additive: start at the latest complete hour recorded on
-    # the first run, never backfill the seven-day cache. Overview hours cover
-    # long swipes; 10-minute blocks cover the newest incomplete overview hour.
+    # FAST-SCRUB ATLAS. Overview hours cover long swipes; 10-minute blocks cover
+    # the newest incomplete overview hour.
+    #
+    # FORWARD ONLY, deliberately: it starts at the latest complete hour and never
+    # backfills the seven-day cache. When the fine tier was switched off
+    # (2026-09-22) that meant everything already on disk lost its preview and
+    # falls back to the video tier — accepted explicitly ("it's okay to lose
+    # scrub for the past 7 days, let's just concentrate on new footage"). The
+    # alternative was ~4 hours of ffmpeg re-rendering history nobody scrubs.
     if FAST_SPRITES_ENABLED:
         fast_pending = []
         for cam_id, c in cams.items():
@@ -1372,6 +1483,8 @@ def protect_scrub_sync():
             log.info("protect_scrub: sprites +%s (pending %s)",
                      made, max(0, len(pending) - MAX_SPRITE_PER_RUN))
 
+    _mark(marks, "exports+sprites")
+
     # Publish per-camera index + state. The index is rewritten every run (cheap,
     # single small file) so `generated` doubles as the job's heartbeat.
     for cam_id, c in cams.items():
@@ -1406,6 +1519,8 @@ def protect_scrub_sync():
     if exported or failed:
         log.info("protect_scrub: done exported=%s failed=%s pending=%s",
                  exported, failed, max(0, len(missing) - MAX_EXPORTS_PER_RUN))
+    _mark(marks, "index")
+    _log_marks(marks)
 
 
 @service
