@@ -7494,6 +7494,17 @@ R.styles = ot`
       width: min(100%, 900px);
       aspect-ratio: 16 / 9;
     }
+    /* Tablet: the lightbox scales with the space it has instead of stopping at
+       900px — 90% of whichever side binds, kept 16:9, so a full-width popup gets
+       a proportionally bigger player while a scrim margin (tap to close) stays.
+       The overlay is the size container, so this tracks the popup, not the
+       window. Phones keep the plain full-width rule above. */
+    .tablet .playoverlay {
+      container-type: size;
+    }
+    .tablet .playbox {
+      width: min(90cqw, 90cqh * 16 / 9);
+    }
     /* ---- Tablet (wide) layout: a UniFi-app split — events LIST on the left,
        live camera grid on the right. The chevron expands the events to a
        full-width grid (cameras hidden). Mobile/stacked keeps the top-strip
@@ -7667,7 +7678,7 @@ var To = Object.defineProperty, Po = Object.getOwnPropertyDescriptor, $ = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && To(t, i, o), o;
 };
-const Co = 3e4, Ao = 2 * 6e4, Mo = "2.1.0", Eo = 2e3, Fo = 1e3, Ro = 33, Lo = 1.3, zo = 1.15;
+const Co = 3e4, Ao = 2 * 6e4, Mo = "2.1.1", Eo = 2e3, Fo = 1e3, Ro = 33, Lo = 1.3, zo = 1.15;
 let mt = 0, Be = "", k = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._segments = [], this._segIdx = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new ei(2, () => {

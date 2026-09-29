@@ -232,6 +232,17 @@ export class MultiView extends LitElement {
       width: min(100%, 900px);
       aspect-ratio: 16 / 9;
     }
+    /* Tablet: the lightbox scales with the space it has instead of stopping at
+       900px — 90% of whichever side binds, kept 16:9, so a full-width popup gets
+       a proportionally bigger player while a scrim margin (tap to close) stays.
+       The overlay is the size container, so this tracks the popup, not the
+       window. Phones keep the plain full-width rule above. */
+    .tablet .playoverlay {
+      container-type: size;
+    }
+    .tablet .playbox {
+      width: min(90cqw, 90cqh * 16 / 9);
+    }
     /* ---- Tablet (wide) layout: a UniFi-app split — events LIST on the left,
        live camera grid on the right. The chevron expands the events to a
        full-width grid (cameras hidden). Mobile/stacked keeps the top-strip

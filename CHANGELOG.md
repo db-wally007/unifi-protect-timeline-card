@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1] - 2026-09-29
+
+### Changed
+
+- Multi-camera page, tablet layout: a clip opened from the expanded events grid now scales with
+  the space it has — 90% of the popup's binding side, kept 16:9 — instead of stopping at 900 px
+  wide, so a full-width popup gets a proportionally larger player. The phone layout is unchanged.
+
 ## [2.1.0] - 2026-09-27
 
 ### Added
@@ -82,5 +90,7 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[2.1.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.0.2...v2.1.0
 [2.0.2]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.0.0...v2.0.2
 [2.0.0]: https://github.com/db-wally007/unifi-protect-timeline-card/releases/tag/v2.0.0
