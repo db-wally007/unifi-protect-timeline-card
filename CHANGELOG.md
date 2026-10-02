@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.2.0] - 2026-10-02
+
+### Changed
+
+- Events — merged or not, any length — play on the same chunk engine as continuous footage: a
+  fixed grid from the event's start, two-minute chunks prepared in the background, entered
+  through a 30-second slice so a start or a seek still shows a picture in about a second. The
+  seek bar and the ±15 s buttons are plain seeks on one timeline: inside a loaded chunk they are
+  instant, recently played chunks are reused instead of exported again, and the end of an event
+  rolls on into what follows without a reload.
+- Seek bar: the knob follows the finger and the footage seeks once, on release, then the knob
+  stays where it was let go.
+- Live: while a camera page is on screen, the high-resolution streams of its cameras are kept
+  running on the server (`live_prewarm`, default on; needs `protect_cache`), so LIVE opens in
+  about a second instead of waiting for a cold stream's first segment. Nothing extra is sent to
+  the browser, and the streams stop 30 s after the page is hidden. A stream kept warm opens
+  without the medium bridge.
+- A card hidden for 3 s (closed popup, background view, screen off) releases every player and
+  download, and resumes where it was when shown again.
+- Fullscreen: one tap model for the whole player — a tap anywhere toggles the controls, a tap on a
+  button, the seek bar or a thumbnail does not. A drag anywhere on the overlay, including right of
+  the ruler and above or below it, scrubs.
+- `protect_cache`: sessions are evicted least-recently-used (a session being played is never the
+  one evicted), up to 16 at a time.
+
+### Removed
+
+- `merged_playback`, `clip_segment_seconds` and `clip_segment_join_seconds` (events no longer play
+  as a playlist). Ignored if present.
+
+### Fixed
+
+- Skip back 15 s inside a merged event moved only to the start of the loaded segment, and dragging
+  the seek bar started an export per pointer move, landing on a random point.
+- A chunk that loaded and then failed could be re-prepared forever (a wall tablet re-exported one
+  chunk every 44 s for hours); the retry budget now resets only on real playback, any one chunk is
+  prepared at most four times per run, and failure reports are capped per hour, not per page load.
+- Finger jitter on a tap counted as a timeline drag, dropping out of LIVE in fullscreen.
+- Fullscreen: the controls could not be hidden over most of the screen (they flashed off and back
+  on), and a tap just beside the exit-fullscreen button hid the controls before exiting.
+- A freshly started HLS stream could re-download its first segment repeatedly.
+
 ## [2.1.1] - 2026-09-29
 
 ### Changed
@@ -90,6 +132,7 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[2.2.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.0.2...v2.1.0
 [2.0.2]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.0.0...v2.0.2

@@ -67,22 +67,31 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
   **Both stages are all-or-nothing before the client sees a frame** (the export has to reach its
   last byte because `moov` is there, and faststart is a two-pass rewrite), which is why the
   request handed to that pipeline has to be SMALL — see the playlist gotcha below.
-- **Merged events play as a PLAYLIST, never as one clip** (`clipSegments` in
-  `data/event-groups.ts`). The host (card.ts / multi-view.ts) owns a `_segIdx` cursor, feeds
-  media-view one segment's `targetTime`/`clipEndTime` at a time and advances on `clip-ended`;
-  media-view PREFETCHES the next segment's session 20 s before the current one ends, so a
-  boundary hands over in ~0.7 s with no overlay. `clipPlaylist`/`clipPlaylistIndex` also make the
-  seek bar span the whole group — a bar that fills in 2 minutes under a row labelled "37m56s"
-  would be a lie. A seek past the loaded clip emits `playlist-seek` and the next export starts AT
-  that instant. Moving BETWEEN segments of one event is not a new clip: media-view sets
-  `_segmentSwitch`, holds the outgoing frame (`_holdFrame` in `willUpdate`, released when the next
-  segment presents) and renders a transparent overlay — spinner + Cancel over a blurred scrim —
-  so a 2-3 s export does not flash the picture black. Selecting a DIFFERENT event still gets the
-  black "Preparing clip…" screen. Measured on the 37m56s row: first frame 4.9 s, skip to 10m
-  3.0 s, 15m 1.7 s (mid-segment seeks export only from the seek point), 30m 3.1 s, back to 5m
-  2.8 s, and a seek inside the loaded segment 0.7 s with zero requests.
-- **Historical (delayed-follow).** Chunks are capped at `FOLLOW_MAX_CHUNK_MS` (30 s, ~28 MB)
-  across two leap-frogging `<video>` slots. **Since 2026-09-24 each chunk is a clip SESSION**
+- **EVERY event — merged or not, any length — plays on the follow engine's chunk grid (since
+  2026-10-01).** The host passes the event's span as `targetTime`/`clipEndTime` and never moves
+  `targetTime` again for that selection; media-view starts a fresh grid at the event start
+  (`_followOrigin`). Grid CELLS are 2 min (`FOLLOW_MAX_CHUNK_MS`), but a start or seek loads only
+  the 30 s SLICE of its cell holding `t` (`FOLLOW_SEEK_CHUNK_MS`), then the rest of the cell, then
+  whole cells — measured prepare 30 s 0.7-1.1 s, 60 s 1.3 s, 120 s 2.2-2.7 s, so starts stay ~1 s
+  while continuous playback exports a quarter as often. A chunk with < `FOLLOW_QUICK_MS` left to
+  play prefetches a slice instead of a cell (no stall). The seek bar spans the
+  event in wall-clock time (`_renderEventSeekRow`), and `clip-ended` fires when playback passes
+  `clipEndTime` while playback simply carries on (the host only clears `clipEndTime` and its
+  highlight — rollover with no reload). `_seekFollowTo(t)` is THE seek: native inside a slot's
+  chunk, else a cached chunk covering `t` (`_chunkCache`, the last 4 sessions, kept instead of
+  deleted) or one slice prepare. Seek bar: knob only while dragging, one seek on release, and the
+  knob HOLDS the released position (`_followNow = t`) — `_onFollowTime` ignores a slot that is
+  not `ready`, whose stale media against a reset range snapped bar and ruler back. Skip ±15 s,
+  timeline taps while playing and the bar all go through it.
+  **Why the playlist it replaced failed (user-reported 2026-10-01 on a 17m15s row):** each seek
+  re-exported FROM the seek point, so skip-back clamped to that partial file's start (15 s
+  became 1 s), and the bar emitted `playlist-seek` per pointer move — an export per pixel,
+  landing wherever the last one finished. Measured after, same row: drag to 3:51 = 1 prepare on
+  release, lands 3:52; skip back = native, 0 requests; skip back across a chunk = 1 prepare;
+  skip forward into a played chunk = cache hit, 0 prepares; end of event = no reload.
+  `max_clip_seconds`/`_loadSegment` remain only for the live fallback's bounded clip.
+- **Historical (delayed-follow).** Chunks follow the grid above (2-min cells entered through a
+  30 s slice, ~97 MB per cell) across two leap-frogging `<video>` slots. **Since 2026-09-24 each chunk is a clip SESSION**
   (`startClipSession`, the same pipeline as event clips), not a Blob pulled from the export
   proxy: the Blob path (raw export, `moov` at the END, whole chunk in page memory) is what WebKit
   would not reliably play — Safari on a Mac showed 45-60 s of black after a clip ended, and the
@@ -256,6 +265,62 @@ of each and editing either path edits this repo. Two consequences:
   finger" and swallows it. A PRIMARY `pointerdown` now clears the map (a primary pointer means no
   other is active), and `lostpointercapture` is handled as a cancel — never as a tap, which would
   seek to whatever thumbnail is under it.
+- **A tap on the fullscreen timeline must not be a scrub (fixed 2026-09-30).** The overlay covers
+  the whole player, so every show/hide-controls tap lands on the scrubber. Sub-threshold motion
+  used to pan the domain and emit `scrub`, so a finger's jitter on a tap left LIVE (2K player torn
+  down, preview videos, a recorded chunk prepared) — part of what crashed the wall tablet's
+  WebView. Now nothing moves before `TOUCH_SLOP_PX` (4, user-tuned) / `MOUSE_SLOP_PX` (3), and once crossed the
+  domain CATCHES UP to the finger from the press point. Do NOT re-anchor at the crossing: a 10 px
+  slop with re-anchoring (2026-09-30) left the timeline trailing the finger and the user felt it
+  as an artificial delay at the start of every drag (measured after: 4 px moves 0, a 20 px drag
+  moves 20.0 px).
+- **Tap-to-toggle the controls is ONE detector on the host, in the CAPTURE phase (2026-10-02).**
+  `_onPressCapture`/`_onReleaseCapture` qualify a tap from press + release (≤ `TAP_SLOP_PX` 4,
+  ≤ 600 ms, press not on a control: buttons, `.vseek`, `.evt-wrap`, the timeline's zoom/live
+  buttons — the control bar's EMPTY gradient is not a control), then the tap WAITS for its click
+  (`_pendingTap`, 350 ms fallback): a click on a control cancels the toggle, anything else commits
+  it. Why the click decides: a touch's press is reported at the fingertip's exact centre, but the
+  browser ADJUSTS a touch's click to the nearest button — a finger a few px off the
+  exit-fullscreen button hid the controls (press = video) and then exited (click = button):
+  "controls disappear, then fullscreen exits, not always". Headless Chromium does NOT do touch
+  adjustment even with finger-sized CDP touches — model it by redirecting the trusted click to
+  the button (reproduced 6/6 on the old code, 0/6 after). It replaced four paths (stage click,
+  strip `tap-through`, strip-padding click, show-on-pointerdown in the strip) that disagreed: the
+  tap's `click` arrives AFTER the release, by when hiding had removed the strip, so it fell
+  through to the video whose click handler showed the controls again — "flash off and on,
+  impossible to hide". Hover-reveal only for `pointerType === 'mouse'`. Hidden controls are not
+  hit-testable (`.vctrl.fs-inset.show > *` opts children in), so a show at click time cannot
+  press a button that appears under the finger. Drags starting in the strip's PADDING (gutter
+  right of the ruler, bands above/below) are handed to the timeline via `beginDrag(e)`
+  (`_onStripPress`; `.fs-tl` needs `touch-action: none`). Verify with REAL touch (`page.touchscreen.tap` via
+  puppeteer-core from the chrome-devtools plugin's node_modules — it makes the browser's own late
+  click; synthetic PointerEvents don't). Phone fullscreen is the player rotated 90° cw: player
+  (px,py) -> screen (390-py, px), so its control bar runs down the screen's LEFT edge.
+- **Hidden = released, not paused (fixed 2026-09-30).** Pausing kept decoders, hls.js kept polling
+  (so HA's stream stayed up) and the follow chain could still refill slots. media-view now
+  `_suspend()`s after 3 s hidden (IntersectionObserver OR `document.hidden`): follow stopped with
+  `_resumeAt` kept, live unrendered (`_liveStream` is false while suspended), prepares dropped.
+  Showing again rebuilds via `_reattached`. Only a bounded clip stays loaded (paused).
+- **The follow failure budget must only reset on real playback.** It used to reset when a chunk
+  became READY, so a chunk that loads and then errors refilled forever: the wall tablet prepared the
+  same 11,111,907-byte chunk every 44 s for 2.5 h (195 times, 2.2 GB, seen in the HAProxy log) and
+  the problem reports had long gone silent (10 per PAGE LOAD on a kiosk that never reloads). Now:
+  reset in `_onFollowTime` past leadIn + 1 s, a hard cap of `FOLLOW_MAX_PREPARES` per chunk start
+  per run, and 10 reports per HOUR.
+- **HQ live startup is bound by HA's cold stream, not the network.** HA's master playlist waits for
+  one complete segment plus the start of the next, and segments close on keyframes (~5 s on UniFi):
+  6.1-6.3 s measured before the first playlist, ~12 s before the medium bridge handed over. A cold
+  playlist with ONE segment is also where hls.js re-downloaded that segment ~24x in 5 s. HA stops
+  an HLS output 30 s after the last SEGMENT/PART request — playlist requests do not wake it — so
+  `protect_cache/stream_warm.py` (`POST /api/protect_clip/warm`) starts the stream and calls
+  `idle_timer.awake()`; `data/stream-warm.ts` pings it every 20 s for the cameras on screen (live
+  grid: all highs; a player: its own camera) and stops when hidden. A session opened on a stream
+  kept warm >= 8 s skips the medium bridge (`_bridgeSkip`). `live_prewarm: false` turns it off.
+- **Diagnosing the wall tablet: read the HAProxy log** (`podman logs haproxy-pod-haproxy`, client
+  192.168.1.76). A renderer crash shows as the whole frontend re-downloading (`app.*.js`,
+  `/dashboard-clock2`); what it fetched just before is the evidence. Bubble closes a popup by
+  DISCONNECTING its card in Chromium (verified) — hidden-but-connected is views/other hosts.
+
 - **`_checkStage` is the follow engine's last line of defence.** The follow watchdog only covers a
   chunk that never becomes READY; after that there is one `play()`. A ready chunk that gets
   paused or stalls behind the card's back used to park its first frame — the keyframe LEAD-IN,

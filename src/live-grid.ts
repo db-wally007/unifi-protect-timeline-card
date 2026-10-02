@@ -29,6 +29,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { CameraEntry, HomeAssistant } from './data/types';
 import { relTime, type MultiBand } from './data/multi-events';
 import { releaseVideosIn } from './data/media-release';
+import { holdWarm, releaseWarm } from './data/stream-warm';
 
 const GAP = 0; // px between tiles (both axes) — flush, like the UniFi app
 
@@ -54,6 +55,11 @@ export class LiveGrid extends LitElement {
   // fit-to-box height is reduced by it, so tiles still fit. Ignored in scroll
   // mode (there the overlay floating over scrolled content is fine).
   @property({ type: Number }) padTop = 0;
+  // While the grid is on screen, keep every camera's HIGH-resolution stream
+  // warm on the server: a tile tap opens the full-resolution player, and a cold
+  // one waits a whole keyframe interval (6-7 s) for its first segment.
+  @property({ type: Boolean }) prewarm = true;
+  private _warmKey = '';
 
   // True once HA's <ha-camera-stream> element is defined (lazy-loaded).
   @state() private _streamReady = false;
@@ -271,8 +277,24 @@ export class LiveGrid extends LitElement {
     this._visibilityObserver.observe(this);
   }
 
+  protected updated(): void {
+    // Re-evaluated on every render — hass ticks included, which is also how a
+    // screen that went off (document.hidden) lets go within seconds.
+    const ids =
+      this.prewarm && this.isConnected && this._visible && !document.hidden && this.hass
+        ? this.entries.map((e) => e.camera).filter(Boolean)
+        : [];
+    const key = ids.join(',');
+    if (key === this._warmKey) return;
+    this._warmKey = key;
+    if (ids.length) holdWarm(this, this.hass, ids);
+    else releaseWarm(this);
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    releaseWarm(this);
+    this._warmKey = '';
     this._ro?.disconnect();
     this._visibilityObserver?.disconnect();
     this._visibilityObserver = undefined;

@@ -72,6 +72,10 @@ const MOMENTUM_TAU_S = 0.325; // exponential decay time constant (~iOS scroll fe
 const MOMENTUM_STOP_PXS = 20; // glide ends below this velocity
 const MOMENTUM_MAX_PXS = 4000; // clamp absurd flick velocities
 const VEL_WINDOW_MS = 120; // release velocity = average over this trailing window
+// Travel before a press becomes a drag (see _onPointerMove). Android's own touch
+// slop is 8dp; a mouse click barely moves, so it keeps a tight threshold.
+const TOUCH_SLOP_PX = 4; // = media-view's TAP_SLOP_PX: beyond it a press is a drag
+const MOUSE_SLOP_PX = 3;
 // Rubber-band overscroll past the live edge: the visual overshoot approaches
 // this asymptote (px) no matter how far the finger drags — iOS overscroll feel.
 const RUBBER_MAX_PX = 48;
@@ -241,6 +245,7 @@ export class ScrubberTimeline extends LitElement {
   // pointer state (single-finger / mouse drag = scroll; zoom is buttons only)
   private _pointers = new Map<number, { x: number; y: number }>();
   private _dragStartY = 0;
+  private _dragSlop = TOUCH_SLOP_PX;
   private _dragStartDomain?: TimeDomain;
   private _moved = false;
   // `scrub-start` has been announced for the gesture in progress.
@@ -977,6 +982,14 @@ export class ScrubberTimeline extends LitElement {
     return best ? { hit: best, dist: bestDist } : undefined;
   }
 
+  /** Start a gesture from a press that landed OUTSIDE the scrub surface — the
+   *  fullscreen overlay's margins (media-view's _onStripPress). The pointer is
+   *  captured to the surface here, so the rest of the drag arrives as if it
+   *  had started on the ruler. */
+  beginDrag(e: PointerEvent): void {
+    this._onPointerDown(e);
+  }
+
   private _onPointerDown = (e: PointerEvent): void => {
     const el = this._scrubEl;
     // A PRIMARY pointer going down means no other pointer is active (a mouse is
@@ -1007,6 +1020,7 @@ export class ScrubberTimeline extends LitElement {
       this._dragStartY = this._localY(e);
       this._dragStartDomain = { ...this.domain };
       this._gestureStarted = false; // scrub-start waits for actual motion
+      this._dragSlop = e.pointerType === 'mouse' ? MOUSE_SLOP_PX : TOUCH_SLOP_PX;
     }
   };
 
@@ -1021,8 +1035,18 @@ export class ScrubberTimeline extends LitElement {
 
     // Everything below works in the element's own vertical axis (see _localY).
     const localY = this._localY(e);
+    // Nothing moves until the pointer has travelled past the slop. Sub-threshold
+    // motion used to pan the domain AND emit `scrub`, so a finger's jitter on a
+    // tap (the fullscreen overlay covers the whole player, so every show/hide
+    // tap lands here) LEFT LIVE and tore the 2K player down, once per tap. The
+    // slop is small, and once it is crossed the domain CATCHES UP to the finger
+    // from the press point — no re-anchoring, which left the timeline trailing
+    // the finger by the slop for the whole drag and read as a sluggish start.
+    if (!this._moved) {
+      if (Math.abs(localY - this._dragStartY) <= this._dragSlop) return;
+      this._moved = true;
+    }
     const dy = localY - this._dragStartY;
-    if (Math.abs(dy) > 2) this._moved = true;
     // A scrub starts at the first MOTION, not at the press. The fullscreen
     // overlay covers the whole player, so every tap on the video lands here —
     // announcing a scrub on pointer-down would tear playback down and rebuild

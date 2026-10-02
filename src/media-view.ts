@@ -16,10 +16,10 @@
 // streams and seeks natively holding only its own buffer. See ha-urls.ts
 // (startClipSession) and custom_components/protect_cache/clip_session.py.
 //
-// The delayed-follow engine below still uses BLOBS on purpose: its chunks are
-// capped at FOLLOW_MAX_CHUNK_MS (30s, ~26 MB) across two slots, which was never
-// the memory problem, and blobs let the two <video> elements leap-frog without a
-// reload flash. Live is HA's <ha-camera-stream>.
+// The delayed-follow engine below plays every recorded footage — events too —
+// as clip sessions on a fixed chunk grid (FOLLOW_MAX_CHUNK_MS cells, entered
+// through a FOLLOW_SEEK_CHUNK_MS slice), leap-frogging two <video> elements.
+// Live is HA's <ha-camera-stream>.
 //
 // TIER-AWARE SEGMENTS: the NVR keeps high-res (2K) footage around events and a continuous
 // low-quality track in between, and serves ONE tier per export — a request
@@ -33,7 +33,7 @@ import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { FootageGap, HomeAssistant } from './data/types';
-import { startClipSession, endClipSession, type ClipSession } from './data/ha-urls';
+import { startClipSession, endClipSession } from './data/ha-urls';
 import { APPLE_WEBKIT } from './data/platform';
 import { inGap } from './data/gaps';
 import {
@@ -41,7 +41,6 @@ import {
   isCurrentClipSource,
   isPresentedClipFrame,
 } from './data/clip-playback';
-import { segmentIndexAt } from './data/event-groups';
 import {
   LiveHealthTracker,
   liveProgressValue,
@@ -58,6 +57,7 @@ import {
   type SpriteVariant,
 } from './data/scrub-preview';
 import { releaseVideo, releaseVideosIn } from './data/media-release';
+import { holdWarm, isStreamHot, releaseWarm } from './data/stream-warm';
 import { shadowVideo } from './data/live-video';
 
 interface HaLivePlayerElement extends HTMLElement {
@@ -143,6 +143,9 @@ const LIVE_AUDIO_VERIFY_MS = 350;
 const BRIDGE_CLOCK_WAIT_MS = 3000;
 // How often the live-only poster preload is refreshed (see _posterPreload).
 const POSTER_REFRESH_MS = 10_000;
+// Hidden this long -> release every player (see _suspend). Short enough that a
+// closed popup lets go almost at once, long enough to ride out a flicker.
+const SUSPEND_AFTER_MS = 3_000;
 // HOLDFRAME-2026-08-05: master switch for the held-frame overlay.
 const HOLD_FRAME_ENABLED = true;
 const CLIP_FRAME_STALL_MS = 2_500;
@@ -182,22 +185,13 @@ export class MediaView extends LitElement {
   // EXPERIMENTAL (card config `scrub_tip`): ask the NVR for a real-time clip of
   // the newest ~minute when a scrub starts near live. Off = the cron head only.
   @property({ type: Boolean }) tipEnabled = false;
-  // When > 0, play a single bounded clip ending at this epoch-ms (the event's
-  // end) instead of a chunked window — so the player length = the event length.
+  // When > targetTime, an EVENT is being played: [targetTime, clipEndTime] is
+  // its span — the seek bar's range, and the point where `clip-ended` is sent
+  // while playback carries straight on. Playback itself is the chunk engine
+  // either way (see _followOrigin).
   @property({ type: Number }) clipEndTime = 0;
-  // A merged event is played as a PLAYLIST of bounded clips, because its span is
-  // a display span, not a clip: the 2026-09-19 garden group was 43 raw events
-  // over 37m56s, and asking the NVR for that in one request measured 34.9s and
-  // 1.29 GB. The host owns the cursor; this is the whole ordered list, purely so
-  // the seek bar can span the group instead of the loaded segment, and so the
-  // NEXT segment can be prepared while the current one plays (a segment change
-  // otherwise freezes on "Preparing clip…" for the 0.6-4.1s it takes).
-  // Empty = a standalone clip: the bar spans the loaded video, as before.
-  @property({ attribute: false }) clipPlaylist: readonly FootageSpan[] = [];
-  @property({ type: Number }) clipPlaylistIndex = 0;
-  // Backstop for one request (seconds). Nothing should reach it now that groups
-  // play as a playlist; it is here so a bug or a hand-written config can never
-  // ask the NVR for a multi-gigabyte export again. Keep <= the server's
+  // Backstop for one bounded-clip request (seconds) — the live fallback's
+  // trailing window is the only bounded clip left. Keep <= the server's
   // MAX_CLIP_SECONDS (custom_components/protect_cache/clip_session.py).
   @property({ type: Number }) maxClipSeconds = 600;
   // Accent color (matches the card's accent_color).
@@ -209,6 +203,9 @@ export class MediaView extends LitElement {
   @property() liveAudioStart: LiveAudioStart = 'muted';
   @property() liveTransport: LiveTransport = 'auto';
   @property() liveBridgeCameraId = '';
+  // Keep this camera's live stream warm on the server while the player is on
+  // screen (data/stream-warm.ts), so LIVE starts without a cold keyframe wait.
+  @property({ type: Boolean }) prewarm = true;
   // True when the host card is in its stacked (phone) layout — turns on the
   // mobile control bar (full-width seek row) and the rotate-to-landscape
   // fullscreen. Passed down from the card's _isStacked().
@@ -232,8 +229,8 @@ export class MediaView extends LitElement {
   // How wide a band down the right edge ACCEPTS the scrub gesture. Everything
   // the timeline draws is anchored to the right edge, so this only widens the
   // grab area — a 165px-wide target is fiddly to catch with a thumb. 0 = the
-  // WHOLE player, so a drag anywhere on the picture scrubs (taps outside the
-  // timeline never uses taps itself — see the tap-through event).
+  // WHOLE player, so a drag anywhere on the picture scrubs; a TAP anywhere
+  // toggles the controls (see _tap).
   @property({ type: Number }) fsTimelineGrabWidth = 0;
   // Clearance between the ruler and the top/bottom screen edges.
   @property({ type: Number }) fsTimelinePadding = 100;
@@ -296,6 +293,11 @@ export class MediaView extends LitElement {
   // fresh live entry / camera change), NOT by _restartLivePlayer — a mid-session
   // restart must not bring the bridge back and swap a second time.
   @state() private _bridgeRetired = false;
+  // This live session starts on a stream the warmer has kept hot: the high
+  // player reaches a picture about as fast as the medium would, so no bridge —
+  // that would only be a second decoder and a handover for half a second.
+  private _bridgeSkip = false;
+  private _warmKey = '';
   private _bridgeSwapTimer?: ReturnType<typeof setTimeout>;
   // When the high player first reported stable — the clock-wait deadline runs
   // from here, not from the mount, so a slow cold start does not eat the budget.
@@ -318,7 +320,6 @@ export class MediaView extends LitElement {
   // already on screen: the last frame is held and the overlay is transparent,
   // instead of the black preparation screen a freshly selected event gets.
   @state() private _segmentSwitch = false;
-  private _lastPlaylistKey = '';
   @state() private _clipBuffering = false;
   private _clipFrameGeneration = 0;
   private _clipFrameTimer?: ReturnType<typeof setTimeout>;
@@ -336,14 +337,6 @@ export class MediaView extends LitElement {
   // missed DELETE (force-quit, lost network) costs a directory for SESSION_TTL.
   private _sessionId?: string;
   private _sessionAbort?: AbortController;
-  // The NEXT playlist segment, prepared while the current one still plays, so a
-  // segment change does not stall on its export. Keyed by range so a superseded
-  // prefetch is recognised and its server-side directory released.
-  private _prefetch?: {
-    key: string;
-    abort: AbortController;
-    promise: Promise<ClipSession | undefined>;
-  };
   private _followCtrlTimer?: ReturnType<typeof setTimeout>;
   private _followToken = 0;
   // Recovery for a chunk that never becomes playable. Every step between "src
@@ -372,6 +365,32 @@ export class MediaView extends LitElement {
     b: { start: 0, end: 0, ready: false, leadIn: 0 },
   };
   private _followPlayhead = 0; // next content time (epoch ms) to fetch from
+  // Where each slot should open once its chunk loads (0 = the chunk's start).
+  // Set by a seek into a chunk that was not loaded; survives that chunk's
+  // retries, cleared when the slot is ready.
+  private _followSeekTo: Record<'a' | 'b', number> = { a: 0, b: 0 };
+  // THE CHUNK GRID. Chunks are [origin + k*C, origin + (k+1)*C], so any instant
+  // maps to the same chunk for as long as the grid lives — which is what makes a
+  // seek back, a skip across a boundary or a second look at the same minute a
+  // CACHE HIT instead of another NVR export. The origin is where playback of
+  // this camera started (an event's start, a tapped time); it is only reset by
+  // a new event, a camera change or a return from LIVE/scrub.
+  // Merged events used to be a playlist of separate exports, and a seek
+  // re-exported FROM the seek point: skip-back then stopped at the start of
+  // that partial file (15 s became 1 s) and dragging the seek bar fired an
+  // export per pointer move, landing on whichever finished last.
+  private _followOrigin = 0;
+  // Recently played chunks' server sessions, by `${start}-${end}`, oldest
+  // first. Kept rather than deleted when a slot moves on, so going back is a
+  // reload of a file that already exists (~0.3 s) instead of an export.
+  private _chunkCache = new Map<string, { id: string; url: string }>();
+  private static readonly CHUNK_CACHE_SIZE = 4;
+  // An event is being played: `clip-ended` has been sent for it already.
+  private _eventEndSent = false;
+  // The seek bar knob while it is being dragged (epoch ms), else undefined.
+  @state() private _seekDragAt?: number;
+  // The instant on screen while an event plays — drives its seek bar.
+  @state() private _followNow?: number;
   private _followSwapArmed = false; // pre-swap fired for the active chunk
   private _followRetry?: ReturnType<typeof setTimeout>;
   // The server clip session behind each slot's src, and the request that is
@@ -386,8 +405,14 @@ export class MediaView extends LitElement {
     a: undefined,
     b: undefined,
   };
-  // Consecutive failures since a chunk last became ready (see _followFailed).
+  // Consecutive failures since footage last actually played (see _followFailed).
   private _followFails = 0;
+  // Prepares per chunk start in this run. A hard ceiling independent of the
+  // failure budget: whatever path asks for the SAME chunk again (a retry, a
+  // refill, a restart that lands on the same frame), the NVR exports it at most
+  // FOLLOW_MAX_PREPARES times per run, then playback stops with a message.
+  private _followPrepares = new Map<number, number>();
+  private static readonly FOLLOW_MAX_PREPARES = 4;
   // When _checkStage last restarted playback (see there).
   private _stageRestarts: number[] = [];
   // Backoff between attempts at a chunk that FAILED (a request that errored or
@@ -401,8 +426,18 @@ export class MediaView extends LitElement {
   // The NVR can't export the most recent ~8s (footage not finalized); hold the
   // chunk end this far behind wall-clock.
   private static readonly FOLLOW_AVAIL_LAG_MS = 8000;
-  // Cap a single export so an idle stretch doesn't request a huge range.
-  private static readonly FOLLOW_MAX_CHUNK_MS = 30000;
+  // The grid CELL: what continuous playback exports at a time. Two minutes =
+  // a quarter of the exports 30 s chunks needed, at a measured 2.2-2.7 s / 97 MB
+  // per prepare — always done in the background while the previous chunk plays.
+  private static readonly FOLLOW_MAX_CHUNK_MS = 120_000;
+  // The first chunk after a start or a seek is only this slice of its cell
+  // (measured 0.7-1.1 s to prepare, vs 2.2-2.7 s for the whole cell), so the
+  // picture still comes up in about a second; the rest of the cell is prepared
+  // while the slice plays.
+  private static readonly FOLLOW_SEEK_CHUNK_MS = 30_000;
+  // A chunk that will play for less than this cannot hide a full cell's
+  // prepare behind it, so the chunk after it is a slice too.
+  private static readonly FOLLOW_QUICK_MS = 10_000;
 
   // ---- scrub preview (low-res timelapse frames while dragging the timeline) --
   // Two <video>s leap-frog here for the same reason the follow engine does it:
@@ -766,6 +801,10 @@ export class MediaView extends LitElement {
       opacity: 0;
       transition: opacity 0.2s ease;
       pointer-events: none;
+      /* A drag starting in the padding is handed to the timeline
+         (_onStripPress); without this the browser claims the touch as a pan
+         and cancels the pointer on its first move. */
+      touch-action: none;
     }
     /* The dimming is a pseudo-element, not the strip's own background, so it can
        reach FURTHER LEFT than the strip's layout box — the event thumbnails hang
@@ -1115,6 +1154,11 @@ export class MediaView extends LitElement {
     // out mid-drag.
     this.addEventListener('pointerdown', this._keepCtrlAlive, true);
     this.addEventListener('pointermove', this._keepCtrlAlive, true);
+    // Tap-to-toggle, same phase and target for the same reason (see _tap).
+    this.addEventListener('pointerdown', this._onPressCapture, true);
+    this.addEventListener('pointerup', this._onReleaseCapture, true);
+    this.addEventListener('pointercancel', this._onCancelCapture, true);
+    this.addEventListener('click', this._onClickCapture, true);
     // Silence playback when the card is HIDDEN without being unmounted — a
     // hosting Bubble-Card popup on the tablet "closes" by display:none'ing the
     // card (disconnectedCallback never fires), so the live stream / clip keeps
@@ -1122,10 +1166,16 @@ export class MediaView extends LitElement {
     // scrolled-away) host reports zero intersection → mute + pause everything;
     // becoming visible again re-asserts live.
     this._visObserver = new IntersectionObserver(
-      (entries) => this._onHostVisibility(entries[entries.length - 1].isIntersecting),
+      (entries) => {
+        this._hostIntersecting = entries[entries.length - 1].isIntersecting;
+        this._onDocVisibility();
+      },
       { threshold: 0 },
     );
     this._visObserver.observe(this);
+    // The screen going off / the app going to the background counts as hidden
+    // too; an IntersectionObserver never reports that.
+    document.addEventListener('visibilitychange', this._onDocVisibility);
     // HA's player elements are defined lazily; loading card helpers pulls in
     // the camera stream module and its HLS/WebRTC player dependencies.
     const playersReady = (): boolean =>
@@ -1178,10 +1228,20 @@ export class MediaView extends LitElement {
     document.removeEventListener('fullscreenchange', this._onFsChange);
     this.removeEventListener('pointerdown', this._keepCtrlAlive, true);
     this.removeEventListener('pointermove', this._keepCtrlAlive, true);
+    this.removeEventListener('pointerdown', this._onPressCapture, true);
+    this.removeEventListener('pointerup', this._onReleaseCapture, true);
+    this.removeEventListener('pointercancel', this._onCancelCapture, true);
+    this.removeEventListener('click', this._onClickCapture, true);
+    clearTimeout(this._pendingTap?.timer);
+    this._pendingTap = undefined;
     this._visObserver?.disconnect();
     this._visObserver = undefined;
+    document.removeEventListener('visibilitychange', this._onDocVisibility);
+    clearTimeout(this._suspendTimer);
+    releaseWarm(this);
+    this._warmKey = '';
+    this._suspended = false; // the teardown below covers it; re-attach rebuilds
     this._stopLivePoll();
-    this._dropPrefetch(); // a prepared-but-unused segment is a server directory
     this._cancelLoad(); // don't leave an NVR export running for a dead view
     this._stopFollow();
     this._setClipSrc();
@@ -1203,7 +1263,8 @@ export class MediaView extends LitElement {
         changed.has('_streamReady') ||
         changed.has('cameraId') ||
         changed.has('liveTransport') ||
-        changed.has('liveBridgeCameraId'))
+        changed.has('liveBridgeCameraId') ||
+        (changed.has('_suspended') && !this._suspended))
     ) {
       this._resetLiveSession();
     }
@@ -1215,22 +1276,16 @@ export class MediaView extends LitElement {
     // live flash black: traced it as `deepVideoFound: true, readyState: 0,
     // videoWidth: 0` at the moment of the hold. The frame has to be copied
     // while it still exists.
-    const enteringBoundedClip =
-      this.clipEndTime > 0 &&
-      (changed.has('clipEndTime') || changed.has('targetTime') || changed.has('cameraId'));
-    if (enteringBoundedClip) {
-      // Moving between segments of the SAME merged event is not a new clip —
-      // it is the same camera a moment later, so the picture on screen stays up
-      // (frozen) for the 2-3s the next segment takes, and the overlay is only a
-      // spinner over it. Selecting a DIFFERENT event still gets the honest
-      // preparation screen: never cover that with a frame from LIVE, delayed
-      // history, or the event before it.
-      const key = this._playlistKey();
-      this._segmentSwitch =
-        !!key && key === this._lastPlaylistKey && !changed.has('cameraId') && !!this._videoSrc;
-      this._lastPlaylistKey = key;
-      if (this._segmentSwitch) this._holdFrame();
-      else this._releaseFrame();
+    // A NEW event (its start moved, or another camera). The end alone changing
+    // is not one: it is cleared when playback passes it and it creeps forward
+    // for an event still in progress — neither may touch the picture.
+    const enteringEvent =
+      this.clipEndTime > 0 && (changed.has('targetTime') || changed.has('cameraId'));
+    if (enteringEvent) {
+      // Selecting a different event gets the honest loading screen: never cover
+      // it with a frame from LIVE, delayed history, or the event before it.
+      this._segmentSwitch = false;
+      this._releaseFrame();
     } else if (
       changed.has('scrubbing') ||
       changed.has('live') ||
@@ -1318,10 +1373,19 @@ export class MediaView extends LitElement {
   // ---- hidden-but-not-unmounted teardown ----------------------------------
   private _visObserver?: IntersectionObserver;
   @state() private _hidden = false;
+  // Hidden for SUSPEND_AFTER_MS: every player, chunk chain and prepare is gone,
+  // not just paused (see _suspend).
+  @state() private _suspended = false;
+  private _suspendTimer?: ReturnType<typeof setTimeout>;
+  private _hostIntersecting = true;
+  private _onDocVisibility = (): void => {
+    this._onHostVisibility(this._hostIntersecting && !document.hidden);
+  };
 
   private _onHostVisibility(visible: boolean): void {
     if (visible === !this._hidden) return; // no state change
     this._hidden = !visible;
+    clearTimeout(this._suspendTimer);
     if (this._hidden) {
       // Remember whether recorded footage was PLAYING — closing a popup pauses
       // it, and re-opening the popup is returning to it.
@@ -1338,9 +1402,47 @@ export class MediaView extends LitElement {
       // while the (by then cold) high stream started.
       this._bridgeRetired = false;
       this._highStableAt = 0;
-      if (this._liveStream) this._restartLivePlayer();
+      this._suspendTimer = setTimeout(() => this._suspend(), SUSPEND_AFTER_MS);
+    } else if (this._suspended) {
+      this._unsuspend();
+    } else {
+      this._resumeAfterVisible();
     }
-    else this._resumeAfterVisible();
+  }
+
+  /** Hidden for a while (a closed popup, a view HA keeps cached behind another,
+   *  the screen off): let go of EVERYTHING, exactly as a detach would. Pausing
+   *  is not enough — a paused player keeps its decoder, hls.js keeps polling
+   *  its playlist (which keeps HA's stream worker running), and the follow
+   *  chain can still refill a slot. A hidden card on the wall tablet did all of
+   *  that for hours, and it was still holding its decoders when the viewer
+   *  opened live fullscreen on top of it. Only a bounded clip stays loaded
+   *  (paused): it is one small decoder and resuming it exactly is worth it. */
+  private _suspend(): void {
+    if (!this._hidden || this._suspended) return;
+    if (this._followActive !== null) {
+      this._resumeAt = this._followContentTime() ?? this._resumeAt ?? this.targetTime;
+      this._loadedForTime = undefined; // showing again re-follows from _resumeAt
+    }
+    this._stopFollow();
+    this._resetPreviewSlots();
+    for (const v of [this._followVidA, this._followVidB]) if (v) releaseVideo(v);
+    this._stopLivePoll();
+    // Releases the live decoders now; the stage stops rendering them below
+    // (`_liveStream` is false while suspended) and a fresh player — with the
+    // bridge re-armed — mounts on the way back.
+    if (this.live) this._restartLivePlayer();
+    this._suspended = true;
+  }
+
+  private _unsuspend(): void {
+    this._suspended = false;
+    this._reattached = true; // updated() rebuilds whatever was on screen
+    if (this.live || this._loadedForTime === undefined) {
+      this._resumeOnShow = false; // live remounts playing; follow restarts
+      return;
+    }
+    this._resumeAfterVisible(); // the bounded clip that was kept, paused
   }
 
   /** Silence + pause EVERY player (live stream's inner <video>, clip, follow,
@@ -1621,7 +1723,7 @@ export class MediaView extends LitElement {
   }
 
   private get _liveStream(): boolean {
-    return this.live && this._streamReady;
+    return this.live && this._streamReady && !this._suspended;
   }
 
   private get _useWebRtcLive(): boolean {
@@ -1648,7 +1750,21 @@ export class MediaView extends LitElement {
     }
   }
 
+  /** Keep this camera's stream warm exactly while it can be needed: connected,
+   *  on screen, and not switched off by config (see data/stream-warm.ts). */
+  private _syncWarm(): void {
+    const key =
+      this.prewarm && this.isConnected && !this._hidden && this.hass && this.cameraId
+        ? this.cameraId
+        : '';
+    if (key === this._warmKey) return;
+    this._warmKey = key;
+    if (key) holdWarm(this, this.hass, [key]);
+    else releaseWarm(this);
+  }
+
   protected updated(changed: PropertyValues): void {
+    this._syncWarm();
     if (this._liveStream) this._armLivePlayer();
     // While hidden, <ha-camera-stream> can re-assert its own autoplay on any
     // re-render (a hass tick) — keep re-silencing it so no audio leaks behind a
@@ -1776,6 +1892,9 @@ export class MediaView extends LitElement {
       this._spriteReady = false;
       void this._warmPreview();
     }
+    // Suspended (hidden a while): start nothing. _unsuspend sets _reattached,
+    // and the pass after it rebuilds the stage below.
+    if (this._suspended) return;
     // Consumed exactly once, by whichever branch below owns the stage now.
     const reattached = this._reattached;
     this._reattached = false;
@@ -1783,7 +1902,7 @@ export class MediaView extends LitElement {
       // <ha-camera-stream> renders the live feed; hide its seek bar (live has no
       // meaningful progress) while keeping play/volume/mute/fullscreen, and poll
       // its play/pause so the card can freeze the playhead when paused.
-      if (changed.has('live') || changed.has('_streamReady')) {
+      if (changed.has('live') || changed.has('_streamReady') || reattached) {
         this._cancelLoad(); // back to live: stop any historical export in flight
         this._dropParkedClip();
         this._error = undefined;
@@ -1802,7 +1921,7 @@ export class MediaView extends LitElement {
       // moves — stop playback and drop its src (the browser aborts the stream,
       // which also cancels the NVR-side export).
       this._cancelLoad();
-      this._stopFollow();
+      this._stopFollow(true); // the chunks just played stay cached for a scrub back
       this._setClipSrc();
       this._loadedForTime = undefined;
       this._resumeAt = undefined; // the scrub picks the new position
@@ -1844,21 +1963,31 @@ export class MediaView extends LitElement {
       // render() shows the offline message anyway — accurate by construction.
       if (this._loadedForTime !== this.targetTime) {
         this._loadedForTime = this.targetTime;
+        // After a re-attach, carry on from where playback had got to.
+        const resume = reattached && this._resumeAt !== undefined ? this._resumeAt : undefined;
+        // A bounded clip on screen (the live fallback): on Apple WebKit keep its
+        // last frame until the footage is moving (see .parked).
+        if (APPLE_WEBKIT && this._videoSrc && !reattached) this._parkClipVideo();
+        this._cancelLoad();
+        this._setClipSrc();
         if (this.clipEndTime > this.targetTime + 500) {
-          // Bounded event clip — play exactly [start, event end] in one video.
-          this._stopFollow();
-          void this._loadSegment(this.targetTime);
+          // An EVENT — merged or not, any length. Played by the same chunk
+          // engine as everything else, on a grid that starts at the event, so
+          // the seek bar and ±15 s are plain seeks on one timeline and the end
+          // of the event rolls straight on into what follows it.
+          this._eventEndSent = false;
+          this._followNow = undefined; // the bar starts at this event's start
+          if (resume !== undefined) void this._startFollow(resume);
+          else void this._startFollow(this.targetTime, { newGrid: true });
+        } else if (this._followActive !== null && resume === undefined) {
+          // Already playing recorded footage (a timeline tap): just seek.
+          this._seekFollowTo(this.targetTime);
         } else {
           // Continuous DELAYED-FOLLOW from the chosen time: hold ~delaySeconds
           // behind live via gapless leap-frogged chunks. Never jumps to live.
-          // After a re-attach, carry on from where it had got to instead.
-          const from = reattached && this._resumeAt !== undefined ? this._resumeAt : this.targetTime;
-          // Rolling over from a clip that just finished: on Apple WebKit keep
-          // its last frame on screen until the footage is moving (see .parked).
-          if (APPLE_WEBKIT && this._videoSrc && !reattached) this._parkClipVideo();
-          this._cancelLoad();
-          this._setClipSrc();
-          void this._startFollow(from);
+          void this._startFollow(resume ?? this.targetTime, {
+            newGrid: changed.has('live') || changed.has('cameraId'),
+          });
         }
       }
       this._resumeAt = undefined;
@@ -1869,7 +1998,6 @@ export class MediaView extends LitElement {
    *  so it gets the honest preparation screen, not a held frame. */
   private _endSegmentRun(): void {
     this._segmentSwitch = false;
-    this._lastPlaylistKey = '';
   }
 
   // ---- scrub preview --------------------------------------------------------
@@ -2604,7 +2732,7 @@ export class MediaView extends LitElement {
     // without this the overlay can spin until the app is killed.
     const deadline = setTimeout(() => ctl.abort(new DOMException('deadline', 'TimeoutError')), MediaView.PREPARE_DEADLINE_MS);
     try {
-      const session = await this._takePrefetched(start, end, ctl.signal);
+      const session = await startClipSession(this.hass, this.nvrId, this.cameraId, start, end, ctl.signal);
       if (token !== this._videoToken) {
         endClipSession(this.hass, session.session_id); // raced by a newer clip
         return;
@@ -2654,83 +2782,12 @@ export class MediaView extends LitElement {
   // segment boundary.
 
   private static readonly PREPARE_DEADLINE_MS = 60_000;
-  // Start the next segment's export this long before the current one ends.
-  private static readonly PREFETCH_LEAD_MS = 20_000;
-
-  private static _rangeKey(start: number, end: number): string {
-    return `${Math.round(start)}-${Math.round(end)}`;
-  }
-
-  /** Identity of the merged event being played — same key across its segments,
-   *  different for another event. Empty for a standalone clip. */
-  private _playlistKey(): string {
-    const p = this.clipPlaylist;
-    return p.length > 1 ? `${p[0].start}:${p.length}` : '';
-  }
-
-  /** The session for [start, end]: the prefetched one when it matches, else a
-   *  fresh request. A non-matching prefetch is released, never left behind. */
-  private async _takePrefetched(
-    start: number,
-    end: number,
-    signal: AbortSignal,
-  ): Promise<ClipSession> {
-    const key = MediaView._rangeKey(start, end);
-    const pending = this._prefetch;
-    if (pending?.key === key) {
-      this._prefetch = undefined;
-      // Adopt the caller's signal: the deadline (and Cancel) must reach a
-      // prefetch that is still running, or waiting on it has no way out.
-      signal.addEventListener('abort', () => pending.abort.abort(), { once: true });
-      const session = await pending.promise;
-      if (session) return session;
-      if (signal.aborted) throw signal.reason ?? new DOMException('aborted', 'AbortError');
-      // The prefetch failed on its own; try once more in the foreground.
-    } else if (pending) {
-      this._dropPrefetch();
-    }
-    return startClipSession(this.hass, this.nvrId, this.cameraId, start, end, signal);
-  }
-
-  /** Prepare the next playlist segment if playback is close enough to its end. */
-  private _maybePrefetchNext(remainingS: number): void {
-    const next = this.clipPlaylist[this.clipPlaylistIndex + 1];
-    if (!next || this._preparing) return;
-    if (remainingS * 1000 > MediaView.PREFETCH_LEAD_MS) return;
-    const end = Math.min(next.end, this.now - MediaView.FOLLOW_AVAIL_LAG_MS);
-    if (end - next.start < 1500) return;
-    const key = MediaView._rangeKey(next.start, end);
-    if (this._prefetch?.key === key) return;
-    this._dropPrefetch();
-    const abort = new AbortController();
-    const promise = startClipSession(
-      this.hass,
-      this.nvrId,
-      this.cameraId,
-      next.start,
-      end,
-      abort.signal,
-    ).catch(() => undefined);
-    this._prefetch = { key, abort, promise };
-  }
-
-  /** Abandon a prefetch: stop the request AND delete whatever it already made. */
-  private _dropPrefetch(): void {
-    const pending = this._prefetch;
-    this._prefetch = undefined;
-    if (!pending) return;
-    pending.abort.abort();
-    void pending.promise.then((session) => {
-      if (session) endClipSession(this.hass, session.session_id);
-    });
-  }
 
   /** The Cancel button on the preparation overlay. Supersedes the in-flight
    *  request (so its late resolution is ignored) and lets the server go. */
   private _cancelPrepare = (): void => {
     this._videoToken++;
     this._endClipSession();
-    this._dropPrefetch();
     this._preparing = false;
     this._loadingVideo = false;
     this._clipBuffering = false;
@@ -2780,9 +2837,6 @@ export class MediaView extends LitElement {
     if (isFinite(v.duration) && v.duration > 0) this._clipProgress = v.currentTime / v.duration;
     this._clipTime = v.currentTime;
     if (isFinite(v.duration)) this._clipDuration = v.duration;
-    if (isFinite(v.duration) && v.duration > 0) {
-      this._maybePrefetchNext(v.duration - v.currentTime);
-    }
     // IOS-FREEZE-2026-09-26: on Apple WebKit, stop just BEFORE the end so the
     // element is paused, never `ended`, when it is released for what comes next.
     if (
@@ -2807,49 +2861,8 @@ export class MediaView extends LitElement {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   }
 
-  // ---- playlist position ----------------------------------------------------
-  // With a playlist the bar has to span the GROUP, not the loaded segment: the
-  // row says "37m56s", so a bar that fills up in 2 minutes and restarts is a
-  // lie. Positions are measured in PLAYED time (the sum of segment lengths),
-  // which equals wall-clock time in `continuous` mode and activity time when
-  // idle is skipped — in both cases it is what the viewer actually watches.
-
-  private get _hasPlaylist(): boolean {
-    return this.clipPlaylist.length > 1;
-  }
-
-  private get _playlistTotalS(): number {
-    let total = 0;
-    for (const s of this.clipPlaylist) total += s.end - s.start;
-    return total / 1000;
-  }
-
-  /** Played seconds before the current segment starts. */
-  private get _playlistOffsetS(): number {
-    let before = 0;
-    for (let i = 0; i < this.clipPlaylistIndex && i < this.clipPlaylist.length; i++) {
-      before += this.clipPlaylist[i].end - this.clipPlaylist[i].start;
-    }
-    // The loaded clip can start LATER than its segment (a seek re-exports from
-    // the seek point), so count the skipped head as already played.
-    const seg = this.clipPlaylist[this.clipPlaylistIndex];
-    if (seg && this._clipStart > seg.start) before += this._clipStart - seg.start;
-    return before / 1000;
-  }
-
-  /** Played time -> absolute epoch ms, walking the segments. */
-  private _timeAtPlayed(playedS: number): number {
-    let left = playedS * 1000;
-    for (const s of this.clipPlaylist) {
-      const len = s.end - s.start;
-      if (left < len) return s.start + left;
-      left -= len;
-    }
-    const last = this.clipPlaylist[this.clipPlaylist.length - 1];
-    return last ? last.end : 0;
-  }
-
-  // ---- clip seek bar (drag/click to scrub the fully-buffered blob) ----------
+  // ---- clip seek bar (the bounded clip of the live fallback) ----------------
+  // Events have their own bar (_renderEventSeekRow) on the chunk engine.
   private _seekTo(e: PointerEvent, bar: HTMLElement): void {
     const v = this._video;
     if (!v || !isFinite(v.duration) || v.duration <= 0) return;
@@ -2859,40 +2872,10 @@ export class MediaView extends LitElement {
     const frac = this._forceRotate
       ? Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
       : Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    if (this._hasPlaylist) {
-      this._seekPlaylistTo(frac);
-      return;
-    }
     this._seekClipTo(frac * v.duration);
     this._clipProgress = frac;
     this._clipTime = v.currentTime;
     this._clipDuration = v.duration;
-  }
-
-  /** Seek the whole group. Inside the loaded segment this is a native seek —
-   *  instant, and the prepared file's HTTP Range means only the bytes around
-   *  the target are fetched. Past its edges the host has to move the cursor,
-   *  which costs one export (0.6-4.1s measured); the request then starts AT the
-   *  seek point, so it is never bigger than the rest of that segment. */
-  private _seekPlaylistTo(frac: number): void {
-    const v = this._video;
-    const target = this._timeAtPlayed(frac * this._playlistTotalS);
-    const loadedEnd = v && isFinite(v.duration) ? this._clipStart + v.duration * 1000 : 0;
-    if (v && target >= this._clipStart && target < loadedEnd) {
-      this._seekClipTo((target - this._clipStart) / 1000);
-      this._clipProgress = frac;
-      this._clipTime = v.currentTime;
-      this._clipDuration = v.duration;
-      return;
-    }
-    this._clipProgress = frac; // move the knob now; the segment follows
-    this.dispatchEvent(
-      new CustomEvent('playlist-seek', {
-        detail: { time: target, index: segmentIndexAt(this.clipPlaylist, target) },
-        bubbles: true,
-        composed: true,
-      }),
-    );
   }
 
   private _onSeekDown = (e: PointerEvent): void => {
@@ -3180,8 +3163,10 @@ export class MediaView extends LitElement {
   }
 
   /** Tear down the follow engine: invalidate in-flight fetches, drop both srcs
-   *  (aborting their NVR exports), and clear state. */
-  private _stopFollow(): void {
+   *  (aborting their NVR exports), and clear state. `keepChunks` (a seek, a
+   *  restart on the same grid) moves the slots' sessions into the chunk cache
+   *  instead of deleting them; otherwise the cache goes too. */
+  private _stopFollow(keepChunks = false): void {
     this._followToken++;
     clearTimeout(this._followRetry);
     this._followRetry = undefined;
@@ -3191,100 +3176,256 @@ export class MediaView extends LitElement {
     this._followWatchTries = { a: 0, b: 0 };
     this._tapToPlay = false;
     this._followActive = null;
-    // Abandon any chunk still being prepared and release the sessions behind
-    // both slots — each one is a file on the server.
+    // Abandon any chunk still being prepared; keep or release the sessions
+    // behind both slots — each one is a file on the server.
     for (const slot of ['a', 'b'] as const) {
       this._followAbort[slot]?.abort();
       this._followAbort[slot] = undefined;
       const id = this._followSession[slot];
       this._followSession[slot] = undefined;
-      if (id) endClipSession(this.hass, id);
+      if (!id) continue;
+      const m = this._followMeta[slot];
+      const url = slot === 'a' ? this._followSrcA : this._followSrcB;
+      if (keepChunks && url) this._cacheChunk(m.start, m.end, id, url);
+      else endClipSession(this.hass, id);
     }
+    if (!keepChunks) this._dropChunkCache();
     this._followSrcA = undefined;
     this._followSrcB = undefined;
     this._followMeta.a = { start: 0, end: 0, ready: false, leadIn: 0 };
     this._followMeta.b = { start: 0, end: 0, ready: false, leadIn: 0 };
+    this._followSeekTo = { a: 0, b: 0 };
     this._followSwapArmed = false;
   }
 
-  /** Begin continuous delayed playback from `startMs`, holding ~delaySeconds
-   *  behind live. Clamped so it never starts closer than the export-availability
-   *  floor (~12s); slot A loads the first chunk, then B prefetches the next. */
-  private async _startFollow(startMs: number): Promise<void> {
-    this._stopFollow();
+  private _cacheChunk(start: number, end: number, id: string, url: string): void {
+    const key = `${start}-${end}`;
+    this._chunkCache.delete(key);
+    this._chunkCache.set(key, { id, url });
+    while (this._chunkCache.size > MediaView.CHUNK_CACHE_SIZE) {
+      const [oldest, s] = this._chunkCache.entries().next().value as [string, { id: string }];
+      this._chunkCache.delete(oldest);
+      endClipSession(this.hass, s.id);
+    }
+  }
+
+  private _dropChunkCache(): void {
+    for (const s of this._chunkCache.values()) endClipSession(this.hass, s.id);
+    this._chunkCache.clear();
+  }
+
+  /** Start of the grid cell holding `t`. */
+  private _chunkStartFor(t: number): number {
+    const c = MediaView.FOLLOW_MAX_CHUNK_MS;
+    return this._followOrigin + Math.floor((t - this._followOrigin) / c) * c;
+  }
+
+  /** The first slice line (FOLLOW_SEEK_CHUNK_MS) after `t`, within its cell. */
+  private _sliceEndAfter(t: number): number {
+    const cell = this._chunkStartFor(t);
+    const s = MediaView.FOLLOW_SEEK_CHUNK_MS;
+    return Math.min(cell + (Math.floor((t - cell) / s) + 1) * s, cell + MediaView.FOLLOW_MAX_CHUNK_MS);
+  }
+
+  /** A cached chunk with footage at `t` and a few seconds after it. */
+  private _cachedChunkAt(t: number): { start: number; end: number } | undefined {
+    for (const key of this._chunkCache.keys()) {
+      const [start, end] = key.split('-').map(Number);
+      if (start <= t && end - t > 3000) return { start, end };
+    }
+    return undefined;
+  }
+
+  /** Lowest instant playback may seek to: an event's start while one is being
+   *  played (its seek bar starts there), else anything. */
+  private get _seekFloor(): number {
+    return this.clipEndTime > 0 ? this.targetTime : 0;
+  }
+
+  /** The latest instant continuous playback can show: the export floor. */
+  private get _seekCeiling(): number {
+    return this.now - Math.max(this.delaySeconds, 12) * 1000;
+  }
+
+  /** Play recorded footage from `t`: a cached chunk holding `t` if there is
+   *  one, else the SLICE of its grid cell holding `t` (quick to prepare) —
+   *  opened AT `t`. `newGrid` starts a fresh grid at `t` (a new event, a tap
+   *  after LIVE): the first slice then begins exactly there. */
+  private async _startFollow(startMs: number, opts: { newGrid?: boolean } = {}): Promise<void> {
+    const target = Math.max(0, Math.min(startMs, this._seekCeiling));
+    if (opts.newGrid || !this._followOrigin) {
+      this._stopFollow();
+      this._followOrigin = target;
+    } else {
+      this._stopFollow(true);
+    }
     this._endSegmentRun();
     const token = ++this._followToken;
     this._error = undefined;
     this._loadingVideo = true;
     this._followPaused = false; // a fresh rewind plays; keep the mute preference
     this._followFails = 0;
+    this._followPrepares.clear();
     this._nearLive = false; // recomputed on the first timeupdate
     this._followActive = 'a'; // mount the stage now (spinner until A buffers)
     this._flashFollowCtrl(); // flash the controls so they're discoverable
-    // Hold at least the availability floor behind live; honor a deeper rewind.
-    const floorMs = Math.max(this.delaySeconds, 12) * 1000;
-    const start = Math.max(0, Math.min(startMs, this.now - floorMs));
+    let start: number;
+    let end: number;
+    const cached = this._cachedChunkAt(target);
+    if (cached) {
+      ({ start, end } = cached);
+    } else {
+      const cell = this._chunkStartFor(target);
+      const s = MediaView.FOLLOW_SEEK_CHUNK_MS;
+      start = cell + Math.floor((target - cell) / s) * s;
+      end = this._sliceEndAfter(start);
+      // Landing in the last seconds of a slice would play them and then wait:
+      // take the next slice too (still well under a whole cell's prepare).
+      if (end - target < MediaView.FOLLOW_QUICK_MS) end = this._sliceEndAfter(end);
+    }
     this._followPlayhead = start;
-    const meta = await this._fetchFollowChunk('a', start, token);
+    this._followSeekTo.a = target > start ? target : 0;
+    const meta = await this._fetchFollowChunk('a', start, token, end);
     if (token !== this._followToken) return;
     // Footage for this instant isn't finalized yet — retry; A activates on load.
-    if (meta === null) this._scheduleFollowRetry('a', start, token);
+    if (meta === null) this._scheduleFollowRetry('a', start, token, end);
   }
 
-  /** Prepare the chunk starting at `startMs` into `slot`: end at the next tier
-   *  boundary (single-quality export), capped at the availability edge and a max
-   *  length. Returns the chunk range; null when nothing is available yet (no
-   *  request was made — cheap to retry) or when superseded; `false` when the
-   *  request FAILED, which _followFailed has already dealt with. */
+  /** Seek recorded playback to `t` — the seek bar, ±15 s, a timeline tap while
+   *  footage is playing. Inside a chunk a slot already holds this is a native
+   *  seek: instant, and HTTP Range fetches only the bytes around it. Anything
+   *  else loads the grid chunk holding `t` (a cache hit when it was played
+   *  recently) and opens it at `t`, holding the current frame meanwhile. */
+  private _seekFollowTo(tIn: number): void {
+    const t = Math.max(this._seekFloor, Math.min(tIn, this._seekCeiling));
+    const active = this._followActive;
+    if (active) {
+      const other = active === 'a' ? 'b' : 'a';
+      for (const slot of [active, other] as const) {
+        const m = this._followMeta[slot];
+        const v = this._followVideo(slot);
+        if (!m.ready || !v || !isFinite(v.duration) || t < m.start || t >= m.end) continue;
+        this._announceSeek(t, false);
+        // A timeline tap held the frame in willUpdate, but a native seek keeps
+        // the SAME element and source — the watcher would never see a "new"
+        // frame and the hold would sit over playing video until its backstop.
+        this._releaseFrame();
+        this._followNow = t; // the seek bar holds where it was let go
+        v.currentTime = Math.max(m.leadIn, v.duration - (m.end - t) / 1000);
+        v.playbackRate = this._followRate;
+        if (slot !== active) {
+          // The standby (normally the next chunk) holds it: promote it, and
+          // the old active is refilled with the chunk after it, as at a swap
+          // (after the seek, so the prefetch sees how much is left to play).
+          this._followVideo(active)?.pause();
+          this._followActive = slot;
+          this._followSwapArmed = false;
+          this._followPlayhead = m.end;
+          this._prefetchFollow(this._followToken);
+        }
+        if (!this._followPaused) this._playFollowVideo(v);
+        this._showFollowCtrl();
+        return;
+      }
+    }
+    this._announceSeek(t);
+    // Until the new chunk plays, the bar stays where it was let go — it used to
+    // snap back to the old position for the second the chunk took to load.
+    this._followNow = t;
+    const wasPaused = this._followPaused;
+    void this._startFollow(t); // same grid: the chunk may well be cached
+    this._followPaused = wasPaused;
+    this._showFollowCtrl();
+  }
+
+  /** Prepare the chunk starting at `startMs` into `slot`: end at the next grid
+   *  line, capped at the availability edge. A chunk played recently comes from
+   *  the cache — no request at all. Returns the chunk range; null when nothing
+   *  is available yet (no request was made — cheap to retry) or when
+   *  superseded; `false` when the request FAILED, which _followFailed has
+   *  already dealt with. */
   private async _fetchFollowChunk(
     slot: 'a' | 'b',
     startMs: number,
     token: number,
+    endMs?: number,
   ): Promise<{ start: number; end: number } | null | false> {
     let start = startMs;
+    let gridEnd = endMs ?? this._chunkStartFor(start) + MediaView.FOLLOW_MAX_CHUNK_MS;
     // Skip a camera-offline gap: jump the playhead to where footage resumes.
     const g = this.gaps.find((gap) => start >= gap.start && start < gap.end);
-    if (g) start = g.end;
-    let end = CUT_CHUNKS_AT_EVENTS
-      ? segmentEndFor(start, start + MediaView.FOLLOW_MAX_CHUNK_MS, this.footageSpans)
-      : start + MediaView.FOLLOW_MAX_CHUNK_MS;
+    if (g) {
+      start = g.end;
+      gridEnd = this._chunkStartFor(start) + MediaView.FOLLOW_MAX_CHUNK_MS;
+    }
+    let end = CUT_CHUNKS_AT_EVENTS ? segmentEndFor(start, gridEnd, this.footageSpans) : gridEnd;
     const availEdge = this.now - MediaView.FOLLOW_AVAIL_LAG_MS;
     if (end > availEdge) end = availEdge;
     if (end - start < 1500) return null; // not enough finalized footage yet
-    // A prepared clip SESSION, not the raw export proxy: the session is the same
-    // footage remuxed with its index up front and served with HTTP Range, so the
-    // <video> streams it and seeks past the keyframe lead-in natively. (The
-    // proxy has no Range support, which is why chunks used to be pulled whole
-    // into a Blob — the delivery the iPhone app would not reliably play.)
-    this._followAbort[slot]?.abort();
-    const ctl = new AbortController();
-    this._followAbort[slot] = ctl;
-    const deadline = setTimeout(
-      () => ctl.abort(new DOMException('deadline', 'TimeoutError')),
-      MediaView.FOLLOW_FETCH_TIMEOUT_MS,
-    );
-    let session: ClipSession;
-    try {
-      session = await startClipSession(this.hass, this.nvrId, this.cameraId, start, end, ctl.signal);
-    } catch (err) {
-      // Superseded (a newer chunk, a stop, a teardown): not a failure.
-      if (token !== this._followToken || this._followAbort[slot] !== ctl) return null;
-      const why = ctl.signal.reason?.name === 'TimeoutError' ? 'timed out' : String(err);
-      this._followFailed(slot, start, token, `prepare ${why}`);
-      return false;
-    } finally {
-      clearTimeout(deadline);
-      if (this._followAbort[slot] === ctl) this._followAbort[slot] = undefined;
+    const prev = {
+      id: this._followSession[slot],
+      url: slot === 'a' ? this._followSrcA : this._followSrcB,
+      start: this._followMeta[slot].start,
+      end: this._followMeta[slot].end,
+    };
+    let session: { session_id: string; url: string };
+    const cached = this._chunkCache.get(`${start}-${end}`);
+    if (cached) {
+      this._chunkCache.delete(`${start}-${end}`);
+      session = { session_id: cached.id, url: cached.url };
+    } else {
+      const prepares = (this._followPrepares.get(start) ?? 0) + 1;
+      this._followPrepares.set(start, prepares);
+      if (prepares > MediaView.FOLLOW_MAX_PREPARES) {
+        this._reportPlaybackProblem(`continuous playback: chunk prepared ${prepares - 1} times — giving up`);
+        this._giveUpFollow();
+        return false;
+      }
+      // A prepared clip SESSION, not the raw export proxy: the same footage
+      // remuxed with its index up front and served with HTTP Range, so the
+      // <video> streams it and seeks natively. (The proxy has no Range support,
+      // which is why chunks used to be pulled whole into a Blob — the delivery
+      // the iPhone app would not reliably play.)
+      this._followAbort[slot]?.abort();
+      const ctl = new AbortController();
+      this._followAbort[slot] = ctl;
+      const deadline = setTimeout(
+        () => ctl.abort(new DOMException('deadline', 'TimeoutError')),
+        MediaView.FOLLOW_FETCH_TIMEOUT_MS,
+      );
+      try {
+        session = await startClipSession(this.hass, this.nvrId, this.cameraId, start, end, ctl.signal);
+      } catch (err) {
+        // Superseded (a newer chunk, a stop, a teardown): not a failure.
+        if (token !== this._followToken || this._followAbort[slot] !== ctl) return null;
+        const why = ctl.signal.reason?.name === 'TimeoutError' ? 'timed out' : String(err);
+        this._followFailed(slot, start, token, `prepare ${why}`);
+        return false;
+      } finally {
+        clearTimeout(deadline);
+        if (this._followAbort[slot] === ctl) this._followAbort[slot] = undefined;
+      }
+      if (token !== this._followToken) {
+        this._cacheChunk(start, end, session.session_id, session.url); // raced by a seek/stop
+        return null;
+      }
     }
     if (token !== this._followToken) {
-      endClipSession(this.hass, session.session_id); // raced by a stop / newer start
+      this._cacheChunk(start, end, session.session_id, session.url);
       return null;
     }
     // The slot's previous chunk has finished playing (only a standby or a fresh
-    // slot is ever refilled); release its file once the <video> has let go.
-    const prevSession = this._followSession[slot];
+    // slot is ever refilled): keep its file for a seek back.
     this._followSession[slot] = session.session_id;
-    if (prevSession) setTimeout(() => endClipSession(this.hass, prevSession), 5000);
+    if (prev.id && prev.id !== session.session_id) {
+      // A retry of the SAME chunk replaces a session that failed: never cache
+      // that one, or the next seek here would hit the dead file again.
+      if (prev.url && (prev.start !== start || prev.end !== end)) {
+        this._cacheChunk(prev.start, prev.end, prev.id, prev.url);
+      } else {
+        endClipSession(this.hass, prev.id);
+      }
+    }
     this._followMeta[slot] = { start, end, ready: false, leadIn: 0 };
     if (slot === 'a') this._followSrcA = session.url;
     else this._followSrcB = session.url;
@@ -3391,19 +3532,25 @@ export class MediaView extends LitElement {
     if (token !== this._followToken || this._followActive === null) return;
     const standby = this._followActive === 'a' ? 'b' : 'a';
     const from = this._followPlayhead;
-    void this._fetchFollowChunk(standby, from, token).then((meta) => {
+    // Normally the rest of the cell (up to two minutes), prepared while the
+    // active chunk plays. If that has too little left to play to cover a whole
+    // cell's prepare, take just the next slice so there is no stall.
+    const active = this._followMeta[this._followActive];
+    const left = active.end - (this._followContentNow() ?? active.start);
+    const end = left < MediaView.FOLLOW_QUICK_MS ? this._sliceEndAfter(from) : undefined;
+    void this._fetchFollowChunk(standby, from, token, end).then((meta) => {
       if (token !== this._followToken) return;
-      if (meta === null) this._scheduleFollowRetry(standby, from, token);
+      if (meta === null) this._scheduleFollowRetry(standby, from, token, end);
     });
   }
 
-  private _scheduleFollowRetry(slot: 'a' | 'b', startMs: number, token: number): void {
+  private _scheduleFollowRetry(slot: 'a' | 'b', startMs: number, token: number, endMs?: number): void {
     clearTimeout(this._followRetry);
     this._followRetry = setTimeout(() => {
       if (token !== this._followToken) return;
-      void this._fetchFollowChunk(slot, startMs, token).then((meta) => {
+      void this._fetchFollowChunk(slot, startMs, token, endMs).then((meta) => {
         if (token !== this._followToken) return;
-        if (meta === null) this._scheduleFollowRetry(slot, startMs, token);
+        if (meta === null) this._scheduleFollowRetry(slot, startMs, token, endMs);
       });
     }, 700);
   }
@@ -3421,11 +3568,7 @@ export class MediaView extends LitElement {
     clearTimeout(this._followRetry);
     this._followRetry = undefined;
     if (this._followFails > delays.length) {
-      this._followToken++; // strand every callback still in flight
-      for (const s of ['a', 'b'] as const) this._followAbort[s]?.abort();
-      this._dropParkedClip();
-      this._loadingVideo = false;
-      this._error = 'This footage could not be played. Tap an event or the timeline to try again.';
+      this._giveUpFollow();
       return;
     }
     if (slot === this._followActive) this._loadingVideo = true;
@@ -3438,15 +3581,31 @@ export class MediaView extends LitElement {
     }, delays[this._followFails - 1]);
   }
 
+  /** Stop continuous playback for good (until the user picks a new time): strand
+   *  every callback in flight and say so on the stage. */
+  private _giveUpFollow(): void {
+    this._followToken++;
+    clearTimeout(this._followRetry);
+    this._followRetry = undefined;
+    for (const s of ['a', 'b'] as const) this._followAbort[s]?.abort();
+    this._dropParkedClip();
+    this._loadingVideo = false;
+    this._error = 'This footage could not be played. Tap an event or the timeline to try again.';
+  }
+
   /** Put a playback failure in the Home Assistant log, with the device it
    *  happened on. The failures that matter most happen on phones, where there is
    *  no console to read; this is what makes them diagnosable afterwards.
-   *  Capped per page load so a failure can never turn into log spam. */
-  private static _problemsReported = 0;
+   *  Capped at 10 per HOUR so a failure can never turn into log spam — a cap per
+   *  page load went silent for good on a wall tablet that never reloads, which
+   *  is exactly the device whose failures went unseen. */
+  private static _problemTimes: number[] = [];
   private _reportPlaybackProblem(message: string): void {
     console.warn(`[unifi-timeline] ${message}`);
-    if (MediaView._problemsReported >= 10 || !this.hass) return;
-    MediaView._problemsReported++;
+    const now = Date.now();
+    MediaView._problemTimes = MediaView._problemTimes.filter((t) => now - t < 3_600_000);
+    if (MediaView._problemTimes.length >= 10 || !this.hass) return;
+    MediaView._problemTimes.push(now);
     void this.hass
       .callWS({
         type: 'call_service',
@@ -3472,11 +3631,14 @@ export class MediaView extends LitElement {
     // The export snaps its start to a keyframe, so the clip runs LONGER than the
     // requested range but its content ends exactly at `end`. Skip that lead-in
     // so this chunk begins precisely where the previous one ended (no replay,
-    // no drift).
+    // no drift) — or open it at the instant a seek asked for.
     m.leadIn = Math.max(0, v.duration - (m.end - m.start) / 1000);
-    // Blob is fully in memory -> the seek lands immediately; `seeked` confirms.
-    if (m.leadIn <= 0.05) this._followSlotReady(slot);
-    else v.currentTime = m.leadIn;
+    const want = this._followSeekTo[slot];
+    const at =
+      want > m.start && want < m.end ? Math.max(m.leadIn, v.duration - (m.end - want) / 1000) : m.leadIn;
+    // `seeked` confirms the position before the slot counts as ready.
+    if (at <= 0.05) this._followSlotReady(slot);
+    else v.currentTime = at;
   }
 
   private _onFollowSeeked(slot: 'a' | 'b'): void {
@@ -3490,9 +3652,11 @@ export class MediaView extends LitElement {
   private _followSlotReady(slot: 'a' | 'b'): void {
     const m = this._followMeta[slot];
     m.ready = true;
+    this._followSeekTo[slot] = 0;
     clearTimeout(this._followWatch[slot]); // this slot made it
     this._followWatchTries[slot] = 0;
-    this._followFails = 0; // the budget is for CONSECUTIVE failures
+    // NOT a reset of _followFails: a chunk that loads and then errors would
+    // refill forever (see _onFollowTime, which resets it on real progress).
     const v = this._followVideo(slot);
     if (!v) return;
     if (slot === this._followActive) {
@@ -3511,16 +3675,33 @@ export class MediaView extends LitElement {
     if (slot !== this._followActive) return;
     const v = this._followVideo(slot);
     const m = this._followMeta[slot];
-    if (!v || !isFinite(v.duration)) return;
+    // Only a positioned chunk reports a time. Before that the element can still
+    // hold the PREVIOUS chunk's media against this chunk's (reset) range, which
+    // maps to garbage — and it snapped the seek bar and the ruler back.
+    if (!v || !isFinite(v.duration) || !m.ready) return;
     // Continuous footage is on screen and moving: the parked clip frame can go.
     if (this._parked && m.ready && !v.paused && v.currentTime > m.leadIn + 0.05) {
       this._dropParkedClip();
     }
+    // The failure budget is for CONSECUTIVE failures, and only footage that
+    // actually PLAYED ends a run of them. Resetting it when a chunk merely
+    // became ready let a chunk that loads and then fails be re-prepared
+    // forever: the wall tablet re-exported the same 11 MB chunk every 44 s
+    // for 2.5 hours (195 times, 2.2 GB) until its WebView died.
+    if (m.ready && v.currentTime > m.leadIn + 1) this._followFails = 0;
     // content(ct) = end − duration + ct (the clip ends at `end`).
     const real = m.end - v.duration * 1000 + v.currentTime * 1000;
     this.dispatchEvent(
       new CustomEvent('playback-time', { detail: { time: real }, bubbles: true, composed: true }),
     );
+    // Playing an event and past its end: tell the host (row highlight, seek bar
+    // off) and simply keep going — what follows the event is the next chunk on
+    // the same grid, so the rollover needs no reload at all.
+    if (this.clipEndTime > 0) this._followNow = real; // the event's seek bar
+    if (this.clipEndTime > 0 && !this._eventEndSent && real >= this.clipEndTime) {
+      this._eventEndSent = true;
+      this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
+    }
     // Caught up near the live edge: 2×/4× can't be sustained (no finalized
     // footage ahead), so drop back to real time automatically + disable speed.
     const near = this.now - real < this._nearLiveMs;
@@ -3977,8 +4158,9 @@ export class MediaView extends LitElement {
     // A scrub in flight (drag, momentum glide, settle delay) HOLDS the controls
     // open: the gesture is the interaction, and a finger resting mid-drag must
     // not make the bar — and with it the fullscreen timeline being dragged —
-    // vanish. The timer is re-armed when the scrub ends (see updated()).
-    if (this.scrubbing) return;
+    // vanish. The timer is re-armed when the scrub ends (see updated()). Same
+    // for a seek-bar drag (re-armed on release).
+    if (this.scrubbing || this._seekDragAt !== undefined) return;
     this._followCtrlTimer = setTimeout(() => {
       this._followCtrl = false;
     }, 5200);
@@ -4008,44 +4190,113 @@ export class MediaView extends LitElement {
     this._showFollowCtrl();
   }
 
-  // Tap-to-TOGGLE the controls (video area only — control-bar clicks are
-  // stopped in _renderCtrlBar). The decision is snapshotted on pointerDOWN, not
-  // on the click: on desktop a stray pointermove reveals the bar between press
-  // and click, and on touch a shaky tap can too — reading the pre-press state
-  // avoids "show-then-immediately-hide" so a tap always flips what the user saw.
-  private _ctrlVisibleAtPress = false;
+  // ---- tap-to-TOGGLE the controls: ONE detector for the whole player --------
+  // A tap anywhere in the player — video, the fullscreen timeline strip, its
+  // margins — flips the controls; a tap on a control (a button, the seek bar, an
+  // event thumbnail, the timeline's zoom/live buttons) does not. Decided from
+  // the press and the release alone, in the CAPTURE phase on the host, so no
+  // element inside can swallow or double it.
+  // It replaced four separate paths (the stage's click, the strip's
+  // `tap-through`, the strip's padding click, and a show-on-pointerdown in the
+  // strip), which disagreed with each other: on a touchscreen the browser
+  // delivers the tap's `click` a beat AFTER the release, by when hiding the
+  // controls had already removed the strip, so the click fell through to the
+  // video underneath and its handler showed them again — "flash off and back
+  // on, impossible to hide" on most of the screen, while the strip's right
+  // margin took a different path and mostly worked.
+  private _tap?: { id: number; x: number; y: number; t: number; visible: boolean; control: boolean };
+  // A qualifying tap waits for its CLICK before it toggles (see _onReleaseCapture).
+  private _pendingTap?: { visible: boolean; timer: ReturnType<typeof setTimeout> };
+  // Same travel as the timeline's touch slop: beyond it the press is a drag.
+  private static readonly TAP_SLOP_PX = 4;
+  private static readonly TAP_MAX_MS = 600;
+  // No click within this after the release (rare: long press, element gone)
+  // -> toggle anyway.
+  private static readonly TAP_CLICK_WAIT_MS = 350;
 
-  private _onStagePress = (): void => {
-    this._ctrlVisibleAtPress = this._followCtrl;
+  /** The press is on something with its own job, not on the picture. The
+   *  control bar's empty stretch is NOT one: it is a gradient over the video,
+   *  and a tap there means the same as a tap on the picture. */
+  private _isControlTarget(e: Event): boolean {
+    for (const n of e.composedPath()) {
+      if (n === this) break;
+      if (
+        n instanceof Element &&
+        n.matches(
+          'button, input, select, a, .vseek, .tap-play, .clip-cancel, .evt-wrap, .zoom-panel, .zoom-fab, .live-arrow',
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private _onPressCapture = (e: PointerEvent): void => {
+    // A second finger makes it a pinch, not a tap.
+    this._tap = e.isPrimary
+      ? {
+          id: e.pointerId,
+          x: e.clientX,
+          y: e.clientY,
+          t: performance.now(),
+          visible: this._followCtrl,
+          control: this._isControlTarget(e),
+        }
+      : undefined;
   };
 
-  private _onStageTap = (): void => {
-    if (this._ctrlVisibleAtPress) this._hideFollowCtrl();
+  /** A press + release that qualify as a tap DO NOT toggle yet: the click that
+   *  follows decides. A touch press is reported at the exact centre of the
+   *  fingertip, but the browser "adjusts" a touch's CLICK to the nearest
+   *  button — so a finger landing a few pixels off the exit-fullscreen button
+   *  pressed the video (toggle: the controls vanished) and then clicked the
+   *  button (fullscreen exited a beat later). If the click goes to a control,
+   *  the tap was the control's and nothing toggles. Toggling at the click also
+   *  means nothing re-renders before the browser hit-tests it. */
+  private _onReleaseCapture = (e: PointerEvent): void => {
+    const tap = this._tap;
+    this._tap = undefined;
+    if (!tap || tap.id !== e.pointerId || tap.control || this.scrubbing) return;
+    const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
+    if (moved > MediaView.TAP_SLOP_PX || performance.now() - tap.t > MediaView.TAP_MAX_MS) return;
+    clearTimeout(this._pendingTap?.timer);
+    this._pendingTap = {
+      visible: tap.visible,
+      timer: setTimeout(() => this._commitTap(), MediaView.TAP_CLICK_WAIT_MS),
+    };
+  };
+
+  /** Flip what the user SAW at the press — not the state now, which hovering
+   *  or the auto-hide may have changed in between. */
+  private _commitTap(): void {
+    const pending = this._pendingTap;
+    this._pendingTap = undefined;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    if (pending.visible) this._hideFollowCtrl();
     else this._showFollowCtrl();
+  }
+
+  private _onCancelCapture = (): void => {
+    this._tap = undefined;
   };
 
-  /** The fullscreen strip covers the whole player (so a drag anywhere scrubs),
-   *  which means it also swallows taps meant for the video. It doesn't use taps
-   *  itself — dragging and scrolling only — so every one of them comes back
-   *  here and behaves like a plain stage tap. */
-  private _onStripTap = (e: Event): void => {
-    e.stopPropagation();
-    this._hideFollowCtrl(); // the strip is only up while the controls are
+  private _onClickCapture = (e: MouseEvent): void => {
+    const pending = this._pendingTap;
+    if (!pending) return;
+    if (this._isControlTarget(e)) {
+      clearTimeout(pending.timer); // the control's tap: let the click through
+      this._pendingTap = undefined;
+      return;
+    }
+    this._commitTap();
   };
 
-  /** Tap on the strip's own PADDING — the clearance bands above, below and
-   *  beside the ruler, including the gutter the round buttons sit in. There is
-   *  no ruler under those to emit `tap-through`, so the tap used to do nothing
-   *  but re-arm the auto-hide (pointerdown calls _showFollowCtrl): the chrome
-   *  flashed and stayed up, and since the strip covers the WHOLE player that is
-   *  most of the screen's edge. Give them the same dismiss the ruler has.
-   *  composedPath()[0] is the true innermost target — a tap that landed on the
-   *  ruler, a thumbnail or a button reports that element instead and is left
-   *  alone, and a drag that merely ENDS here is excluded by `scrubbing`. */
-  private _onStripBlankTap = (e: Event): void => {
-    e.stopPropagation();
-    if (e.composedPath()[0] !== e.currentTarget || this.scrubbing) return;
-    this._hideFollowCtrl();
+  /** Mouse hover reveals the controls (desktop). Touch never does: a finger's
+   *  jitter during a tap would undo the tap's own hide. */
+  private _onStageHover = (e: PointerEvent): void => {
+    if (e.pointerType === 'mouse') this._showFollowCtrl();
   };
 
   private _toggleFollowPlay = (e: Event): void => {
@@ -4157,6 +4408,7 @@ export class MediaView extends LitElement {
     return (
       !this._highLiveReady &&
       !this._bridgeRetired &&
+      !this._bridgeSkip &&
       !!this.liveBridgeCameraId &&
       !!this.hass?.states[this.liveBridgeCameraId]
     );
@@ -4321,6 +4573,7 @@ export class MediaView extends LitElement {
     this._liveMuted = this._audioUserChoice !== 'unmuted';
     this._highLiveReady = false;
     this._bridgeRetired = false;
+    this._bridgeSkip = isStreamHot(this.cameraId); // decided once per session
     this._highStableAt = 0;
     clearTimeout(this._bridgeSwapTimer);
     this._liveMountedAt = performance.now();
@@ -4527,11 +4780,7 @@ export class MediaView extends LitElement {
   private _followSkip(deltaMs: number): void {
     const cur = this._followContentNow();
     if (cur == null) return;
-    this._announceSeek(cur + deltaMs);
-    const wasPaused = this._followPaused;
-    void this._startFollow(cur + deltaMs); // resets _followPaused = false
-    this._followPaused = wasPaused; // ...so keep the pause state across a skip
-    this._showFollowCtrl();
+    this._seekFollowTo(cur + deltaMs);
   }
 
   // "Near live" = as close as the follow can get: it rests at ~delaySeconds +
@@ -4632,7 +4881,11 @@ export class MediaView extends LitElement {
         <button class="vfs" @click=${this._toggleFs} title="Fullscreen">
           <ha-icon icon=${this._isFs ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}></ha-icon>
         </button>
-        ${clip ? this._renderSeekRow() : html`<div class="vctrl-spacer"></div>`}
+        ${clip
+          ? this._renderSeekRow()
+          : mode === 'follow' && this.clipEndTime > this.targetTime
+            ? this._renderEventSeekRow()
+            : html`<div class="vctrl-spacer"></div>`}
       </div>
     `;
   }
@@ -4659,13 +4912,11 @@ export class MediaView extends LitElement {
     </div>`;
   }
 
-  /** Time readout + seek bar. With a playlist both cover the whole merged
-   *  event; standalone they cover the loaded clip, exactly as before. */
+  /** Time readout + seek bar of the loaded bounded clip. */
   private _renderSeekRow() {
-    const playlist = this._hasPlaylist;
-    const total = playlist ? this._playlistTotalS : this._clipDuration;
-    const at = playlist ? this._playlistOffsetS + this._clipTime : this._clipTime;
-    const frac = playlist ? (total > 0 ? Math.min(1, at / total) : 0) : this._clipProgress;
+    const total = this._clipDuration;
+    const at = this._clipTime;
+    const frac = this._clipProgress;
     return html`<div class="vseek-row">
       <span class="vtime">${this._fmtClock(at)} / ${this._fmtClock(total)}</span>
       <div class="vseek" @pointerdown=${this._onSeekDown}>
@@ -4676,6 +4927,85 @@ export class MediaView extends LitElement {
       </div>
     </div>`;
   }
+
+  /** Time readout + seek bar over the EVENT being played, start to end, in
+   *  wall-clock time — the same timeline the footage is on, so a position on
+   *  the bar IS an instant and seeking to it is _seekFollowTo. */
+  private _renderEventSeekRow() {
+    const start = this.targetTime;
+    const total = Math.max(1, this.clipEndTime - start);
+    const cur = this._seekDragAt ?? this._followNow ?? start;
+    const at = Math.min(total, Math.max(0, cur - start));
+    const frac = at / total;
+    return html`<div class="vseek-row">
+      <span class="vtime">${this._fmtClock(at / 1000)} / ${this._fmtClock(total / 1000)}</span>
+      <div class="vseek" @pointerdown=${this._onEventSeekDown}>
+        <div class="vseek-track">
+          <div class="vseek-fill" style="width:${frac * 100}%"></div>
+          <div class="vseek-knob" style="left:${frac * 100}%"></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  private _eventSeekAt(e: PointerEvent, bar: HTMLElement): number {
+    const rect = bar.getBoundingClientRect();
+    // Rotated (mobile landscape) fullscreen: the bar runs vertically on screen.
+    const raw = this._forceRotate
+      ? (e.clientY - rect.top) / rect.height
+      : (e.clientX - rect.left) / rect.width;
+    const frac = Math.min(1, Math.max(0, raw));
+    return this.targetTime + frac * (this.clipEndTime - this.targetTime);
+  }
+
+  /** Drag the event seek bar. While the finger is down ONLY the knob and the
+   *  time move; the footage seeks once, on release. Seeking on every move is
+   *  what used to fire an export per pixel and land on whichever came back
+   *  last. A cancelled gesture leaves playback where it was. */
+  private _onEventSeekDown = (e: PointerEvent): void => {
+    e.stopPropagation();
+    const bar = e.currentTarget as HTMLElement;
+    try {
+      bar.setPointerCapture(e.pointerId);
+    } catch {
+      /* synthetic pointer ids in tests */
+    }
+    this._seekDragAt = this._eventSeekAt(e, bar);
+    const move = (ev: PointerEvent): void => {
+      this._seekDragAt = this._eventSeekAt(ev, bar);
+    };
+    const finish = (commit: boolean): void => {
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', up);
+      bar.removeEventListener('pointercancel', cancel);
+      const t = this._seekDragAt;
+      this._seekDragAt = undefined;
+      if (commit && t !== undefined) this._seekFollowTo(t);
+      this._showFollowCtrl();
+    };
+    const up = (): void => finish(true);
+    const cancel = (): void => finish(false);
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', cancel);
+    this._showFollowCtrl();
+  };
+
+  /** A press inside the fullscreen strip. Its PADDING — the gutter right of the
+   *  ruler (where the round buttons sit) and the bands above and below it — has
+   *  no scrub surface under it, so a drag that started there did nothing while
+   *  a tap there worked. Hand such a press to the timeline: it captures the
+   *  pointer and runs the drag exactly as if it had started on the ruler. A
+   *  press on the ruler, a thumbnail or a button is the timeline's already. */
+  private _onStripPress = (e: PointerEvent): void => {
+    e.stopPropagation();
+    this._keepCtrlAlive();
+    if (e.composedPath()[0] !== e.currentTarget) return;
+    const tl = this.querySelector('[slot="fs-timeline"]') as
+      | (Element & { beginDrag?: (ev: PointerEvent) => void })
+      | null;
+    tl?.beginDrag?.(e);
+  };
 
   /** True while the host's slotted overlay timeline is on screen. */
   private get _fsStrip(): boolean {
@@ -4691,9 +5021,11 @@ export class MediaView extends LitElement {
    *  auto-hide so a long drag can't make the strip vanish under the finger. */
   private _renderFsTimeline() {
     if (!this._fsStrip) return nothing;
+    // Pointer traffic stops here (see below) and only KEEPS the controls up; a
+    // tap's toggle is decided by the host-level detector (see _tap).
     const hold = (e: Event): void => {
       e.stopPropagation();
-      this._showFollowCtrl();
+      this._keepCtrlAlive();
     };
     // Deepest at the screen edge (under the ruler), holding across it, then
     // fading out under the thumbnails that hang past the strip.
@@ -4713,13 +5045,12 @@ export class MediaView extends LitElement {
         .fsTimelineGutter}px;--upc-fs-tl-pad:${this
         .fsTimelinePadding}px;--upc-fs-tl-scrim-ext:${this
         .fsTimelineScrimExtend}px;--upc-fs-tl-bg:${scrim}"
-      @pointerdown=${hold}
+      @pointerdown=${this._onStripPress}
       @pointermove=${hold}
       @wheel=${hold}
       @pointerup=${(e: Event) => e.stopPropagation()}
       @pointercancel=${(e: Event) => e.stopPropagation()}
-      @click=${this._onStripBlankTap}
-      @tap-through=${this._onStripTap}
+      @click=${(e: Event) => e.stopPropagation()}
     >
       <slot name="fs-timeline"></slot>
     </div>`;
@@ -4774,9 +5105,7 @@ export class MediaView extends LitElement {
         <div
           class="stage live-stage"
           style=${this.accent ? `--upc-accent:${this.accent}` : ''}
-          @pointermove=${this._showFollowCtrl}
-          @pointerdown=${this._onStagePress}
-          @click=${this._onStageTap}
+          @pointermove=${this._onStageHover}
         >
           ${stateObj
             ? html`${this._hidden
@@ -4877,9 +5206,7 @@ export class MediaView extends LitElement {
         <div
           class="stage follow-stage"
           style=${this.accent ? `--upc-accent:${this.accent}` : ''}
-          @pointermove=${this._showFollowCtrl}
-          @pointerdown=${this._onStagePress}
-          @click=${this._onStageTap}
+          @pointermove=${this._onStageHover}
         >
           <video
             class="follow-a ${this._followActive === 'a' ? 'follow-on' : 'follow-off'}"
@@ -4931,9 +5258,7 @@ export class MediaView extends LitElement {
       return html`<div
         class="stage"
         style=${this.accent ? `--upc-accent:${this.accent}` : ''}
-        @pointermove=${this._showFollowCtrl}
-        @pointerdown=${this._onStagePress}
-        @click=${this._onStageTap}
+        @pointermove=${this._onStageHover}
       >
         ${this.live
           ? html`<div class="overlay"><div class="spinner"></div>Connecting…</div>`
@@ -4954,9 +5279,7 @@ export class MediaView extends LitElement {
       <div
         class="stage clip-stage"
         style=${this.accent ? `--upc-accent:${this.accent}` : ''}
-        @pointermove=${this._showFollowCtrl}
-        @pointerdown=${this._onStagePress}
-        @click=${this._onStageTap}
+        @pointermove=${this._onStageHover}
       >
         <video
           class="clip ${this._loadingVideo ? 'loading' : ''}"

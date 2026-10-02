@@ -67,7 +67,9 @@ SESSIONS_DIR = "protect_sessions"
 # Guard-rails, not a disk budget: this host has ~346 GB free and the previous
 # disk-full incident was unpruned BACKUPS sweeping in a cache, not capacity.
 # These exist so one pathological request can't run away.
-MAX_CONCURRENT_SESSIONS = 8
+# 16: playback is 30 s chunk sessions now, and the card keeps the few it played
+# last for a seek back (2 slots + 4 cached per viewer, ~25 MB each).
+MAX_CONCURRENT_SESSIONS = 16
 SESSION_TTL = timedelta(minutes=30)
 
 # A merged display event is NOT a clip: the card's gap-merge turned 43 raw motion
@@ -455,12 +457,26 @@ class ProtectClipMediaView(HomeAssistantView):
             return web.Response(status=web.HTTPNotFound.status_code)
 
         path = self.manager.clip_path(session_id)
-        if not os.path.isfile(path):
+        if not await self.manager.hass.async_add_executor_job(_touch_session, path):
             return web.Response(status=web.HTTPNotFound.status_code)
 
         # Content-Type must be explicit: the phone's player is picky and the
         # extension sniff isn't guaranteed. Range handling is aiohttp's.
         return web.FileResponse(path, headers={"Content-Type": "video/mp4"})
+
+
+def _touch_session(path: str) -> bool:
+    """True if the clip exists; reading it also marks its session as USED.
+
+    The sweep's TTL and its at-capacity eviction both go by directory mtime, so
+    without this they took the oldest-CREATED session — which can be the very
+    chunk a player is streaming, or one the card kept for a seek back.
+    """
+    if not os.path.isfile(path):
+        return False
+    with suppress(OSError):
+        os.utime(os.path.dirname(path))
+    return True
 
 
 def _valid_sid(sid: str) -> bool:

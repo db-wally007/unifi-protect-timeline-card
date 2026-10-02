@@ -21,7 +21,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { CameraEntry, CardConfig, HomeAssistant } from './data/types';
 import { loadManifest, manifestToBand } from './data/manifest';
-import { clipSegments, groupBands } from './data/event-groups';
+import { groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { mergeStrip, tagBands, type MultiBand } from './data/multi-events';
 import { ThumbnailLoader } from './data/thumbnail-loader';
@@ -69,19 +69,10 @@ export class MultiView extends LitElement {
   @state() private _data = new Map<string, CameraData>(); // by camera entity_id
   @state() private _strip: MultiBand[] = []; // merged, newest-first
   @state() private _playback?: MultiBand; // undefined = live grid
-  // A merged row is a display span, not a clip (43 raw events over 37m56s on
-  // 2026-09-19). It plays as this ORDERED PLAYLIST of short bounded clips, one
-  // small export each, instead of one export of the whole span — which measured
-  // 34.9s and 1.29 GB and took the whole instance down with it when retapped.
-  @state() private _segments: FootageSpan[] = [];
-  @state() private _segIdx = 0;
-  // Set by a seek that lands outside the loaded clip: the next segment is then
-  // exported FROM that instant rather than from its own start.
-  private _segSeek?: number;
-  // Set when the event's clip has finished and playback has rolled on into the
-  // footage after it: the media-view then gets no clip end and plays
-  // continuously from this instant.
-  @state() private _followFrom?: number;
+  // The event's end is behind us: playback has rolled on into the footage
+  // after it (same player, no reload), so the media view gets no event end.
+  // The start it was given must NOT change — it would read that as a seek.
+  @state() private _eventDone = false;
   // Events browsing mode (header chevron): the strip becomes a grid LIST and
   // the live cameras are UNMOUNTED (no video decode while browsing events).
   @state() private _expanded = false;
@@ -598,28 +589,18 @@ export class MultiView extends LitElement {
     this._playback = band;
     this._lastPlayedKey = `${band.type}@${band.start}`;
     this._keepLastPlayed = false; // a new pick: back to the normal highlight rule
-    // Built ONCE per selection, not per render: the end cap is wall-clock, so
-    // recomputing would hand the media-view a new range on every tick.
+    // The whole event, any length — the media view plays it on its chunk
+    // engine. Fixed ONCE per selection: the end cap is wall-clock, and a range
+    // recomputed per render would be a moving seek bar.
     const d = this._data.get(band.camera);
-    this._segments = clipSegments(band, {
-      mode: this.config?.merged_playback ?? 'continuous',
-      maxMs: (this.config?.clip_segment_seconds ?? 120) * 1000,
-      joinMs: (this.config?.clip_segment_join_seconds ?? 10) * 1000,
-      preMs: d?.preMs ?? 0,
-      postMs: d?.postMs ?? 0,
-      endCapMs: Date.now(),
-    });
-    this._segIdx = 0;
-    this._segSeek = undefined;
-    this._followFrom = undefined;
+    this._eventSpan = {
+      start: Math.max(band.start - (d?.preMs ?? 0), 0),
+      end: Math.min(band.end + (d?.postMs ?? 0), Date.now()),
+    };
+    this._eventDone = false;
   }
 
-  /** A seek that left the loaded clip: jump the cursor to that segment and
-   *  export from the exact instant asked for. */
-  private _onPlaylistSeek = (e: CustomEvent<{ time: number; index: number }>): void => {
-    this._segIdx = Math.max(0, Math.min(this._segments.length - 1, e.detail.index));
-    this._segSeek = e.detail.time;
-  };
+  @state() private _eventSpan?: { start: number; end: number };
 
   private _onStripSelect = (e: CustomEvent<MultiBand>): void => {
     this._playBand(e.detail);
@@ -656,35 +637,18 @@ export class MultiView extends LitElement {
 
   private _closePlayback = (): void => {
     this._playback = undefined; // media-view unmounts (cancels the NVR export)
-    this._segments = [];
-    this._segIdx = 0;
-    this._segSeek = undefined;
-    this._followFrom = undefined;
+    this._eventSpan = undefined;
+    this._eventDone = false;
   };
 
-  /** Advance through the merged all-camera event order, matching single view. */
+  /** The event's end has played: keep rolling into the footage that FOLLOWS it,
+   *  exactly like the single-camera views do. These cameras record
+   *  continuously, so what happens after an event is usually the interesting
+   *  part. The media view is already playing it — this only drops the event
+   *  end (and with it the seek bar); the player stays mounted. */
   private _onClipEnded = (): void => {
-    const current = this._playback;
-    if (!current) return;
-    // A merged event is several segments: finish them before leaving the row.
-    // The next one is already prepared (media-view prefetches it), so this
-    // hands over without another visit to the preparation overlay.
-    if (this._segIdx + 1 < this._segments.length) {
-      this._segIdx++;
-      this._segSeek = undefined;
-      return;
-    }
-    // Then keep rolling into the footage that FOLLOWS the event, exactly like
-    // the single-camera views do. These cameras record continuously, so what
-    // happens after an event is usually the interesting part. Dropping the clip
-    // end puts the media-view into continuous playback from that instant; the
-    // player stays where it is (`_playback` is what keeps it mounted).
-    this._followFrom = this._segments.length
-      ? this._segments[this._segments.length - 1].end
-      : current.end;
-    this._segments = [];
-    this._segIdx = 0;
-    this._segSeek = undefined;
+    if (!this._playback) return;
+    this._eventDone = true;
   };
 
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -841,6 +805,7 @@ export class MultiView extends LitElement {
               .newest=${newest}
               .minuteTick=${this._minuteTick}
               .aspect=${this.config.grid_aspect ?? '16/9'}
+              .prewarm=${this.config.live_prewarm ?? true}
               @tile-open=${this._onTileOpen}
               @tile-fullscreen=${this._onTileFs}
             ></upc-live-grid>`}
@@ -981,6 +946,7 @@ export class MultiView extends LitElement {
                   .scrollMode=${gridCols === 1}
                   .padTop=${gridCols === 1 ? 0 : GRID_PAD_TOP}
                   .aspect=${this.config.grid_aspect ?? '16/9'}
+                  .prewarm=${this.config.live_prewarm ?? true}
                   @tile-open=${this._onTileOpen}
                   @tile-fullscreen=${this._onTileFs}
                 ></upc-live-grid>
@@ -993,29 +959,21 @@ export class MultiView extends LitElement {
   /** The clip player, identical in both homes: the in-place .playwrap
    *  (collapsed page) and the .playbox lightbox over the expanded grid. */
   private _renderPlayer(b: MultiBand, d: CameraData | undefined, accent: string) {
-    // One PLAYLIST SEGMENT at a time. Falling back to the raw band range keeps
-    // a lone short event working when the playlist came out empty (its footage
-    // is newer than the NVR has flushed).
-    const seg = this._segments[this._segIdx];
-    // Past the end of the event: no clip end, which is the media-view's signal
-    // to play continuously from `targetTime` instead of a bounded clip.
-    const following = this._followFrom !== undefined;
-    const target = following
-      ? this._followFrom!
-      : this._segSeek ?? seg?.start ?? Math.max(b.start - (d?.preMs ?? 0), 0);
-    const end = following ? 0 : seg?.end ?? Math.min(b.end + (d?.postMs ?? 0), Date.now());
+    // The event's span: its start stays put for the life of the selection (the
+    // media view seeks within it itself); its end goes once playback passes it.
+    const span = this._eventSpan ?? {
+      start: Math.max(b.start - (d?.preMs ?? 0), 0),
+      end: Math.min(b.end + (d?.postMs ?? 0), Date.now()),
+    };
     return html`<upc-media-view
       .hass=${this.hass}
       .nvrId=${this._nvrIdFor(b.camera)}
       .cameraId=${b.camera}
       .gaps=${[]}
       .footageSpans=${d?.spans ?? []}
-      .targetTime=${target}
-      .clipEndTime=${end}
-      .clipPlaylist=${this._segments}
-      .clipPlaylistIndex=${this._segIdx}
+      .targetTime=${span.start}
+      .clipEndTime=${this._eventDone ? 0 : span.end}
       .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
-      @playlist-seek=${this._onPlaylistSeek}
       .scrubbing=${false}
       .live=${false}
       .stacked=${this.stacked}

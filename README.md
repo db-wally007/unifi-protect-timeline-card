@@ -125,10 +125,7 @@ Single mode unless noted.
 | `default_span_minutes` | number | — | Initial visible span in minutes instead of the 0–100 scale, clamped to 4–60. Only consulted when `default_timeline_zoom` is absent |
 | `scrub_settle_ms` | number | `700` | Delay between releasing a drag and playback starting. Taps play immediately; `0` disables the delay |
 | `event_merge_gap_seconds` | number | `60` | Consecutive NVR events closer than this are shown as one event, the way the Protect app does it. `0` = raw 1:1. Both modes |
-| `merged_playback` | `continuous` \| `activity` | `continuous` | How a merged event plays. `continuous` = the whole span, idle included, so the seek bar stays 1:1 with the clock; `activity` = only the recorded events, skipping the idle between them |
-| `clip_segment_seconds` | number | `120` | Longest single segment of a merged event's playlist — the unit the NVR is asked to export. Lower = quicker first frame, more segment boundaries |
-| `clip_segment_join_seconds` | number | `10` | `merged_playback: activity` only: events closer than this play as one segment instead of paying a separate export |
-| `max_clip_seconds` | number | `600` | Hard ceiling on any single clip request. A backstop — keep it at or below `MAX_CLIP_SECONDS` in `custom_components/protect_cache` |
+| `max_clip_seconds` | number | `600` | Hard ceiling on any single clip request. A backstop — event playback runs on 30 s chunks and never reaches it. Keep it at or below `MAX_CLIP_SECONDS` in `custom_components/protect_cache` |
 
 ### Events list
 
@@ -180,6 +177,7 @@ without remounting a media element or flashing black. On-demand tips remain on t
 | `delay_seconds` | number | `15` | How far behind live delayed-follow playback holds. Minimum 12 |
 | `live_audio_start` | `auto` \| `muted` | `muted` | `muted` starts the card session silently. One explicit Unmute applies to LIVE, history, clips, and camera switches until the view closes. `auto` additionally permits a best-effort audible initial LIVE start |
 | `live_transport` | `auto` \| `hls` \| `webrtc` | `auto` | `auto` keeps high HLS on desktop/Android and uses a medium startup bridge followed by high WebRTC on Apple mobile. Explicit values force a transport for diagnosis or rollback |
+| `live_prewarm` | boolean | `true` | While a camera page is on screen, keep the high-resolution streams of its cameras running on the Home Assistant server so LIVE opens in about a second instead of waiting 6-7 s for a cold stream's first segment. Nothing is sent to the browser; the streams stop 30 s after the card is hidden. Needs `protect_cache` (silently off without it) |
 
 #### Reliable live startup
 
@@ -265,15 +263,16 @@ cameras:
 | `grid_aspect` | string | `16/9` | Live tile aspect ratio |
 
 `accent_color`, `title*`, `back_button*`, `date_font_*`, `list_*`, `event_merge_gap_seconds`,
-`merged_playback`, `clip_segment_seconds`, `clip_segment_join_seconds`, `max_clip_seconds`,
-`thumbnail_concurrency`, `chunk_seconds`, `page_background` and `height` all work here too.
+`max_clip_seconds`, `thumbnail_concurrency`, `chunk_seconds`, `page_background` and `height`
+all work here too.
 `thumbnail_cache_dir` and `scrub_preview_dir` are ignored — multi mode derives each camera's cache
 path from its own entity id.
 
 > Options removed in 2.0 and now ignored if present: `timeline_height`, `list_duration_size`,
 > `grid_columns`, `hours_back`, `clip_text_size`, `clip_text_color`, `clip_text_bg`,
-> `hide_occluded_thumbnails`, `list_hours_back`, `scrub_time_size`, `detections`. Safe to delete
-> from your YAML.
+> `hide_occluded_thumbnails`, `list_hours_back`, `scrub_time_size`, `detections`. Removed after
+> 2.1 (events no longer play as a playlist): `merged_playback`, `clip_segment_seconds`,
+> `clip_segment_join_seconds`. Safe to delete from your YAML.
 
 ## Server-side helpers
 

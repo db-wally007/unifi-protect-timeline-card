@@ -120,6 +120,10 @@ export interface CardConfig {
   // where a medium bridge covers high WebRTC negotiation. Explicit values are
   // primarily for diagnosis and rollback testing.
   live_transport?: 'auto' | 'hls' | 'webrtc';
+  // Keep the high-resolution live streams of the cameras on screen warm on the
+  // server (needs the protect_cache component), so LIVE opens without a cold
+  // keyframe wait. Stops 30 s after the card is hidden. Default true.
+  live_prewarm?: boolean;
   // Pause between releasing a scrub (drag/flick/wheel) and playback starting,
   // in ms (default 700). Taps play immediately. 0 = no delay.
   scrub_settle_ms?: number;
@@ -183,27 +187,9 @@ export interface CardConfig {
   // merged duration), replicating how the UniFi app groups continuous activity.
   // Default 60. 0 = no grouping (raw 1:1 events, the pre-1.27 behavior).
   event_merge_gap_seconds?: number;
-  // How a MERGED event (one row covering many raw events) is played back. A
-  // group can span half an hour, which is not a clip — it is played as a
-  // playlist of short segments, one small export each.
-  //   continuous (default) — the whole span, idle included: the seek bar stays
-  //                          1:1 with the clock and nothing is hidden.
-  //   activity             — only the members' recorded spans; idle is skipped,
-  //                          so the clock jumps forward at each gap.
-  merged_playback?: 'continuous' | 'activity';
-  // Longest single segment of a merged-event playlist, in seconds (default 120).
-  // This is the unit the NVR is asked to export: measured on a 2688x1512 camera,
-  // 120s prepares in ~4.1s / 97 MB, 600s in ~17s / 525 MB, 1500s in ~35s /
-  // 1.29 GB. Lower = quicker first frame and smaller exports, but more segment
-  // boundaries (each costs one prepare when playback crosses it).
-  clip_segment_seconds?: number;
-  // `merged_playback: activity` only: neighbouring events closer than this many
-  // seconds are played as ONE segment rather than paying a separate export for a
-  // few idle seconds (default 10).
-  clip_segment_join_seconds?: number;
-  // Hard ceiling on any single clip request, in seconds (default 600). Nothing
-  // should reach it once a group plays as a playlist — it exists so a bug or a
-  // hand-written config can never ask the NVR for a multi-gigabyte export again.
+  // Hard ceiling on any single bounded-clip request, in seconds (default 600).
+  // Event playback runs on 30 s chunks and never reaches it — it exists so a bug
+  // or a hand-written config can never ask the NVR for a multi-gigabyte export.
   // Must not exceed MAX_CLIP_SECONDS in custom_components/protect_cache.
   max_clip_seconds?: number;
   // Events-list view: row 1 (event start time) text size in px (default 12).

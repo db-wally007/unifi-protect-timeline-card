@@ -38,7 +38,7 @@ import {
 } from './data/time-scale';
 import { fetchFootageGaps } from './data/gaps';
 import { navigate } from './data/navigate';
-import { clipSegments, groupBands } from './data/event-groups';
+import { groupBands } from './data/event-groups';
 import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
@@ -55,7 +55,7 @@ const BAND_REFRESH_MS = 30_000;
 // The card calls the sync service itself when the manifest is stale (job not
 // running / not run yet), at most once per SYNC_THROTTLE_MS.
 const SYNC_THROTTLE_MS = 2 * 60_000;
-const VERSION = '2.1.1';
+const VERSION = '2.2.0';
 
 // A playback-time step at least this large is a SKIP, not playback advancing;
 // the ruler glides across it. Well above the sub-second cadence of normal
@@ -120,11 +120,6 @@ export class UnifiProtectTimelineCard extends LitElement {
   @state() private _thumbVersion = 0; // bumped when a thumbnail finishes loading
   @state() private _playingBand?: DetectionBand; // event currently being played
   @state() private _clipEnd = 0; // when playing an event, its end (epoch ms); 0 = unbounded
-  // A merged event row can span half an hour of raw events. It is PLAYED as an
-  // ordered playlist of short bounded clips (one small export each) rather than
-  // one export of the whole span — see clipSegments() for the measurements.
-  @state() private _segments: FootageSpan[] = [];
-  @state() private _segIdx = 0;
   // The NVR's event list, consolidated for display (UniFi-style gap-merge):
   // each band may carry `members` = the raw events it merges.
   @state() private _manifestBands: DetectionBand[] = [];
@@ -800,6 +795,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       delay_seconds: 15,
       live_audio_start: 'muted',
       live_transport: 'auto',
+      live_prewarm: true,
       scrub_settle_ms: 700,
       timeline_font_size: 12,
       timeline_font_color: '#d0d0d0',
@@ -822,9 +818,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       thumb_size: 87,
       thumb_size_active: 105,
       event_merge_gap_seconds: 60,
-      merged_playback: 'continuous',
-      clip_segment_seconds: 120,
-      clip_segment_join_seconds: 10,
       max_clip_seconds: 600,
       list_text_size: 12,
       list_text_color: '',
@@ -1501,44 +1494,18 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._scrubbing = false;
     this._liveMode = false;
     this._playingBand = band;
-    // Built once per selection (the end cap is wall-clock); a lone event yields
-    // a single segment, so short events behave exactly as they always have.
-    this._segments = clipSegments(band, {
-      mode: this._config?.merged_playback ?? 'continuous',
-      maxMs: (this._config?.clip_segment_seconds ?? 120) * 1000,
-      joinMs: (this._config?.clip_segment_join_seconds ?? 10) * 1000,
-      preMs: this._preMs,
-      postMs: this._postMs,
-      endCapMs: Date.now(),
-    });
-    this._segIdx = 0;
-
-    const seg = this._segments[0];
-    this._clipEnd = seg?.end ?? Math.min(band.end + this._postMs, Date.now());
-    this._targetTime = seg?.start ?? Math.max(band.start - this._preMs, 0);
+    // The whole event, any length — a merged row too. The media view plays it
+    // on its chunk engine, so its span is just the seek bar's range; the end
+    // cap is wall-clock for an event still in progress.
+    this._clipEnd = Math.min(band.end + this._postMs, Date.now());
+    this._targetTime = Math.max(band.start - this._preMs, 0);
     this._domain = domainForPlayhead(band.start, spanOf(this._domain), this._phFrac());
   }
 
-  /** Leave bounded-clip playback: no clip end, no playlist. */
+  /** Leave event playback: no event end (the media view plays on regardless). */
   private _clearClip(): void {
     this._clipEnd = 0;
-    this._segments = [];
-    this._segIdx = 0;
   }
-
-  /** Move to another segment of the merged event being played (seek bar drag
-   *  past the loaded clip, or the end of a segment). */
-  private _playSegment(index: number, from?: number): void {
-    const seg = this._segments[index];
-    if (!seg) return;
-    this._segIdx = index;
-    this._clipEnd = seg.end;
-    this._targetTime = from ?? seg.start;
-  }
-
-  private _onPlaylistSeek = (e: CustomEvent<{ time: number; index: number }>): void => {
-    this._playSegment(Math.max(0, Math.min(this._segments.length - 1, e.detail.index)), e.detail.time);
-  };
 
   // Tap on an events-list row -> play that event's (padded) clip.
   private _onEventSelected = (e: CustomEvent<DetectionBand>): void => {
@@ -1552,15 +1519,9 @@ export class UnifiProtectTimelineCard extends LitElement {
   // (every jump is another NVR export and another decode on the phone).
   private _onClipEnded = (): void => {
     if (!this._playingBand) return;
-    // Finish the merged event's remaining segments first. The next one has
-    // already been prepared by the media-view's prefetch.
-    if (this._segIdx + 1 < this._segments.length) {
-      this._playSegment(this._segIdx + 1);
-      return;
-    }
-    // Clearing the clip end drops the media-view into continuous playback from
-    // this instant (see its updated(): no clipEndTime => _startFollow).
-    this._targetTime = this._playingBand.end;
+    // The media view is already playing what follows (same chunk grid, no
+    // reload). Only the event state goes; `_targetTime` must NOT move, or the
+    // media view would take it as a new position and seek.
     this._playingBand = undefined;
     this._clearClip();
   };
@@ -2042,13 +2003,12 @@ export class UnifiProtectTimelineCard extends LitElement {
               .footageSpans=${this._footageSpans}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}
-              .clipPlaylist=${this._segments}
-              .clipPlaylistIndex=${this._segIdx}
               .maxClipSeconds=${this._config.max_clip_seconds ?? 600}
               .now=${this._now}
               .delaySeconds=${this._config.delay_seconds ?? 15}
               .liveAudioStart=${this._config.live_audio_start ?? 'muted'}
               .liveTransport=${this._config.live_transport ?? 'auto'}
+              .prewarm=${this._config.live_prewarm ?? true}
               .liveBridgeCameraId=${this._liveBridgeCamera(cameraId)}
               .startFs=${this._drillFs}
               .fsTimeline=${fsTimeline}
@@ -2059,9 +2019,8 @@ export class UnifiProtectTimelineCard extends LitElement {
               .fsTimelineScrim=${fsTimelineScrim}
               .fsTimelineScrimExtend=${fsTimelineScrimExtend}
               @playback-time=${this._onPlaybackTime}
-        @playback-seek=${this._onPlaybackSeek}
+              @playback-seek=${this._onPlaybackSeek}
               @clip-ended=${this._onClipEnded}
-              @playlist-seek=${this._onPlaylistSeek}
               @live-playing=${this._onLivePlaying}
               @go-live=${this._onLive}
               @rewind=${this._onRewind}
