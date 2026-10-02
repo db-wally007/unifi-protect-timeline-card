@@ -34,6 +34,40 @@ Setup
 Configuration (env wins; see the block below the imports)
   UNIFI_PROTECT_CAMERAS / unifi_protect_cameras    required
   UNIFI_PROTECT_ENTRY_ID / unifi_protect_entry_id  optional, "" = auto-discover
+  UNIFI_PROTECT_SCHEDULE / unifi_protect_schedule  optional, false = no built-in
+                                                   timers (both jobs), see below
+
+Monitoring
+----------
+By default this job runs itself once a minute, and that leaves no run history:
+a sync that fails reaches only the log. To have failures seen, set
+`unifi_protect_schedule: false` (it applies to protect_scrub.py too) and run
+both syncs from Home Assistant SCRIPTS on an automation's schedule. Each sync
+RETURNS {"ok": true, ...} or {"ok": false, "error": "..."}, because pyscript
+catches any exception raised in a service and only logs it, so the script has
+to check `ok` and stop with an error, which records a failed run:
+
+    script:
+      protect_thumbs_sync:
+        mode: single
+        max_exceeded: silent
+        sequence:
+          - action: pyscript.protect_thumbs_sync
+            response_variable: sync
+          - if: "{{ not (sync is mapping and sync.ok | default(false)) }}"
+            then:
+              - stop: Protect event cache sync failed
+                error: true
+
+    automation:
+      - triggers:
+          - trigger: time_pattern
+            minutes: "*"
+        actions:
+          - action: script.turn_on
+            target: {entity_id: script.protect_thumbs_sync}
+
+The motion follower below keeps working either way; it is not scheduled.
 
 Design
 ------
@@ -147,6 +181,24 @@ if not CAMERAS:
     log.error("protect: no cameras configured — set UNIFI_PROTECT_CAMERAS "
               "(\"<camera_id>=<slug>,...\") or unifi_protect_cameras under "
               "pyscript: in configuration.yaml; the sync jobs will no-op")
+
+
+def _schedule_conf():
+    """UNIFI_PROTECT_SCHEDULE / unifi_protect_schedule, read like _conf except
+    that a YAML `false` counts (_conf treats every falsy value as unset)."""
+    val = os.environ.get("UNIFI_PROTECT_SCHEDULE")
+    if val is None or not val.strip():
+        cfg = pyscript.config
+        val = cfg.get("unifi_protect_schedule") if isinstance(cfg, dict) else None
+    if val is None:
+        return True
+    return str(val).strip().lower() not in ("false", "0", "no", "off")
+
+
+# Both jobs' built-in once-a-minute timers. `false` switches them off, to run
+# the syncs from Home Assistant scripts instead, where a failed run is recorded
+# (see "Monitoring" in each file's docstring).
+SCHEDULED = _schedule_conf()
 # ---- end install configuration ----------------------------------------------
 
 # Under .cache/ (NOT www/): HA Core backups exclude .cache/* and nothing else,
@@ -296,21 +348,65 @@ def _write_manifest(cam_dir, entries, pre_ms, post_ms, now_ms):
 
 # ---- main job ---------------------------------------------------------------
 
+# Set while a sync is in flight. The schedule, the motion follower and the card
+# all ask for syncs, and they must never overlap.
+_RUNNING = False
+
+
 @time_trigger("cron(* * * * *)")
-@service
+def protect_thumbs_tick():
+    """The built-in schedule: one sync a minute, unless SCHEDULED is off."""
+    # Unconfigured is not an error every 60 s: the module load already said so.
+    if SCHEDULED and CAMERAS:
+        _run()
+
+
+@service(supports_response="optional")
 def protect_thumbs_sync():
     """Incrementally mirror NVR events + thumbnails, write manifest v2.
 
+    Returns {"ok": true, ...counts} or {"ok": false, "error": "..."} - see
+    "Monitoring" in the module docstring.
     Call manually via: service: pyscript.protect_thumbs_sync
     """
-    # Per-minute cron + on-demand service calls must never overlap: if a sync is
-    # already running, this new invocation exits (the running one finishes).
-    task.unique("protect_thumbs_sync", kill_me=True)
+    return _run()
 
+
+def _failed(reason):
+    log.error(f"protect_thumbs: {reason}")
+    return {"ok": False, "error": reason}
+
+
+def _run():
+    """One sync, never two at once, with anything it raised turned into a failed
+    result: pyscript catches an exception raised in a service and only logs it,
+    so a caller would never see one."""
+    global _RUNNING
+    if _RUNNING:
+        # Routine, not a failure: the sync in flight covers this request too.
+        # (A guard, not task.unique(kill_me=True): that CANCELS the new call,
+        # which a calling script would record as a broken run.)
+        log.debug("protect_thumbs: a sync is already running, skipping")
+        return {"ok": True, "skipped": "a sync is already running"}
+    _RUNNING = True
+    try:
+        return _sync()
+    except Exception as err:  # noqa: BLE001 - a raise here would only reach the log
+        return _failed(f"sync failed: {type(err).__name__}: {err}")
+    finally:
+        _RUNNING = False
+
+
+def _sync():
+    """One incremental sync. The NVR unreachable or nothing configured fails the
+    run; a thumbnail the NVR does not have yet does not - those are retried up to
+    THUMB_MAX_ATTEMPTS by design, and the card falls back to a snapshot."""
+    if not CAMERAS:
+        return _failed("no cameras configured (unifi_protect_cameras)")
     api = _get_api()
     if api is None:
-        log.error("protect_thumbs: uiprotect client unavailable; aborting")
-        return
+        return _failed("uiprotect client unavailable - is the UniFi Protect "
+                       "integration loaded?")
 
     now = datetime.now(timezone.utc)
     now_ms = int(now.timestamp() * 1000)
@@ -349,11 +445,6 @@ def protect_thumbs_sync():
         }
         if query_start_ms is None or cam_start_ms < query_start_ms:
             query_start_ms = cam_start_ms
-
-    if not cams:
-        # Not an error every 60s: the module-level load already logged it once.
-        log.debug("protect_thumbs: no cameras configured — nothing to do")
-        return
 
     start_dt = datetime.fromtimestamp(query_start_ms / 1000, tz=timezone.utc)
     events = api.get_events(start=start_dt, end=now, types=EVENT_TYPES)
@@ -496,10 +587,12 @@ def protect_thumbs_sync():
             "protect_thumbs: done new=%s thumbs=%s purged=%s",
             total_new, total_fetched, total_removed,
         )
+    return {"ok": True, "new": total_new, "thumbs": total_fetched, "purged": total_removed}
 
 
 # ---- motion-driven immediacy ------------------------------------------------
-# The cron above is the RECONCILER, not the delivery path: it re-queries the NVR
+# The once-a-minute sync above (the built-in cron, or a Home Assistant
+# automation when SCHEDULED is off) is the RECONCILER, not the delivery path: it re-queries the NVR
 # window and rebuilds the manifest unconditionally, which is what makes this job
 # self-healing (a missed motion edge, an event the NVR revised after the fact, a
 # burst that arrived while HA was restarting, the rolling manifest trim and the
@@ -592,11 +685,9 @@ def protect_thumbs_on_motion(**kwargs):
     started = datetime.now(timezone.utc).timestamp()
     step = 0
     while True:
-        # Via the service, not a direct call: protect_thumbs_sync() opens with
-        # task.unique(kill_me=True), which would kill THIS task if a cron run
-        # were already in flight. As a separate task it just no-ops instead,
-        # and that run produces the same data anyway.
-        service.call("pyscript", "protect_thumbs_sync")
+        # If a scheduled run is already in flight this no-ops (the _RUNNING
+        # guard), and that run produces the same data anyway.
+        _run()
         if not _burst_live():
             return
         if datetime.now(timezone.utc).timestamp() - started >= MOTION_FOLLOW_MAX_S:

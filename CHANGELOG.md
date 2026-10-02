@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.0] - 2026-10-02
+
+### Added
+
+- **The pyscript jobs can be monitored.** `pyscript.protect_thumbs_sync` and
+  `pyscript.protect_scrub_sync` now return `{"ok": true, …}` or `{"ok": false, "error": "…"}`.
+  With the new `unifi_protect_schedule: false` (or `UNIFI_PROTECT_SCHEDULE=false`) their built-in
+  once-a-minute timers are off, so Home Assistant scripts can run them on an automation's schedule
+  and record a failed run when one is not ok — see "Monitoring the jobs" in the README. Without the
+  setting nothing changes.
+
+### Fixed
+
+- A sync requested while another was running was cancelled rather than skipped
+  (`task.unique(kill_me=True)`), which a calling script recorded as a broken run. It now returns
+  ok with `skipped`, and the run in flight covers it.
+
 ## [2.2.0] - 2026-10-02
 
 ### Changed
@@ -132,6 +149,7 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[2.3.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.0.2...v2.1.0

@@ -357,6 +357,18 @@ Then `pyscript.reload` and run `pyscript.protect_thumbs_sync` and `pyscript.prot
 each to start the backfill — it spreads itself over many per-minute runs rather than hammering the
 NVR.
 
+#### Monitoring the jobs
+
+By default both jobs run themselves once a minute, which leaves no run history: a sync that fails
+only reaches the log. To have failures recorded, set `unifi_protect_schedule: false` (or
+`UNIFI_PROTECT_SCHEDULE=false`) and run `pyscript.protect_thumbs_sync` and
+`pyscript.protect_scrub_sync` from Home Assistant scripts on an automation's schedule. Each returns
+`{"ok": true, …}` or `{"ok": false, "error": "…"}`, and the script stops with an error when it is
+not ok, which records a failed run any monitor of scripts can see. The YAML is in
+`protect_thumbs.py`'s docstring. A job fails when it cannot work at all (the NVR or the integration
+unreachable, nothing configured, a crash); a thumbnail or footage block the NVR does not have is
+retried by design and does not fail it. Motion-triggered event syncs keep working either way.
+
 ## Develop
 
 ```bash

@@ -39,6 +39,18 @@ Setup
 Configuration (env wins; see the block below the imports)
   UNIFI_PROTECT_CAMERAS / unifi_protect_cameras    required
   UNIFI_PROTECT_ENTRY_ID / unifi_protect_entry_id  optional, "" = auto-discover
+  UNIFI_PROTECT_SCHEDULE / unifi_protect_schedule  optional, false = no built-in
+                                                   timers (both jobs), see below
+
+Monitoring
+----------
+By default this job runs itself once a minute, and that leaves no run history:
+a sync that fails reaches only the log. To have failures seen, set
+`unifi_protect_schedule: false` and run it from a Home Assistant SCRIPT on an
+automation's schedule, exactly as protect_thumbs.py's docstring shows for that
+job (action pyscript.protect_scrub_sync). The sync RETURNS {"ok": true, ...}
+or {"ok": false, "error": "..."}; the script stops with an error when it is
+not ok, which records a failed run.
 
 Disk: a 640×360 block is typically 3-6 MB -> ~0.5-0.8 GB/day/camera, so about
 4-6 GB per camera at the default 7-day window. Lower RETENTION_HOURS to shrink.
@@ -174,6 +186,24 @@ if not CAMERAS:
     log.error("protect: no cameras configured — set UNIFI_PROTECT_CAMERAS "
               "(\"<camera_id>=<slug>,...\") or unifi_protect_cameras under "
               "pyscript: in configuration.yaml; the sync jobs will no-op")
+
+
+def _schedule_conf():
+    """UNIFI_PROTECT_SCHEDULE / unifi_protect_schedule, read like _conf except
+    that a YAML `false` counts (_conf treats every falsy value as unset)."""
+    val = os.environ.get("UNIFI_PROTECT_SCHEDULE")
+    if val is None or not val.strip():
+        cfg = pyscript.config
+        val = cfg.get("unifi_protect_schedule") if isinstance(cfg, dict) else None
+    if val is None:
+        return True
+    return str(val).strip().lower() not in ("false", "0", "no", "off")
+
+
+# Both jobs' built-in once-a-minute timers. `false` switches them off, to run
+# the syncs from Home Assistant scripts instead, where a failed run is recorded
+# (see "Monitoring" in each file's docstring).
+SCHEDULED = _schedule_conf()
 # ---- end install configuration ----------------------------------------------
 
 # Under .cache/ (NOT www/) so HA Core backups skip it: .cache/* is the only
@@ -1124,24 +1154,65 @@ def protect_scrub_tip(slug="", seconds=0, encode=None):
 
 # ---- main job ---------------------------------------------------------------
 
+# Set while a sync is in flight. The schedule and the card both ask for syncs,
+# and they must never overlap.
+_RUNNING = False
+
+
 @time_trigger("cron(* * * * *)")
-@service
+def protect_scrub_tick():
+    """The built-in schedule: one sync a minute, unless SCHEDULED is off."""
+    # Unconfigured is not an error every 60 s: the module load already said so.
+    if SCHEDULED and CAMERAS:
+        _run()
+
+
+@service(supports_response="optional")
 def protect_scrub_sync():
     """Export missing timelapse blocks, purge the rolling window, write index.
 
+    Returns {"ok": true, ...counts} or {"ok": false, "error": "..."} - see
+    "Monitoring" in the module docstring.
     Call manually via: service: pyscript.protect_scrub_sync
     """
-    # Per-minute cron + on-demand service calls must never overlap.
-    task.unique("protect_scrub_sync", kill_me=True)
+    return _run()
 
+
+def _failed(reason):
+    log.error(f"protect_scrub: {reason}")
+    return {"ok": False, "error": reason}
+
+
+def _run():
+    """One sync, never two at once, with anything it raised turned into a failed
+    result: pyscript catches an exception raised in a service and only logs it,
+    so a caller would never see one."""
+    global _RUNNING
+    if _RUNNING:
+        # Routine, not a failure: the sync in flight covers this request too.
+        # (A guard, not task.unique(kill_me=True): that CANCELS the new call,
+        # which a calling script would record as a broken run.)
+        log.debug("protect_scrub: a sync is already running, skipping")
+        return {"ok": True, "skipped": "a sync is already running"}
+    _RUNNING = True
+    try:
+        return _sync()
+    except Exception as err:  # noqa: BLE001 - a raise here would only reach the log
+        return _failed(f"sync failed: {type(err).__name__}: {err}")
+    finally:
+        _RUNNING = False
+
+
+def _sync():
+    """One sync. The NVR unreachable or nothing configured fails the run; a block
+    the NVR has no footage for does not - it is retried up to EXPORT_MAX_ATTEMPTS
+    by design (a camera that was offline simply has a gap)."""
     if not CAMERAS:
-        # Not an error every 60s: the module-level load already logged it once.
-        log.debug("protect_scrub: no cameras configured — nothing to do")
-        return
+        return _failed("no cameras configured (unifi_protect_cameras)")
     api = _get_api()
     if api is None:
-        log.error("protect_scrub: uiprotect client unavailable; aborting")
-        return
+        return _failed("uiprotect client unavailable - is the UniFi Protect "
+                       "integration loaded?")
 
     marks = []
     _mark(marks, "init")
@@ -1521,6 +1592,8 @@ def protect_scrub_sync():
                  exported, failed, max(0, len(missing) - MAX_EXPORTS_PER_RUN))
     _mark(marks, "index")
     _log_marks(marks)
+    return {"ok": True, "exported": exported, "failed_exports": failed,
+            "pending": max(0, len(missing) - MAX_EXPORTS_PER_RUN)}
 
 
 @service

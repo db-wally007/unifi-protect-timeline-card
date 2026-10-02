@@ -240,6 +240,14 @@ of each and editing either path edits this repo. Two consequences:
   `@state_trigger` + a backoff follower then puts a new event in the manifest ~1 s after it
   happens instead of up to 60 s. Keep both: the follower is a pure optimisation, which is
   precisely why resolving the motion sensors by naming convention is safe.
+- **The once-a-minute run may come from Home Assistant, not the cron.** With
+  `unifi_protect_schedule: false` the built-in `@time_trigger`s no-op and an HA script calls
+  `pyscript.protect_{thumbs,scrub}_sync`, turning a returned `ok: false` into a failed run — the
+  only way a failure is recorded anywhere, because pyscript catches every exception raised in a run
+  and only logs it. So the syncs must RETURN their outcome, never rely on raising. Overlap is
+  prevented by a module-level `_RUNNING` guard that returns ok + `skipped`, NOT
+  `task.unique(kill_me=True)`: that cancels the new call, and a calling script records the
+  cancellation as a broken run. The motion follower calls `_run()` directly for the same reason.
 - **Detach/re-attach and hide/show must each leave the stage PLAYING (fixed 2026-09-23).** HA
   detaches cached views and Bubble hides popups with `display:none`; four separate ways the
   picture used to freeze there, all reproduced before fixing:
