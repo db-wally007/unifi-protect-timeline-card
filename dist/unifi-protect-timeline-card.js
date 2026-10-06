@@ -7804,7 +7804,7 @@ var Vo = Object.defineProperty, Wo = Object.getOwnPropertyDescriptor, T = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Vo(t, i, o), o;
 };
-const No = 3e4, Uo = 2 * 6e4, Ho = "2.3.0", jo = 2e3, qo = 1e3, Go = 33, Ko = 1.3, Yo = 1.15;
+const No = 3e4, Uo = 2 * 6e4, Ho = "2.3.1", jo = 2e3, qo = 1e3, Go = 33, Ko = 1.3, Yo = 1.15;
 let mt = 0, qe = "", S = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new li(2, () => {

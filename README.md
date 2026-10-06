@@ -369,6 +369,14 @@ not ok, which records a failed run any monitor of scripts can see. The YAML is i
 unreachable, nothing configured, a crash); a thumbnail or footage block the NVR does not have is
 retried by design and does not fail it. Motion-triggered event syncs keep working either way.
 
+Have the automation hold off for a few minutes after Home Assistant starts (the docstring's YAML
+does, with a condition on the automation's own `last_changed` — a string in `this`, hence
+`as_datetime`). Until pyscript has loaded the
+files, the `pyscript.protect_*_sync` actions do not exist, and a script calling a missing action
+dies with `ServiceNotFound` — which `continue_on_error` deliberately does not cover. For the first
+three minutes after the files load, a sync that finds the UniFi Protect integration not up yet is
+skipped (ok), not failed.
+
 ## Develop
 
 ```bash

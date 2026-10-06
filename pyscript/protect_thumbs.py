@@ -63,11 +63,22 @@ to check `ok` and stop with an error, which records a failed run:
       - triggers:
           - trigger: time_pattern
             minutes: "*"
+        conditions:
+          # Hold off for 3 minutes after Home Assistant starts. Until pyscript
+          # has loaded this file the action does not exist, and a script that
+          # calls a missing action dies with ServiceNotFound -- which
+          # continue_on_error deliberately does not cover. The automation's own
+          # state is created at startup, so its last_changed (a string in
+          # `this`) marks the start.
+          - condition: template
+            value_template: "{{ now() - as_datetime(this.last_changed) > timedelta(minutes=3) }}"
         actions:
           - action: script.turn_on
             target: {entity_id: script.protect_thumbs_sync}
 
-The motion follower below keeps working either way; it is not scheduled.
+The motion follower below keeps working either way; it is not scheduled. Within
+STARTUP_GRACE_S of this file loading, a sync that finds the UniFi Protect
+integration not up yet is skipped (ok), not failed.
 
 Design
 ------
@@ -351,6 +362,13 @@ def _write_manifest(cam_dir, entries, pre_ms, post_ms, now_ms):
 # Set while a sync is in flight. The schedule, the motion follower and the card
 # all ask for syncs, and they must never overlap.
 _RUNNING = False
+# This file is loaded while Home Assistant is still starting (or on a pyscript
+# reload), and for a minute or two after a restart the UniFi Protect
+# integration may not be up yet. A missing client in that window means "not
+# yet", not "broken": the sync is SKIPPED, not failed — otherwise every restart
+# recorded a failed run (and motion during startup logged an error).
+STARTUP_GRACE_S = 180
+_LOADED_AT = datetime.now(timezone.utc).timestamp()
 
 
 @time_trigger("cron(* * * * *)")
@@ -405,6 +423,9 @@ def _sync():
         return _failed("no cameras configured (unifi_protect_cameras)")
     api = _get_api()
     if api is None:
+        if datetime.now(timezone.utc).timestamp() - _LOADED_AT < STARTUP_GRACE_S:
+            log.debug("protect_thumbs: UniFi Protect not loaded yet, skipping")
+            return {"ok": True, "skipped": "UniFi Protect is still loading"}
         return _failed("uiprotect client unavailable - is the UniFi Protect "
                        "integration loaded?")
 

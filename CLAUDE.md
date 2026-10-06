@@ -248,6 +248,14 @@ of each and editing either path edits this repo. Two consequences:
   prevented by a module-level `_RUNNING` guard that returns ok + `skipped`, NOT
   `task.unique(kill_me=True)`: that cancels the new call, and a calling script records the
   cancellation as a broken run. The motion follower calls `_run()` directly for the same reason.
+  **After a restart (2026-10-06):** the HA automation's first minute tick came 8 s after start,
+  before pyscript had loaded the files, so the scripts died with `ServiceNotFound` — which
+  `continue_on_error` explicitly refuses to cover. The automation now holds off 3 minutes
+  (`now() - as_datetime(this.last_changed)`: the automation's state is created at startup and on
+  its own reload; in `this` the timestamp is a STRING — without `as_datetime` the condition
+  errors on every tick, which a trace shows as `failed_conditions`, i.e. looks like a hold), and
+  the jobs treat a missing uiprotect client within `STARTUP_GRACE_S` (180 s) of the
+  file loading as skipped-ok, not failed.
 - **Detach/re-attach and hide/show must each leave the stage PLAYING (fixed 2026-09-23).** HA
   detaches cached views and Bubble hides popups with `display:none`; four separate ways the
   picture used to freeze there, all reproduced before fixing:

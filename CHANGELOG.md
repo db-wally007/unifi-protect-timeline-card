@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.3.1] - 2026-10-06
+
+### Fixed
+
+- After a Home Assistant restart, a sync that found the UniFi Protect integration not loaded yet
+  was reported as a failed run. For the first three minutes after the job files load it is now
+  skipped (ok). The monitoring recipe also holds its automation off for three minutes after
+  startup: until pyscript has loaded the files the actions do not exist, and a script calling a
+  missing action dies with `ServiceNotFound`.
+
 ## [2.3.0] - 2026-10-02
 
 ### Added
@@ -149,6 +159,7 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[2.3.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.0...v2.1.1

@@ -1157,6 +1157,13 @@ def protect_scrub_tip(slug="", seconds=0, encode=None):
 # Set while a sync is in flight. The schedule and the card both ask for syncs,
 # and they must never overlap.
 _RUNNING = False
+# This file is loaded while Home Assistant is still starting (or on a pyscript
+# reload), and for a minute or two after a restart the UniFi Protect
+# integration may not be up yet. A missing client in that window means "not
+# yet", not "broken": the sync is SKIPPED, not failed — otherwise every restart
+# recorded a failed run.
+STARTUP_GRACE_S = 180
+_LOADED_AT = datetime.now(timezone.utc).timestamp()
 
 
 @time_trigger("cron(* * * * *)")
@@ -1211,6 +1218,9 @@ def _sync():
         return _failed("no cameras configured (unifi_protect_cameras)")
     api = _get_api()
     if api is None:
+        if datetime.now(timezone.utc).timestamp() - _LOADED_AT < STARTUP_GRACE_S:
+            log.debug("protect_scrub: UniFi Protect not loaded yet, skipping")
+            return {"ok": True, "skipped": "UniFi Protect is still loading"}
         return _failed("uiprotect client unavailable - is the UniFi Protect "
                        "integration loaded?")
 
