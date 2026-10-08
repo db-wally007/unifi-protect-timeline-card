@@ -110,7 +110,12 @@ import json
 import os
 from datetime import datetime, timezone
 
-from uiprotect.data import EventType
+# uiprotect is imported when a sync first runs (_event_types), NOT here at load: on a Home
+# Assistant start pyscript loads this file while the UniFi Protect integration is importing
+# uiprotect in a worker thread, and the import can see a half-initialised uiprotect.data
+# ("partially initialized module 'uiprotect.data' has no attribute 'EventType'"). The file
+# then fails to load, pyscript never retries it, and pyscript.protect_thumbs_sync stays
+# missing until a reload - the every-minute script dying with ServiceNotFound (2026-10-08).
 
 # ---- install configuration — KEEP THIS BLOCK IDENTICAL IN BOTH FILES --------
 # Nothing install-specific is hardcoded, so this file is pure code: it can live
@@ -235,7 +240,10 @@ KIND_PRIORITY = ["person", "vehicle", "animal", "package", "license_plate"]
 # REQUIRED, not just an optimisation: without it uiprotect can't apply the
 # start/end window server-side and iterates EVERY event client-side. Keeping the
 # smart-detect types means AI events (if the NVR records them) appear 1:1 too.
-EVENT_TYPES = [EventType.MOTION, EventType.SMART_DETECT, EventType.SMART_DETECT_LINE]
+# A function, not a constant: uiprotect is imported at the first sync (see the imports).
+def _event_types():
+    from uiprotect.data import EventType
+    return [EventType.MOTION, EventType.SMART_DETECT, EventType.SMART_DETECT_LINE]
 
 
 # ---- filesystem helpers -----------------------------------------------------
@@ -468,7 +476,7 @@ def _sync():
             query_start_ms = cam_start_ms
 
     start_dt = datetime.fromtimestamp(query_start_ms / 1000, tz=timezone.utc)
-    events = api.get_events(start=start_dt, end=now, types=EVENT_TYPES)
+    events = api.get_events(start=start_dt, end=now, types=_event_types())
     log.debug(
         "protect_thumbs: %s events since %s (window %.1f min)",
         len(events), start_dt.isoformat(), (now_ms - query_start_ms) / 60000,
@@ -774,7 +782,7 @@ def protect_thumbs_dump(hours=3):
         return
     now = datetime.now(timezone.utc)
     start_dt = datetime.fromtimestamp(now.timestamp() - int(hours) * 3600, tz=timezone.utc)
-    events = api.get_events(start=start_dt, end=now, types=EVENT_TYPES)
+    events = api.get_events(start=start_dt, end=now, types=_event_types())
     log.warning("DUMP: %s raw events in last %sh (times UTC)", len(events), hours)
     for e in events:
         st = getattr(e, "start", None)

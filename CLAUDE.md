@@ -256,6 +256,12 @@ of each and editing either path edits this repo. Two consequences:
   errors on every tick, which a trace shows as `failed_conditions`, i.e. looks like a hold), and
   the jobs treat a missing uiprotect client within `STARTUP_GRACE_S` (180 s) of the
   file loading as skipped-ok, not failed.
+  **And never import uiprotect at module top (2026-10-08).** At a start pyscript can load the file
+  while the UniFi Protect integration is importing uiprotect in a worker thread; the top-level
+  `from uiprotect.data import EventType` then got a half-initialised `uiprotect.data` ("partially
+  initialized module … has no attribute 'EventType'"), the FILE failed to load, and pyscript never
+  retries it - the action stayed missing until a reload, not just for three minutes. Import it
+  inside the function that needs it (`_event_types()`); only stdlib / HA core at module level.
 - **Detach/re-attach and hide/show must each leave the stage PLAYING (fixed 2026-09-23).** HA
   detaches cached views and Bubble hides popups with `display:none`; four separate ways the
   picture used to freeze there, all reproduced before fixing:

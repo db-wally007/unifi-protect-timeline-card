@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.3.2] - 2026-10-08
+
+### Fixed
+
+- After a Home Assistant restart `pyscript.protect_thumbs_sync` could stay missing until pyscript
+  was reloaded, so every run of the monitoring script failed with `ServiceNotFound`. pyscript
+  loaded `protect_thumbs.py` while the UniFi Protect integration was still importing `uiprotect`,
+  and the file's top-level `from uiprotect.data import EventType` got a half-initialised module
+  ("partially initialized module 'uiprotect.data' has no attribute 'EventType'"): the file failed
+  to load and pyscript does not retry. `uiprotect` is now imported when a sync first runs.
+
 ## [2.3.1] - 2026-10-06
 
 ### Fixed
