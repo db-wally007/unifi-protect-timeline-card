@@ -52,9 +52,13 @@ Configuration - the same settings protect_thumbs.py reads, first match wins:
               `pyscript: unifi_protect_cameras:` - "<camera_id>=<slug>,..."
               (slug = the HA camera entity's object_id)
     entry_id  UNIFI_PROTECT_ENTRY_ID, ... (default: the only unifiprotect entry)
-    schedule  UNIFI_PROTECT_SCHEDULE, ... - false = no built-in minute timer;
-              run the `protect_cache.scrub_sync` action from an HA script
-              instead, so a failed run is recorded (it returns {"ok": ...}).
+
+Schedule: the job runs itself every REFRESH_INTERVAL (15 s), so the newest photo
+stays ~20-40 s behind live. To have failures RECORDED (a pass only logs), also
+run the `protect_cache.scrub_sync` action from an HA script, e.g. once a minute:
+it returns {"ok": true, ...} or {"ok": false, "error": "..."} for the pass in
+flight or a new one. (`unifi_protect_schedule: false`, which switches the
+pyscript jobs' own timers off, does not apply here.)
 """
 
 from __future__ import annotations
@@ -96,18 +100,23 @@ COLS, ROWS = 4, 4            # 2560x1440 sheets - the largest geometry measured
                              # fast on the low-end tablet (0.53 ms per draw)
 PER_SHEET = COLS * ROWS
 TILE_QSCALE = 2              # ffmpeg -q:v of the intermediate tiles (near lossless)
-SHEET_QUALITY = 70           # JPEG quality of the published sheets. Measured on
-                             # a night sheet: 70 -> 19 KB/photo, 60 -> 15, 80 -> 25.
+SHEET_QUALITY = 60           # JPEG quality of the published sheets. Measured on
+                             # a night sheet: 60 -> 15 KB/photo, 70 -> 19, 80 -> 25,
+                             # and 60 saves slightly FASTER (5.2 vs 5.5 ms a sheet).
                              # The pyscript job's were ~11 KB but visibly softer
                              # (a crf 27 re-encode of the NVR's timelapse).
 RETENTION_MS = 168 * 3_600_000  # rolling window; == protect_thumbs LOOKBACK_HOURS
 
-# The NVR refuses a playback that STARTS past its recording edge (~13-20 s
-# behind now), and the newest seconds may not be flushed yet: read up to this
-# far behind now. It is also how far behind live the newest photo can be, plus
-# up to one run interval.
-PULL_LAG_MS = 30_000
+# Each pass asks for footage up to this far behind now. The NVR writes footage
+# ~13-20 s after it happens and simply delivers what it has; the cursor then
+# stands just after the last keyframe that ARRIVED, so anything not written yet
+# comes with the next pass - never lost, never guessed. (A START past the
+# recording edge is refused, but the start is always an older cursor.)
+# Newest photo = the NVR's write delay + up to one REFRESH_INTERVAL + one slot.
+PULL_LAG_MS = 10_000
 PULL_MIN_MS = 5_000          # don't open a socket for less than one slot
+EDGE_SURE_MS = 60_000        # a range that ended this long ago is fully written:
+                             # no keyframes in it = nothing recorded (a gap)
 MAX_PULL_MS = 30 * 60_000    # per camera per run: a backlog catches up 30x faster
                              # than real time without holding a run for long
 BACKFILL_MAX_MS = 24 * 3_600_000  # after a long outage, resume no further back
@@ -120,14 +129,15 @@ FFMPEG_TIMEOUT_S = 120
 MAX_FILL_MS = 60_000         # a slot with no keyframe repeats the previous photo
                              # for up to this long; beyond it (camera offline) it
                              # is black rather than a stale picture
-NO_KEYS_RETRIES = 2          # a pull that ends well short of its range is retried
-                             # (NVR still flushing?) before it is taken as a gap
-KEEP_HEADS = 3               # head generations kept for clients with a stale index
+KEEP_HEADS = 12              # head generations kept for clients with a stale index
+                             # (one per pass: 12 = the card's 60 s index TTL x 3)
 STARTUP_GRACE_S = 180        # unifiprotect not loaded yet = skipped, not failed
 INDEX_VERSION = 2
 SPRITE_VERSION = 1
 FAST_SUFFIX = ".fast-sprite.json"
-RUN_INTERVAL = timedelta(minutes=1)
+REFRESH_INTERVAL = timedelta(seconds=15)  # the job's own pass, always on
+PURGE_EVERY_S = 60           # rolling-window sweep (a full listing) at most this often
+ERROR_LOG_EVERY_S = 600      # a failing pass logs once, then at most this often
 
 _SLUG_RE = re.compile(r"^[a-z0-9_]+$")
 
@@ -170,12 +180,6 @@ def parse_cameras(raw: Any) -> dict[str, str]:
             continue
         out[bits[0].strip()] = bits[1].strip()
     return out
-
-
-def _flag(val: Any, default: bool) -> bool:
-    if val is None or val == "":
-        return default
-    return str(val).strip().lower() not in ("false", "0", "no", "off")
 
 
 # ---- the NVR's stream framing ---------------------------------------------
@@ -397,8 +401,12 @@ class ScrubJob:
         work = hass.config.path(".cache", "protect_scrub_work")
         self.cams = [_Camera(cid, slug, os.path.join(base, slug), os.path.join(work, slug))
                      for cid, slug in cameras.items()]
-        self._lock = asyncio.Lock()
+        self._task: asyncio.Task[dict[str, Any]] | None = None
         self._loaded_at = time.time()
+        self._failing_since: float | None = None
+        self._error_logged = 0.0
+        self._partial_logged = 0.0
+        self._purged: dict[str, float] = {}  # slug -> monotonic time of the last sweep
 
     def _api(self) -> Any:
         entries = self.hass.config_entries.async_entries("unifiprotect")
@@ -411,15 +419,34 @@ class ScrubJob:
         return None
 
     async def run(self) -> dict[str, Any]:
-        """One sync, never two at once; never raises (a failure is a result)."""
-        if self._lock.locked():
-            return {"ok": True, "skipped": "a sync is already running"}
-        async with self._lock:
-            try:
-                return await self._sync()
-            except Exception as err:  # noqa: BLE001 - reported to the caller
-                _LOGGER.exception("protect scrub: sync failed")
-                return {"ok": False, "error": f"sync failed: {type(err).__name__}: {err}"}
+        """One pass, never two at once; never raises (a failure is a result).
+
+        A call while a pass is in flight gets THAT pass's result rather than a
+        "skipped": the job runs itself every 15 s, so a monitoring script's
+        once-a-minute call often lands mid-pass, and a skip would report
+        success for a job that might be failing.
+        """
+        if self._task is None or self._task.done():
+            self._task = self.hass.async_create_background_task(self._guarded(), "protect scrub pass")
+        return await asyncio.shield(self._task)
+
+    async def _guarded(self) -> dict[str, Any]:
+        try:
+            result = await self._sync()
+        except Exception as err:  # noqa: BLE001 - reported to the caller
+            result = {"ok": False, "error": f"sync failed: {type(err).__name__}: {err}"}
+        # Every 15 s a broken NVR link would otherwise write a warning: log the
+        # first failure, then at most every ERROR_LOG_EVERY_S, and the recovery.
+        now = time.monotonic()
+        if not result.get("ok"):
+            if self._failing_since is None or now - self._error_logged > ERROR_LOG_EVERY_S:
+                _LOGGER.warning("protect scrub: %s", result.get("error"))
+                self._error_logged = now
+            self._failing_since = self._failing_since or now
+        elif self._failing_since is not None:
+            _LOGGER.info("protect scrub: working again after %.0f s", now - self._failing_since)
+            self._failing_since = None
+        return result
 
     async def _sync(self) -> dict[str, Any]:
         if not self.cams:
@@ -436,15 +463,19 @@ class ScrubJob:
         errors = []
         for cam, res in zip(self.cams, results, strict=True):
             if isinstance(res, BaseException):
-                _LOGGER.warning("protect scrub: %s failed: %s", cam.slug, res)
+                _LOGGER.debug("protect scrub: %s failed: %s", cam.slug, res)
                 errors.append(f"{cam.slug}: {type(res).__name__}: {res}")
                 report[cam.slug] = {"error": str(res) or type(res).__name__}
             else:
                 report[cam.slug] = res
         # Failed = the job could not do its work at all. One camera the NVR has
-        # no footage for is a gap, not a failure (that path does not raise).
+        # no footage for is a gap, not a failure (that path does not raise);
+        # one camera erroring while the others work is reported but logged.
         if errors and len(errors) == len(self.cams):
             return {"ok": False, "error": "; ".join(errors), "cameras": report}
+        if errors and time.monotonic() - self._partial_logged > ERROR_LOG_EVERY_S:
+            _LOGGER.warning("protect scrub: %s", "; ".join(errors))
+            self._partial_logged = time.monotonic()
         return {"ok": True, "cameras": report}
 
     # -- per camera ---------------------------------------------------------
@@ -463,26 +494,19 @@ class ScrubJob:
             end = min(target, cursor + MAX_PULL_MS)
             keys = await self._pull(api, cam, cursor, end)
             photos = len(keys)
-            last = max(keys) if keys else None
-            if last is not None and last >= end - 3 * SLOT_MS:
-                cursor = end
-                state.pop("retry", None)
-            else:
-                # Ended well short of the range: the NVR may still be flushing,
-                # or the camera recorded nothing (offline). Keep what arrived,
-                # look again from there a couple of times, then take the rest
-                # of the range as a gap.
-                retry = state.get("retry") or {}
-                tries = retry.get("n", 0) + 1 if retry.get("cursor") == cursor else 1
-                if last is not None:
-                    cursor, tries = last + 1, 0
-                if tries > NO_KEYS_RETRIES:
-                    cursor = end
-                    state.pop("retry", None)
-                else:
-                    state["retry"] = {"cursor": cursor, "n": tries}
+            if keys:
+                # Just after the last keyframe that arrived: whatever the NVR
+                # had not written yet (or a delivery cut short) comes next pass.
+                cursor = max(keys) + 1
+            elif end < now - EDGE_SURE_MS:
+                cursor = end  # long written and nothing in it: camera was offline
+            # else: not written yet - the same range is asked again next pass
+        state.pop("retry", None)  # written by the first version of this job
         state["cursor"] = cursor
-        head = await self.hass.async_add_executor_job(_publish, cam, cursor, now)
+        purge = time.monotonic() - self._purged.get(cam.slug, 0) >= PURGE_EVERY_S
+        if purge:
+            self._purged[cam.slug] = time.monotonic()
+        head = await self.hass.async_add_executor_job(_publish, cam, cursor, now, purge)
         state["head"] = head
         await self.hass.async_add_executor_job(_write_json, os.path.join(cam.work, "state.json"), state)
         return {"photos": photos, "behind_s": round((now - cursor) / 1000)}
@@ -509,20 +533,28 @@ class ScrubJob:
             await upstream.send_bytes(command_packet("resume"))
             deframer = Deframer()
             init: bytes | None = None
+            got_data = False
             async with asyncio.timeout(STREAM_LIMIT_S):
                 while True:
                     try:
-                        msg = await upstream.receive(timeout=STREAM_IDLE_S if keys else 15)
+                        # The first data comes ~0.1-0.3 s after resume; after
+                        # it, a pause means the NVR has sent all it has.
+                        msg = await upstream.receive(timeout=STREAM_IDLE_S if got_data else 5)
                     except TimeoutError:
                         break  # delivered everything (the NVR leaves the socket open)
                     if msg.type != aiohttp.WSMsgType.BINARY:
                         break
+                    got_data = True
                     for kind, data, seg_keys in deframer.push(msg.data):
                         if kind == "init":
                             init = init or data
                             continue
                         if not seg_keys or init is None:
                             continue  # no keyframe in it: nothing to show
+                        if max(seg_keys) < start:
+                            # The NVR starts on the keyframe at or before
+                            # `start` - the last pass already filed it.
+                            continue
                         if proc is None:
                             proc = await _start_decoder(tmp)
                             log_task = asyncio.create_task(_frame_times(proc))
@@ -635,13 +667,17 @@ def _file_tiles(cam: _Camera, tmp: str, times: list[int], start: int, end: int) 
     return filed
 
 
-def _publish(cam: _Camera, cursor: int, now: int) -> dict[str, Any] | None:
+def _publish(cam: _Camera, cursor: int, now: int, purge: bool = True) -> dict[str, Any] | None:
     """Pack sheets for every block/hour in progress up to `cursor`, write the
-    index, purge the rolling window. Returns the head advertised in the index."""
+    index and (when `purge`) sweep the rolling window. Returns the head
+    advertised in the index."""
     head = None
     blocks = sorted(int(d) for d in os.listdir(cam.work) if d.isdigit())
     for block in blocks:
-        n = min(SLOTS, (cursor - block) // SLOT_MS)
+        # Slots up to the one holding the cursor: the cursor stands just after
+        # the last keyframe that arrived, so that keyframe's slot is complete
+        # (the first keyframe in a slot is the one shown).
+        n = min(SLOTS, -(-(cursor - block) // SLOT_MS))
         if n <= 0:
             continue
         bdir = os.path.join(cam.work, str(block))
@@ -659,9 +695,10 @@ def _publish(cam: _Camera, cursor: int, now: int) -> dict[str, Any] | None:
             full = (k + 1) * PER_SHEET <= n or complete
             name = f"{block}.f{k + 1}.jpg" if full else f"{stem_head}.f{k + 1}.jpg"
             path = os.path.join(cam.dir, name)
-            # A full sheet never changes once written: its slots are all behind
-            # the cursor. Only the head's partial sheet is re-made (new name).
-            if not (full and os.path.exists(path)):
+            # A sheet never changes once written: a full one's slots are all
+            # behind the cursor, and a partial one's name states how many
+            # slots it holds - a pass that added none re-uses it as it is.
+            if not os.path.exists(path):
                 _render_sheet(slots[k * PER_SHEET:(k + 1) * PER_SHEET], path, SHEET_QUALITY)
             sheets.append(name)
         if complete:
@@ -681,8 +718,10 @@ def _publish(cam: _Camera, cursor: int, now: int) -> dict[str, Any] | None:
                     "file": f"{stem_head}.mp4", "fast_sprite": True}
     _publish_overviews(cam, cursor)
     names = os.listdir(cam.dir)
-    _purge(cam, names, now, head)
-    _write_index(cam, os.listdir(cam.dir), head, now)
+    if purge:
+        _purge(cam, names, now, head)
+        names = os.listdir(cam.dir)
+    _write_index(cam, names, head, now)
     return head
 
 
@@ -838,11 +877,8 @@ def _write_index(cam: _Camera, names: list[str], head: dict[str, Any] | None, no
 # ---- setup --------------------------------------------------------------------
 
 async def async_setup_scrub(hass: HomeAssistant, config: ConfigType) -> None:
-    """Register `protect_cache.scrub_sync` and, unless switched off, a minute timer."""
+    """Register `protect_cache.scrub_sync` and the job's own 15 s pass."""
     cameras = parse_cameras(_conf(config, "cameras"))
-    if not cameras:
-        _LOGGER.warning("protect scrub: no cameras configured - set UNIFI_PROTECT_CAMERAS or "
-                        "unifi_protect_cameras; scrub_sync will fail until then")
     job = ScrubJob(hass, cameras, _conf(config, "entry_id"))
 
     async def _service(call: ServiceCall) -> ServiceResponse:
@@ -850,8 +886,13 @@ async def async_setup_scrub(hass: HomeAssistant, config: ConfigType) -> None:
 
     hass.services.async_register(DOMAIN, "scrub_sync", _service,
                                  supports_response=SupportsResponse.OPTIONAL)
-    if _flag(_conf(config, "schedule"), True) and cameras:
-        async def _tick(_now: Any) -> None:
-            await job.run()
+    if not cameras:
+        _LOGGER.warning("protect scrub: no cameras configured - set UNIFI_PROTECT_CAMERAS or "
+                        "unifi_protect_cameras; scrub_sync will fail until then")
+        return
 
-        async_track_time_interval(hass, _tick, RUN_INTERVAL, name="protect scrub sync")
+    async def _tick(_now: Any) -> None:
+        await job.run()
+
+    async_track_time_interval(hass, _tick, REFRESH_INTERVAL, name="protect scrub pass",
+                              cancel_on_shutdown=True)
