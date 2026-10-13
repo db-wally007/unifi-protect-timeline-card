@@ -33,6 +33,10 @@ transient, self-cleaning) — see `clip_session.py` for why they exist:
 
 and keeps live streams warm while a camera page is visible (`stream_warm.py`):
     POST   /api/protect_clip/warm
+
+and relays the NVR's own fMP4 playback/live streams to the card's single-player
+engine (`nvr_stream.py`, authenticated with a signed path):
+    GET    /api/protect_stream/ws   (websocket)
 """
 
 from __future__ import annotations
@@ -45,6 +49,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .clip_session import async_setup_clip_sessions
+from .nvr_stream import async_setup_nvr_stream
 from .stream_warm import async_setup_stream_warm
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,4 +96,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     await async_setup_clip_sessions(hass)
     # Live streams kept warm while a camera page is on screen (see stream_warm.py).
     async_setup_stream_warm(hass)
+    # The NVR's own playback/live streams for the single-player engine (see nvr_stream.py).
+    async_setup_nvr_stream(hass)
     return True
