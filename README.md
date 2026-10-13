@@ -2,15 +2,17 @@
 
 A Home Assistant Lovelace card that brings the **UniFi Protect** camera experience into a dashboard:
 a vertical timeline you drag past a fixed playhead to scrub through recorded footage, live streaming,
-and a detections list with thumbnails. It talks only to the `unifiprotect` integration — there is no
-direct NVR access and nothing to configure on the NVR side.
+and a detections list with thumbnails. It works through the `unifiprotect` integration's own NVR
+connection — nothing to configure on the NVR side.
 
-Three optional server-side helpers (included in this repo) make it fast: they mirror the NVR's event
-list and thumbnails locally, cache low-res footage so scrubbing shows real frames instead of a black
-stage, and stream historical clips with proper HTTP range support.
+Like the UniFi Protect app, it plays LIVE and recorded footage in **one player** fed straight from
+the NVR's own streams: a seek is a seek, nothing is exported or downloaded, and nothing switches
+between players. The server-side helpers in this repo relay those streams, mirror the NVR's event
+list and thumbnails locally, and keep photos of the footage so dragging the timeline shows real
+frames.
 
-Current release: **[v2.0.2](https://github.com/db-wally007/unifi-protect-timeline-card/releases/tag/v2.0.2)**.
-See [CHANGELOG.md](CHANGELOG.md) for release details.
+Current release: **[v3.0.0](https://github.com/db-wally007/unifi-protect-timeline-card/releases/tag/v3.0.0)**.
+See [CHANGELOG.md](CHANGELOG.md) for release details (and the upgrade steps from 2.x).
 
 📸 **[Screenshots](screenshots/)** — tablet and phone, single- and multi-camera, timeline, events,
 scrubbing and fullscreen.
@@ -65,7 +67,7 @@ Each item of `cameras:` is either a plain entity id or a mapping:
 |---|---|---|---|
 | `camera` | string | — | Camera entity (required) |
 | `name` | string | friendly name | Label shown in the header / on the tile |
-| `live_camera` | string | = `camera` | Separate entity for the live view — point it at a low-resolution channel to cut decode cost |
+| `live_camera` | string | = `camera` | Multi-camera page: the entity its live grid tile streams — point it at a lower-resolution channel so several tiles don't decode the high-resolution stream at once |
 | `navigation_path` | string | — | Tapping navigates here. Omit it and the card drills in place instead (what you want inside a popup) |
 
 ### Layout
@@ -125,7 +127,6 @@ Single mode unless noted.
 | `default_span_minutes` | number | — | Initial visible span in minutes instead of the 0–100 scale, clamped to 4–60. Only consulted when `default_timeline_zoom` is absent |
 | `scrub_settle_ms` | number | `700` | Delay between releasing a drag and playback starting. Taps play immediately; `0` disables the delay |
 | `event_merge_gap_seconds` | number | `60` | Consecutive NVR events closer than this are shown as one event, the way the Protect app does it. `0` = raw 1:1. Both modes |
-| `max_clip_seconds` | number | `600` | Hard ceiling on any single clip request. A backstop — event playback runs on 30 s chunks and never reaches it. Keep it at or below `MAX_CLIP_SECONDS` in `custom_components/protect_cache` |
 
 ### Events list
 
@@ -147,76 +148,48 @@ Single mode unless noted.
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `thumbnail_concurrency` | number | `2` | Maximum parallel thumbnail fetches from the NVR. Both modes |
-| `thumbnail_cache_dir` | string | `/protect_thumbs/<camera object_id>` | Where the [event cache](#event-cache--protect_thumbspy) writes. Single mode only |
+| `thumbnail_cache_dir` | string | `/protect_thumbs/<camera object_id>` | Where the [event cache](#event-cache--pyscript-job) writes. Single mode only |
 
 ### Scrub preview
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `scrub_preview` | boolean | `true` | Show cached footage frames while scrubbing instead of a black stage. Needs the [scrub cache](#scrub-preview--protect_scrubpy) |
-| `scrub_preview_dir` | string | `/protect_scrub/<camera object_id>` | Where that cache lives |
-| `scrub_tip` | boolean | `true` | Near the live edge, fetch an on-demand real-time clip of the newest ~60 s so the last minute scrubs frame by frame. `false` = cron cache only |
-| `scrub_preview_mode` | string | `sprites` | How the scrub preview paints. `sprites` draws JPEG atlases, `video` seeks cached MP4s, and `auto` measures MP4 seek latency before switching slow devices to sprites |
-| `scrub_fast_preview` | `always` \| `speed` \| `off` | `speed` | Compact-tier policy. `speed` enables compact previews on every client only when motion outruns the fine tier. `always` is a diagnostic override that forces temporally decimated compact frames during any movement. `off` keeps the 640×360 fine tier |
+| `scrub_preview` | boolean | `true` | Show photos of the footage while scrubbing instead of a plain stage. Needs the [scrub preview job](#scrub-preview--protect_cachescrub_sync) |
+| `scrub_preview_dir` | string | `/protect_scrub/<camera object_id>` | Where those photos live |
+| `scrub_fast_preview` | `always` \| `speed` \| `off` | `speed` | Which photos a drag shows. `speed`: the hour photos (one per 30 s, far fewer bytes) while the drag outruns the 10-minute ones, which take over when it slows. `always`: the hour photos during any movement. `off`: always the 10-minute ones |
 
-Fast atlases are additive and begin when the updated `protect_scrub.py` starts; older footage keeps
-its existing sprite/MP4 representation with no historical backfill. Completed overview hours keep
-roughly one frame per minute in three 480×270 JPEG sheets (about 1 MB/hour/camera). Compact copies
-of completed 10-minute blocks and the immutable rolling head cover the newest incomplete hour.
-After LIVE is stable, the card preloads only the current compact head sidecar and one JPEG sheet,
-not the head MP4. Preview targets are coalesced to 30 Hz while the ruler remains display-rate.
-Slow movement stays on the roughly 2.4-second 640×360 fine frames. Fast movement uses the compact
-tier, then holding still for about 425 ms redraws the same canvas from the fine tier where available,
-without remounting a media element or flashing black. On-demand tips remain on the video path.
+The photos are 640×360 JPEGs packed 16 to a sheet: one every 5 s per 10-minute block, and one every
+30 s per hour for fast drags. The card draws them on a canvas — no video decoder involved, so even a
+low-end tablet keeps up with the finger — and releasing the drag starts playback at that moment.
+After LIVE is stable, the card preloads only the newest photo sheet.
 
 ### Playback
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `chunk_seconds` | number | `300` | Length of each exported clip segment. Longer = slower to start, fewer joins. Minimum 2. Both modes |
-| `delay_seconds` | number | `15` | How far behind live delayed-follow playback holds. Minimum 12 |
-| `live_audio_start` | `auto` \| `muted` | `muted` | `muted` starts the card session silently. One explicit Unmute applies to LIVE, history, clips, and camera switches until the view closes. `auto` additionally permits a best-effort audible initial LIVE start |
-| `live_transport` | `auto` \| `hls` \| `webrtc` | `auto` | `auto` keeps high HLS on desktop/Android and uses a medium startup bridge followed by high WebRTC on Apple mobile. Explicit values force a transport for diagnosis or rollback |
-| `live_prewarm` | boolean | `true` | While a camera page is on screen, keep the high-resolution streams of its cameras running on the Home Assistant server so LIVE opens in about a second instead of waiting 6-7 s for a cold stream's first segment. Nothing is sent to the browser; the streams stop 30 s after the card is hidden. Needs `protect_cache` (silently off without it) |
+| `live_audio_start` | `auto` \| `muted` | `muted` | `muted` starts the card session silently. One explicit Unmute applies to LIVE, recorded footage, events and camera switches until the view closes. `auto` additionally makes one best-effort audible start of LIVE |
 
-#### Reliable live startup
+#### How playback works
 
-Detail LIVE uses one Home Assistant high-HLS player on desktop and Android. Apple mobile avoids the
-two-second LL-HLS buffer: a same-device medium camera starts as a muted bridge while an explicit high
-WebRTC player negotiates underneath. After 750 ms of verified high decoded-frame progress, the bridge
-is released and unmounted; settled LIVE is the original high entity, not medium. An explicit
-`live_camera` entry wins, otherwise the card discovers an available same-device entity ending in
-`_medium_resolution_channel`. `live_transport: hls` restores the prior behavior immediately.
+The card plays everything — LIVE, a rewind, an event, any moment you scrub to — in one `<video>`
+element fed through MediaSource (ManagedMediaSource on iOS / iPadOS 17.1+) from the NVR's own
+playback and live streams, the websockets the UniFi Protect web app uses. `protect_cache` relays
+them (`/api/protect_stream/ws`, authenticated) with the integration's NVR session, so the browser
+never talks to the NVR. Recorded and live footage share one wall-clock timeline, so every seek is a
+seek inside one buffer:
 
-Every card session starts muted so visual autoplay is deterministic. One explicit Unmute applies to
-LIVE, delayed history, event clips, and subsequent camera switches until the card is hidden or
-unmounted. The preference survives player remounts and the Apple-mobile medium-to-high handoff.
-`live_audio_start: auto` remains available as an opt-in best-effort audible initial LIVE start.
+- ±15 s skips and timeline taps land where asked, within ~0.05 s. Back 15 s from LIVE rewinds
+  exactly 15 s.
+- The NVR writes footage to disk ~13–20 s after it happens and LIVE carries no history, so a rewind
+  into that band starts at the earliest footage there is, and recorded playback that catches up
+  with the recording edge waits for it.
+- An event stops at its end, paused on its last frame. Play replays it; a skip or a seek resumes it.
+- Hiding the card (a closed popup, another view, a locked phone) releases the player after 3 s;
+  showing it again carries on where it was.
 
-After stable playback, a genuine progress stall releases and remounts the player. Hiding the card
-also releases its network and decoder pipeline; showing it mounts a fresh muted player and reapplies
-the audio policy. This prevents a closed popup or cached dashboard view from decoding in the
-background. A nonfatal Home Assistant startup rejection (for example, `Stream never started`) is
-also retried with bounded backoff instead of leaving the player on a permanent error screen.
-
-For consistently fast high-resolution startup, enable **Preload stream** in Home Assistant's camera
-preferences for each entity used by a timeline, and align LL-HLS with UniFi Protect's five-second
-keyframes:
-
-```yaml
-stream:
-  ll_hls: true
-  segment_duration: 5
-  part_duration: 1
-```
-
-Preloading continuously pulls each selected camera stream into Home Assistant, so account for its
-network cost. On the measured 2688x1512 high channel, the release candidate's 20 fresh starts took
-358-1180 ms (753 ms median), and 20 actual timeline-to-LIVE returns took 226-1012 ms (605 ms median).
-Five injected HLS freezes resumed full-resolution motion 957-1956 ms after the last advancing frame,
-with the replaced decoder released each time. In the Apple-mobile transport test, medium motion began
-in 108-296 ms and high 2688x1512 WebRTC took over in 6.0-6.3 s; a stopped high track brought medium
-motion back in 1.8 s while a fresh high player negotiated.
+Measured on the LAN with 2688×1512 cameras: opening a camera's LIVE 0.9 s (then 0.2–0.6 s behind
+real time), back to LIVE 0.9 s, an event's first frame ~0.4 s. Relaying costs Home Assistant little:
+about 1% of a core per LIVE stream, about 3% for recorded footage at full NVR speed (~20 MB/s).
 
 ### Fullscreen overlay
 
@@ -236,11 +209,10 @@ each default is the phone (stacked) one.
 ## Multi-camera page
 
 `card_version: multi` turns the card into an overview page: one event strip merged across every
-camera in `cameras:`, and a live grid below it. Tapping a clip plays it in the grid's place with the
-live streams unmounted, so only one stream decodes at a time. Tapping a live tile follows its
-`navigation_path`, or drills in place if it has none. When a clip ends, playback advances through
-the merged event order even when the next clip belongs to another camera. The newest clip returns
-to the live grid.
+camera in `cameras:`, and a live grid below it. Tapping an event plays it in the grid's place with
+the live streams unmounted, so only one stream decodes at a time; like everywhere else it stops at
+its end. Tapping a live tile follows its `navigation_path`, or drills in place if it has none. The
+grid tiles are Home Assistant's own camera streams (of each entry's `live_camera`).
 
 ```yaml
 type: custom:unifi-protect-timeline-card
@@ -263,8 +235,7 @@ cameras:
 | `grid_aspect` | string | `16/9` | Live tile aspect ratio |
 
 `accent_color`, `title*`, `back_button*`, `date_font_*`, `list_*`, `event_merge_gap_seconds`,
-`max_clip_seconds`, `thumbnail_concurrency`, `chunk_seconds`, `page_background` and `height`
-all work here too.
+`thumbnail_concurrency`, `page_background` and `height` all work here too.
 `thumbnail_cache_dir` and `scrub_preview_dir` are ignored — multi mode derives each camera's cache
 path from its own entity id.
 
@@ -272,64 +243,70 @@ path from its own entity id.
 > `grid_columns`, `hours_back`, `clip_text_size`, `clip_text_color`, `clip_text_bg`,
 > `hide_occluded_thumbnails`, `list_hours_back`, `scrub_time_size`, `detections`. Removed after
 > 2.1 (events no longer play as a playlist): `merged_playback`, `clip_segment_seconds`,
-> `clip_segment_join_seconds`. Safe to delete from your YAML.
+> `clip_segment_join_seconds`. Removed in 3.0 (one player, no clip files, photo-only scrub
+> preview): `chunk_seconds`, `delay_seconds`, `max_clip_seconds`, `live_transport`,
+> `live_prewarm`, `scrub_tip`, `scrub_preview_mode`. Safe to delete from your YAML.
 
 ## Server-side helpers
 
-Three optional pieces, all in this repo. The card works without them — you get live, scrubbing and
-on-demand NVR snapshots — but the events list stays empty and scrubbing shows no frames.
+Two pieces, both in this repo: the `protect_cache` custom component (**required** — the player's
+footage comes through it) and the optional `protect_thumbs` pyscript job. Without the job the
+events list stays empty.
 
-### `protect_cache` (required by both caches)
+### `protect_cache` (required)
 
-A small custom component that serves the two caches at `/protect_thumbs/…` and `/protect_scrub/…`,
-and hosts the clip-session API (`POST /api/protect_clip/session`) used by bounded event clips. The
-native Home Assistant UniFi export proxy ignores HTTP Range and the NVR writes MP4 metadata after
-the media payload, so a browser cannot start or seek it without receiving the entire file. The
-helper materializes the export, uses FFmpeg stream copy with `+faststart` (no quality/codec change),
-and serves it with real HTTP Range support. One prepared session is retained across every seek in
-that playback. Preparation and initial loading use explicit black `Preparing clip` / `Loading clip`
-screens instead of stale LIVE/history frames; seek buffering leaves the video visible and, only
-after 1.2 seconds, shows a transparent animated spinner in the configured seek-bar accent color
-with no text.
+A custom component that
 
-The caches deliberately live in `config/.cache/` rather than `config/www/`, because that is the one
-path Home Assistant's backups skip — and a symlink from `www/` cannot work, as aiohttp's static
-handler refuses to follow symlinks out of its root. Hence this component.
+- relays the NVR's playback and live streams to the card's player (`/api/protect_stream/ws`, see
+  [How playback works](#how-playback-works));
+- builds the [scrub preview](#scrub-preview--protect_cachescrub_sync) photos;
+- serves both caches at `/protect_thumbs/…` and `/protect_scrub/…`. They deliberately live in
+  `config/.cache/` rather than `config/www/`, because that is the one path Home Assistant's backups
+  skip — and a symlink from `www/` cannot work, as aiohttp's static handler refuses to follow
+  symlinks out of its root.
 
-- Copy `custom_components/protect_cache/` to `/config/custom_components/protect_cache/` (a symlink
-  from a checkout works too).
-- Add `protect_cache:` to `configuration.yaml` and restart Home Assistant once.
+Install: copy `custom_components/protect_cache/` to `/config/custom_components/protect_cache/` (a
+symlink from a checkout works too), add `protect_cache:` to `configuration.yaml`, configure the
+[camera list](#camera-list) and restart Home Assistant once.
 
-### Event cache — `pyscript/protect_thumbs.py`
+### Scrub preview — `protect_cache.scrub_sync`
 
-Mirrors the NVR's raw detection events 1:1 into a local `manifest.json` plus the exact thumbnail the
-Protect app shows, under `/config/.cache/protect_thumbs/<slug>/`. The card renders its events list
-and timeline bars straight from that manifest, so no client ever hits the NVR per view. It syncs
-incrementally every minute from a persisted cursor and keeps a rolling 7-day window
-(`LOOKBACK_HOURS`), with thumbnail files kept for `RETENTION_DAYS` (90).
+Part of `protect_cache`; nothing extra to install. Every 15 s it asks the NVR for the newest footage
+in the NVR's keyframe-only playback mode (the full-resolution picture the cameras send every ~5 s,
+nothing in between), turns each keyframe into a 640×360 photo with FFmpeg, and packs the photos
+into the sheets the card draws from, under `/config/.cache/protect_scrub/<slug>/`. Each stretch of
+footage is fetched once; the newest photo is ~20–30 s behind live (the NVR itself writes footage
+~13–20 s late). After an outage it catches up from where it stopped, up to 24 hours back. With three
+2688×1512 cameras it costs about 5% of one core in total (it replaced a job that cost 35–50%).
 
-### Scrub preview — `pyscript/protect_scrub.py`
+Disk: about **4 GB per camera** for the 7-day window (`RETENTION_MS` in `scrub.py`), more for busy
+or detailed scenes. Lower `SHEET_QUALITY` to shrink it — it does not change the CPU cost, which is
+almost all decoding the keyframes.
 
-Exports the NVR's own low-resolution timelapse in fixed 10-minute blocks to
-`/config/.cache/protect_scrub/<slug>/`, so dragging the timeline shows real footage. It also keeps a
-rolling head block for the current minutes, compact atlases for the head/new blocks/hourly overview,
-and — when `scrub_tip` is on — on-demand real-time clips of the newest ~60 s.
+### Event cache — pyscript job
 
-Disk: roughly **0.7–1.0 GB per day per camera**, so 5–7 GB per camera at the default 7-day window.
-Lower `RETENTION_HOURS` to shrink it.
+`pyscript/protect_thumbs.py` mirrors the NVR's raw detection events 1:1 into a local
+`manifest.json` plus the exact thumbnail the Protect app shows, under
+`/config/.cache/protect_thumbs/<slug>/`. The card renders its events list and timeline bars straight
+from that manifest, so no client ever hits the NVR per view. It syncs incrementally every minute
+from a persisted cursor and keeps a rolling 7-day window (`LOOKBACK_HOURS`), with thumbnail files
+kept for `RETENTION_DAYS` (90).
 
-### Installing and configuring the two pyscript jobs
+Needs [pyscript](https://github.com/custom-components/pyscript) with `allow_all_imports: true` and
+`hass_is_global: true` (one Home Assistant restart). Copy `pyscript/protect_thumbs.py` to
+`/config/pyscript/`, or symlink it there from a checkout — it contains no install-specific value,
+so the copy in your config and the copy in this repo can be the same file. Then `pyscript.reload`
+and run `pyscript.protect_thumbs_sync` once to start the backfill, which spreads itself over many
+per-minute runs rather than hammering the NVR.
 
-Both need [pyscript](https://github.com/custom-components/pyscript) with `allow_all_imports: true`
-and `hass_is_global: true` (one Home Assistant restart), and both need `protect_cache` above.
+(Before 3.0 a second pyscript job, `protect_scrub.py`, made the scrub preview. Delete it — see the
+upgrade steps in the [CHANGELOG](CHANGELOG.md).)
 
-Copy each file to `/config/pyscript/`, or symlink it there from a checkout — neither script contains
-any install-specific value, so the copy in your config and the copy in this repo can be the same
-file.
+### Camera list
 
-They read the **same** camera list, so the two can never drift apart. Give it as
-`<protect camera id>=<HA camera object_id>` pairs, separated by commas and/or newlines. Environment
-first:
+The event cache and the scrub preview read the **same** camera list, so the two can never drift
+apart. Give it as `<protect camera id>=<HA camera object_id>` pairs, separated by commas and/or
+newlines. Environment first:
 
 ```yaml
 # Container / Compose / Kubernetes: an env var on the Home Assistant process.
@@ -339,12 +316,15 @@ UNIFI_PROTECT_CAMERAS: "0123456789abcdef01234567=front_yard_high_resolution_chan
 
 ```yaml
 # HA OS / Supervised, or anywhere you prefer YAML: configuration.yaml.
-# Picked up by pyscript.reload alone, and !secret works here.
+# !secret works here. pyscript picks a change up on pyscript.reload;
+# protect_cache reads this same block, but only when Home Assistant starts.
 pyscript:
   allow_all_imports: true
   hass_is_global: true
   unifi_protect_cameras: "0123456789abcdef01234567=front_yard_high_resolution_channel"
 ```
+
+Without pyscript, `protect_cache: cameras: "…"` works for the scrub preview too.
 
 Find the Protect camera ids by calling `pyscript.protect_thumbs_list_cameras` and reading the log.
 The slug **must** equal the camera entity's `object_id` (the part after `camera.`) — that is what the
@@ -353,29 +333,25 @@ card derives its cache paths from.
 `UNIFI_PROTECT_ENTRY_ID` / `unifi_protect_entry_id` is optional and only needed with more than one
 Protect NVR; otherwise the single `unifiprotect` config entry is auto-discovered.
 
-Then `pyscript.reload` and run `pyscript.protect_thumbs_sync` and `pyscript.protect_scrub_sync` once
-each to start the backfill — it spreads itself over many per-minute runs rather than hammering the
-NVR.
-
 #### Monitoring the jobs
 
-By default both jobs run themselves once a minute, which leaves no run history: a sync that fails
-only reaches the log. To have failures recorded, set `unifi_protect_schedule: false` (or
-`UNIFI_PROTECT_SCHEDULE=false`) and run `pyscript.protect_thumbs_sync` and
-`pyscript.protect_scrub_sync` from Home Assistant scripts on an automation's schedule. Each returns
+Both jobs run themselves — the event cache once a minute, the scrub preview every 15 s — and a pass
+that fails only reaches the log. To have failures recorded, run them from Home Assistant scripts on
+an automation's schedule: `pyscript.protect_thumbs_sync` (with `unifi_protect_schedule: false`, or
+`UNIFI_PROTECT_SCHEDULE=false`, to switch its own timer off) and `protect_cache.scrub_sync` (which
+keeps its 15 s passes and returns the result of the one in flight). Each returns
 `{"ok": true, …}` or `{"ok": false, "error": "…"}`, and the script stops with an error when it is
 not ok, which records a failed run any monitor of scripts can see. The YAML is in
 `protect_thumbs.py`'s docstring. A job fails when it cannot work at all (the NVR or the integration
-unreachable, nothing configured, a crash); a thumbnail or footage block the NVR does not have is
-retried by design and does not fail it. Motion-triggered event syncs keep working either way.
+unreachable, nothing configured, a crash); a thumbnail the NVR does not have, or a camera that was
+offline, is not a failure. Motion-triggered event syncs keep working either way.
 
 Have the automation hold off for a few minutes after Home Assistant starts (the docstring's YAML
 does, with a condition on the automation's own `last_changed` — a string in `this`, hence
-`as_datetime`). Until pyscript has loaded the
-files, the `pyscript.protect_*_sync` actions do not exist, and a script calling a missing action
-dies with `ServiceNotFound` — which `continue_on_error` deliberately does not cover. For the first
-three minutes after the files load, a sync that finds the UniFi Protect integration not up yet is
-skipped (ok), not failed.
+`as_datetime`). Until pyscript has loaded the file, `pyscript.protect_thumbs_sync` does not exist,
+and a script calling a missing action dies with `ServiceNotFound` — which `continue_on_error`
+deliberately does not cover. For the first three minutes after startup, a sync that finds the UniFi
+Protect integration not up yet is skipped (ok), not failed.
 
 ## Develop
 

@@ -12,9 +12,8 @@
 // in one run, so one call covers every stale manifest.
 //
 // Playback reuses <upc-media-view> with the single card's event-clip contract
-// (see card.ts _playBand): padded start/end, that camera's footage spans for
-// tier-aware segment cutting, live=false. keyed() remounts it per CAMERA, not
-// per clip — see the note on mountKey in render().
+// (see card.ts _playBand): padded start/end, live=false. keyed() remounts it
+// per CAMERA, not per clip — see the note on mountKey in render().
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -22,7 +21,6 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { CameraEntry, CardConfig, HomeAssistant } from './data/types';
 import { loadManifest, manifestToBand } from './data/manifest';
 import { groupBands } from './data/event-groups';
-import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { mergeStrip, tagBands, type MultiBand } from './data/multi-events';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { THUMBS_BASE } from './data/ha-urls';
@@ -53,7 +51,6 @@ const V_2COL = html`<svg viewBox="0 0 24 24">
 
 interface CameraData {
   bands: MultiBand[]; // grouped display events, newest-first
-  spans: FootageSpan[]; // padded raw events (tier-aware playback segment cuts)
   preMs: number; // camera recording padding (clip covers start-pre .. end+post)
   postMs: number;
 }
@@ -69,10 +66,6 @@ export class MultiView extends LitElement {
   @state() private _data = new Map<string, CameraData>(); // by camera entity_id
   @state() private _strip: MultiBand[] = []; // merged, newest-first
   @state() private _playback?: MultiBand; // undefined = live grid
-  // The event's end is behind us: playback has rolled on into the footage
-  // after it (same player, no reload), so the media view gets no event end.
-  // The start it was given must NOT change — it would read that as a seek.
-  @state() private _eventDone = false;
   // Events browsing mode (header chevron): the strip becomes a grid LIST and
   // the live cameras are UNMOUNTED (no video decode while browsing events).
   @state() private _expanded = false;
@@ -556,7 +549,6 @@ export class MultiView extends LitElement {
       if (!loaded) continue;
       data.set(e.camera, {
         bands: tagBands(groupBands(loaded.entries.map(manifestToBand), gapMs), e.camera, this._name(e)),
-        spans: buildFootageSpans(loaded.entries, loaded.preMs, loaded.postMs),
         preMs: loaded.preMs,
         postMs: loaded.postMs,
       });
@@ -597,7 +589,6 @@ export class MultiView extends LitElement {
       start: Math.max(band.start - (d?.preMs ?? 0), 0),
       end: Math.min(band.end + (d?.postMs ?? 0), Date.now()),
     };
-    this._eventDone = false;
   }
 
   @state() private _eventSpan?: { start: number; end: number };
@@ -638,17 +629,6 @@ export class MultiView extends LitElement {
   private _closePlayback = (): void => {
     this._playback = undefined; // media-view unmounts (cancels the NVR export)
     this._eventSpan = undefined;
-    this._eventDone = false;
-  };
-
-  /** The event's end has played: keep rolling into the footage that FOLLOWS it,
-   *  exactly like the single-camera views do. These cameras record
-   *  continuously, so what happens after an event is usually the interesting
-   *  part. The media view is already playing it — this only drops the event
-   *  end (and with it the seek bar); the player stays mounted. */
-  private _onClipEnded = (): void => {
-    if (!this._playback) return;
-    this._eventDone = true;
   };
 
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -805,7 +785,6 @@ export class MultiView extends LitElement {
               .newest=${newest}
               .minuteTick=${this._minuteTick}
               .aspect=${this.config.grid_aspect ?? '16/9'}
-              .prewarm=${this.config.live_prewarm ?? true}
               @tile-open=${this._onTileOpen}
               @tile-fullscreen=${this._onTileFs}
             ></upc-live-grid>`}
@@ -946,7 +925,6 @@ export class MultiView extends LitElement {
                   .scrollMode=${gridCols === 1}
                   .padTop=${gridCols === 1 ? 0 : GRID_PAD_TOP}
                   .aspect=${this.config.grid_aspect ?? '16/9'}
-                  .prewarm=${this.config.live_prewarm ?? true}
                   @tile-open=${this._onTileOpen}
                   @tile-fullscreen=${this._onTileFs}
                 ></upc-live-grid>
@@ -959,8 +937,8 @@ export class MultiView extends LitElement {
   /** The clip player, identical in both homes: the in-place .playwrap
    *  (collapsed page) and the .playbox lightbox over the expanded grid. */
   private _renderPlayer(b: MultiBand, d: CameraData | undefined, accent: string) {
-    // The event's span: its start stays put for the life of the selection (the
-    // media view seeks within it itself); its end goes once playback passes it.
+    // The event's span, fixed for the life of the selection: the media view
+    // seeks within it itself and stops at its end (paused on the last frame).
     const span = this._eventSpan ?? {
       start: Math.max(b.start - (d?.preMs ?? 0), 0),
       end: Math.min(b.end + (d?.postMs ?? 0), Date.now()),
@@ -970,21 +948,16 @@ export class MultiView extends LitElement {
       .nvrId=${this._nvrIdFor(b.camera)}
       .cameraId=${b.camera}
       .gaps=${[]}
-      .footageSpans=${d?.spans ?? []}
       .targetTime=${span.start}
-      .clipEndTime=${this._eventDone ? 0 : span.end}
-      .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
+      .clipEndTime=${span.end}
       .scrubbing=${false}
       .live=${false}
       .stacked=${this.stacked}
-      .chunkSeconds=${this.config.chunk_seconds ?? 300}
       .previewDir=${''}
       .accent=${accent}
       .now=${Date.now()}
       .fsHandoff=${true}
       @fullscreen-handoff=${this._onFsHandoff}
-      @clip-ended=${this._onClipEnded}
-      @clip-cancelled=${this._closePlayback}
     ></upc-media-view>`;
   }
 }

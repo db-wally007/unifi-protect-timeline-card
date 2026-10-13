@@ -1,16 +1,19 @@
-// Scrub-preview loader: the low-res timelapse blocks written by the pyscript
-// protect_scrub job, shown on the stage while the user scrubs the timeline
-// (the same mechanism the UniFi app uses for its scrub preview).
+// Scrub-preview loader: the photos shown on the stage while the user scrubs
+// the timeline (the same mechanism the UniFi app uses for its scrub preview).
 //
-// The sync job exports fixed epoch-aligned blocks (default 10 min) of the NVR's
-// own 640×360 timelapse export into <dir>/ (e.g. /protect_scrub/<object_id>):
-//   <start_ms>.mp4        — completed block, immutable once written
-//   o<start_ms>.mp4       — coarse hour-long overview unit, immutable
-//   h<start>-<end>.mp4    — the in-progress block, re-exported every run under a
-//                           NEW name; the range it covers is IN the name
-//   index.json            — { generated, block_ms, blocks, overview, maps, head }
+// Since 3.0 they are built by protect_cache/scrub.py from the NVR's keyframes,
+// in fixed epoch-aligned units under <dir>/ (e.g. /protect_scrub/<object_id>):
+//   <start_ms>.fast-sprite.json + .f<k>.jpg  — completed 10-min block, a photo
+//                                               per 5 s, immutable once written
+//   o<start_ms>.fast-sprite.json + .f<k>.jpg — completed hour, a photo per 30 s
+//   h<start>-<end>.fast-sprite.json          — the block in progress, a NEW name
+//                                               each pass; its range is IN the name
+//   index.json            — { generated, block_ms, blocks, overview, head, ... }
+// Units are still addressed by their old .mp4 names (the sidecar sits beside
+// them under the same stem): the pyscript job before 3.0 also wrote video
+// units, which the video path below plays where a unit has no photos.
 // This loader mirrors the index (so missing blocks never 404-spam) and hands out
-// blob: URLs for the block covering any scrub time.
+// what covers any scrub time.
 //
 // EVERY playable file here is immutable and named after the range it covers.
 // That is what makes the linear time mapping safe: the head used to be a single
@@ -24,8 +27,7 @@
 
 import type { HomeAssistant } from './types';
 
-// Re-read index.json at most this often — the sync job runs once a minute, so
-// this is also how quickly the rolling head block's coverage advances here.
+// Re-read index.json at most this often (the job rewrites it every 15 s pass).
 const INDEX_TTL_MS = 60_000;
 // ...except while the scrub target is in the HEAD region, where the index age is
 // exactly how far behind live the preview sits (completed blocks and overview
@@ -38,7 +40,8 @@ const HEAD_TTL_MS = 10_000;
 // A failed index read retries this soon instead of burning a whole TTL.
 const INDEX_RETRY_MS = 5_000;
 
-// ---- tip tier (EXPERIMENTAL) ----------------------------------------------
+// ---- tip tier (EXPERIMENTAL; unused since 3.0 - the pyscript service it ----
+// ---- calls is gone and the card no longer enables it) ----------------------
 // The cron-driven head can only ever be as fresh as the last run (10-70s), and
 // it is a timelapse: one frame per ~2.4s. Measured on the NVR, footage is
 // actually available 1 SECOND behind live and a plain low-res export of the
@@ -556,17 +559,18 @@ export class ScrubPreviewLoader {
     if (stale) this._requestSync();
   }
 
-  /** Fire the pyscript sync service (throttled). No-ops when pyscript isn't
-   *  installed — the card just keeps the plain black scrub stage. */
+  /** Ask protect_cache for a pass (throttled). It runs itself every 15 s, so
+   *  a stale index means it is failing; the call at least records why. No-ops
+   *  when protect_cache isn't installed — the card keeps a plain scrub stage. */
   private _requestSync(): void {
     if (!this._hass) return;
     const now = Date.now();
     if (now - this._lastSync < SYNC_THROTTLE_MS) return;
     this._lastSync = now;
     this._hass
-      .callWS({ type: 'call_service', domain: 'pyscript', service: 'protect_scrub_sync' })
+      .callWS({ type: 'call_service', domain: 'protect_cache', service: 'scrub_sync' })
       .catch(() => {
-        /* pyscript not installed / service unavailable */
+        /* protect_cache not installed / service unavailable */
       });
   }
 

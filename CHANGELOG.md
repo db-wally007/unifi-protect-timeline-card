@@ -1,5 +1,44 @@
 # Changelog
 
+## [3.0.0] - 2026-10-14
+
+### Changed
+
+- **One player for everything.** LIVE, rewinds, events and the footage around them all play in a
+  single video element, fed straight from the NVR's own playback and live streams — the websockets
+  the UniFi Protect web app uses — which `protect_cache` relays. Nothing is exported, remuxed or
+  downloaded as a file any more, and no player ever hands over to another: no black flashes, no
+  jumps at clip boundaries. Seeking is exact: ±15 s skips land within ~0.05 s, a timeline tap or
+  drag lands where it is released, and Back 15 s from LIVE rewinds exactly 15 s. Measured on the
+  LAN: opening a camera's LIVE 0.9 s, back to LIVE 0.9 s, an event's first frame ~0.4 s. Needs
+  MediaSource (desktop browsers, Android) or ManagedMediaSource (iOS / iPadOS 17.1+).
+- An event stops at its end, paused on its last frame. Play replays it; a skip or a seek resumes
+  it. It no longer rolls on into the footage after it.
+- **The scrub preview is built by `protect_cache` from the NVR's keyframes**, replacing
+  `pyscript/protect_scrub.py`. Each stretch of footage is fetched once in the NVR's keyframe-only
+  playback mode and every keyframe becomes a photo: one every 5 s (was ~7 s), sharper (no
+  re-encode), and the newest ~20–30 s behind live (was 30–95 s). The old job re-exported the
+  current 10 minutes every minute and re-encoded it; measured on three 2688×1512 cameras the Home
+  Assistant container went from 50–100% of a core, with ~170% spikes every 10 minutes, to ~19%.
+  Same file layout, so previews made by the old job keep working until they age out.
+
+### Removed
+
+- `pyscript/protect_scrub.py` and its actions (`pyscript.protect_scrub_sync`, `_tip`, `_probe`).
+  The scrub preview's action is now `protect_cache.scrub_sync`.
+- `protect_cache`'s clip sessions (`/api/protect_clip/session`, `/api/protect_clip/media`) and
+  live-stream warming (`/api/protect_clip/warm`) — the single player needs neither.
+- Options, ignored if still present: `chunk_seconds`, `delay_seconds`, `max_clip_seconds`,
+  `live_transport`, `live_prewarm`, `scrub_tip`, `scrub_preview_mode`.
+
+### Upgrading from 2.x
+
+1. Replace `custom_components/protect_cache` and restart Home Assistant once.
+2. Delete `/config/pyscript/protect_scrub.py` (copy or symlink) and run `pyscript.reload`. A script
+   that called `pyscript.protect_scrub_sync` should call `protect_cache.scrub_sync` instead.
+3. Nothing to configure: the new job reads the same camera list (`UNIFI_PROTECT_CAMERAS` or
+   `pyscript: unifi_protect_cameras:`).
+
 ## [2.3.2] - 2026-10-08
 
 ### Fixed
