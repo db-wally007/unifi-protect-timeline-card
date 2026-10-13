@@ -28,9 +28,8 @@ export interface CameraEntry {
   // entity_id. Everything server-side is keyed to this.
   camera: string;
   name?: string;
-  // Entity streamed in the live grid tile and used as the brief Apple-mobile
-  // bridge while the high WebRTC player connects. Defaults to `camera` in the
-  // grid; detail view can also discover the same-device medium entity.
+  // Entity streamed in the multi page's live grid tile (e.g. the camera's
+  // medium-resolution entity). Defaults to `camera`.
   live_camera?: string;
   // Multi mode: dashboard path a live-tile tap navigates to (the camera's own
   // single-camera timeline view). Empty/absent = the tap DRILLS IN-CARD
@@ -103,27 +102,10 @@ export interface CardConfig {
   // Initial visible vertical span, in minutes (10..60; default 60 = most zoomed
   // out). The user zooms with the +/- buttons / pinch.
   default_span_minutes?: number;
-  // Length of the clip exported/played on settle, in SECONDS (default 300).
-  // Trade-off: the NVR exports this range on demand, so longer windows take
-  // longer to start playing, but chain (pause between segments) less often.
-  chunk_seconds?: number;
-  // How many seconds BEHIND live the continuous delayed-follow playback holds
-  // after a rewind (default 15). The NVR can't export the last ~8s, so values
-  // below ~12 are clamped; larger values = longer gapless chunks (fewer swaps)
-  // but further behind live.
-  delay_seconds?: number;
-  // LIVE audio policy. `auto` makes one best-effort unmute attempt only after
-  // high-resolution video is moving; `muted` always waits for a user tap.
-  // Visual playback remains muted/autoplay-safe while either policy starts.
+  // LIVE audio policy. `auto` makes one best-effort unmute attempt once live
+  // footage is on screen; `muted` always waits for a user tap. Visual playback
+  // stays muted/autoplay-safe while either policy starts.
   live_audio_start?: 'auto' | 'muted';
-  // LIVE transport policy. `auto` uses buffered high HLS except on Apple mobile,
-  // where a medium bridge covers high WebRTC negotiation. Explicit values are
-  // primarily for diagnosis and rollback testing.
-  live_transport?: 'auto' | 'hls' | 'webrtc';
-  // Keep the high-resolution live streams of the cameras on screen warm on the
-  // server (needs the protect_cache component), so LIVE opens without a cold
-  // keyframe wait. Stops 30 s after the card is hidden. Default true.
-  live_prewarm?: boolean;
   // Pause between releasing a scrub (drag/flick/wheel) and playback starting,
   // in ms (default 700). Taps play immediately. 0 = no delay.
   scrub_settle_ms?: number;
@@ -187,11 +169,6 @@ export interface CardConfig {
   // merged duration), replicating how the UniFi app groups continuous activity.
   // Default 60. 0 = no grouping (raw 1:1 events, the pre-1.27 behavior).
   event_merge_gap_seconds?: number;
-  // Hard ceiling on any single bounded-clip request, in seconds (default 600).
-  // Event playback runs on 30 s chunks and never reaches it — it exists so a bug
-  // or a hand-written config can never ask the NVR for a multi-gigabyte export.
-  // Must not exceed MAX_CLIP_SECONDS in custom_components/protect_cache.
-  max_clip_seconds?: number;
   // Events-list view: row 1 (event start time) text size in px (default 12).
   list_text_size?: number;
   // Events-list view: row 1 text color (any CSS color; default theme secondary

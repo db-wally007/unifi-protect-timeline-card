@@ -39,11 +39,9 @@ import {
 import { fetchFootageGaps } from './data/gaps';
 import { navigate } from './data/navigate';
 import { groupBands } from './data/event-groups';
-import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { SCRUB_BASE, THUMBS_BASE } from './data/ha-urls';
 import { dateFmt } from './data/fmt'; // PERF-SCRUB-2026-08-03
-import { findMediumBridgeCamera } from './data/live-transport';
 import { LatestValueScheduler } from './data/latest-value-scheduler';
 import { swallowNextTap, type ScrubberTimeline } from './scrubber-timeline';
 import type { EventsList } from './events-list';
@@ -127,11 +125,6 @@ export class UnifiProtectTimelineCard extends LitElement {
   // start - _preMs .. end + _postMs, matching what the UniFi app plays.
   private _preMs = 0;
   private _postMs = 0;
-  // Recorded-footage spans (padded raw events, merged): adaptive recording
-  // keeps almost nothing between them, so exports splice these back to back —
-  // media-view uses them to keep the playhead ON the footage across the
-  // recording gaps (the marker jumps a gap together with the video).
-  private _footageSpans: FootageSpan[] = [];
   private _lastSyncTrigger = 0; // throttles card-initiated sync service calls
   private _syncRefetchTimer?: ReturnType<typeof setTimeout>;
 
@@ -683,7 +676,6 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._nvrId = this._resolveNvrId();
     this._loader.cancelAll();
     this._manifestBands = [];
-    this._footageSpans = [];
     this._gaps = [];
     this._gapRange = undefined;
     this._preMs = 0;
@@ -791,11 +783,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       title_font_color: '',
       title_font_weight: 500,
       default_timeline_zoom: 100,
-      chunk_seconds: 300,
-      delay_seconds: 15,
       live_audio_start: 'muted',
-      live_transport: 'auto',
-      live_prewarm: true,
       scrub_settle_ms: 700,
       timeline_font_size: 12,
       timeline_font_color: '#d0d0d0',
@@ -818,7 +806,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       thumb_size: 87,
       thumb_size_active: 105,
       event_merge_gap_seconds: 60,
-      max_clip_seconds: 600,
       list_text_size: 12,
       list_text_color: '',
       list_duration_color: '',
@@ -1033,9 +1020,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       // bar, one list row), exactly like the Protect app.
       const gapMs = (this._config?.event_merge_gap_seconds ?? 60) * 1000;
       this._manifestBands = groupBands(loaded.entries.map(manifestToBand), gapMs);
-      // Recorded spans come from the RAW events (padded), NOT the display
-      // groups — grouping merges across real recording gaps.
-      this._footageSpans = buildFootageSpans(loaded.entries, loaded.preMs, loaded.postMs);
       this._thumbVersion++; // re-render so cached thumbs appear
     }
     if (!loaded || loaded.stale) this._requestSync();
@@ -1090,11 +1074,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       .filter((c) => !!c?.camera);
   }
 
-  private _liveBridgeCamera(cameraId: string): string {
-    const configured = this._cameraEntries().find((entry) => entry.camera === cameraId)?.live_camera;
-    return findMediumBridgeCamera(this.hass, cameraId, configured) ?? '';
-  }
-
   /** Display name for a camera: config override -> friendly_name -> object_id. */
   private _cameraName(entityId: string): string {
     const entry = this._cameraEntries().find((c) => c.camera === entityId);
@@ -1114,7 +1093,6 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._nvrId = this._resolveNvrId();
     this._loader.cancelAll(); // in-flight thumbnails belong to the old camera
     this._manifestBands = [];
-    this._footageSpans = [];
     this._gaps = [];
     this._gapRange = undefined;
     this._preMs = 0;
@@ -1981,21 +1959,14 @@ export class UnifiProtectTimelineCard extends LitElement {
               .scrubbing=${this._scrubbing}
               .live=${this._liveMode}
               .stacked=${this._isStacked()}
-              .chunkSeconds=${this._config.chunk_seconds ?? 300}
               .previewDir=${this._scrubDir()}
               .tipEnabled=${this._config.scrub_tip !== false}
               .previewMode=${this._config.scrub_preview_mode ?? 'sprites'}
               .fastPreview=${this._config.scrub_fast_preview ?? 'speed'}
-              .footageSpans=${this._footageSpans}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}
-              .maxClipSeconds=${this._config.max_clip_seconds ?? 600}
               .now=${this._now}
-              .delaySeconds=${this._config.delay_seconds ?? 15}
               .liveAudioStart=${this._config.live_audio_start ?? 'muted'}
-              .liveTransport=${this._config.live_transport ?? 'auto'}
-              .prewarm=${this._config.live_prewarm ?? true}
-              .liveBridgeCameraId=${this._liveBridgeCamera(cameraId)}
               .startFs=${this._drillFs}
               .fsTimeline=${fsTimeline}
               .fsTimelineWidth=${fsTimelineWidth}

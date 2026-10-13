@@ -12,9 +12,8 @@
 // in one run, so one call covers every stale manifest.
 //
 // Playback reuses <upc-media-view> with the single card's event-clip contract
-// (see card.ts _playBand): padded start/end, that camera's footage spans for
-// tier-aware segment cutting, live=false. keyed() remounts it per CAMERA, not
-// per clip — see the note on mountKey in render().
+// (see card.ts _playBand): padded start/end, live=false. keyed() remounts it
+// per CAMERA, not per clip — see the note on mountKey in render().
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -22,7 +21,6 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { CameraEntry, CardConfig, HomeAssistant } from './data/types';
 import { loadManifest, manifestToBand } from './data/manifest';
 import { groupBands } from './data/event-groups';
-import { buildFootageSpans, type FootageSpan } from './data/footage-map';
 import { mergeStrip, tagBands, type MultiBand } from './data/multi-events';
 import { ThumbnailLoader } from './data/thumbnail-loader';
 import { THUMBS_BASE } from './data/ha-urls';
@@ -53,7 +51,6 @@ const V_2COL = html`<svg viewBox="0 0 24 24">
 
 interface CameraData {
   bands: MultiBand[]; // grouped display events, newest-first
-  spans: FootageSpan[]; // padded raw events (tier-aware playback segment cuts)
   preMs: number; // camera recording padding (clip covers start-pre .. end+post)
   postMs: number;
 }
@@ -552,7 +549,6 @@ export class MultiView extends LitElement {
       if (!loaded) continue;
       data.set(e.camera, {
         bands: tagBands(groupBands(loaded.entries.map(manifestToBand), gapMs), e.camera, this._name(e)),
-        spans: buildFootageSpans(loaded.entries, loaded.preMs, loaded.postMs),
         preMs: loaded.preMs,
         postMs: loaded.postMs,
       });
@@ -789,7 +785,6 @@ export class MultiView extends LitElement {
               .newest=${newest}
               .minuteTick=${this._minuteTick}
               .aspect=${this.config.grid_aspect ?? '16/9'}
-              .prewarm=${this.config.live_prewarm ?? true}
               @tile-open=${this._onTileOpen}
               @tile-fullscreen=${this._onTileFs}
             ></upc-live-grid>`}
@@ -930,7 +925,6 @@ export class MultiView extends LitElement {
                   .scrollMode=${gridCols === 1}
                   .padTop=${gridCols === 1 ? 0 : GRID_PAD_TOP}
                   .aspect=${this.config.grid_aspect ?? '16/9'}
-                  .prewarm=${this.config.live_prewarm ?? true}
                   @tile-open=${this._onTileOpen}
                   @tile-fullscreen=${this._onTileFs}
                 ></upc-live-grid>
@@ -954,20 +948,16 @@ export class MultiView extends LitElement {
       .nvrId=${this._nvrIdFor(b.camera)}
       .cameraId=${b.camera}
       .gaps=${[]}
-      .footageSpans=${d?.spans ?? []}
       .targetTime=${span.start}
       .clipEndTime=${span.end}
-      .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
       .scrubbing=${false}
       .live=${false}
       .stacked=${this.stacked}
-      .chunkSeconds=${this.config.chunk_seconds ?? 300}
       .previewDir=${''}
       .accent=${accent}
       .now=${Date.now()}
       .fsHandoff=${true}
       @fullscreen-handoff=${this._onFsHandoff}
-      @clip-cancelled=${this._closePlayback}
     ></upc-media-view>`;
   }
 }
