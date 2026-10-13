@@ -3,18 +3,18 @@
  * Copyright 2019 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Pt = globalThis, Qt = Pt.ShadowRoot && (Pt.ShadyCSS === void 0 || Pt.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, te = Symbol(), he = /* @__PURE__ */ new WeakMap();
+const Pt = globalThis, te = Pt.ShadowRoot && (Pt.ShadyCSS === void 0 || Pt.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, ee = Symbol(), ce = /* @__PURE__ */ new WeakMap();
 let Ge = class {
   constructor(t, i, s) {
-    if (this._$cssResult$ = !0, s !== te) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
+    if (this._$cssResult$ = !0, s !== ee) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = t, this.t = i;
   }
   get styleSheet() {
     let t = this.o;
     const i = this.t;
-    if (Qt && t === void 0) {
+    if (te && t === void 0) {
       const s = i !== void 0 && i.length === 1;
-      s && (t = he.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && he.set(i, t));
+      s && (t = ce.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && ce.set(i, t));
     }
     return t;
   }
@@ -22,20 +22,20 @@ let Ge = class {
     return this.cssText;
   }
 };
-const fi = (e) => new Ge(typeof e == "string" ? e : e + "", void 0, te), rt = (e, ...t) => {
+const fi = (e) => new Ge(typeof e == "string" ? e : e + "", void 0, ee), rt = (e, ...t) => {
   const i = e.length === 1 ? e[0] : t.reduce((s, o, r) => s + ((a) => {
     if (a._$cssResult$ === !0) return a.cssText;
     if (typeof a == "number") return a;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + a + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(o) + e[r + 1], e[0]);
-  return new Ge(i, e, te);
+  return new Ge(i, e, ee);
 }, mi = (e, t) => {
-  if (Qt) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
+  if (te) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
   else for (const i of t) {
     const s = document.createElement("style"), o = Pt.litNonce;
     o !== void 0 && s.setAttribute("nonce", o), s.textContent = i.cssText, e.appendChild(s);
   }
-}, ce = Qt ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
+}, de = te ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
   let i = "";
   for (const s of t.cssRules) i += s.cssText;
   return fi(i);
@@ -45,7 +45,7 @@ const fi = (e) => new Ge(typeof e == "string" ? e : e + "", void 0, te), rt = (e
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: vi, defineProperty: gi, getOwnPropertyDescriptor: bi, getOwnPropertyNames: wi, getOwnPropertySymbols: yi, getPrototypeOf: xi } = Object, Dt = globalThis, de = Dt.trustedTypes, ki = de ? de.emptyScript : "", Si = Dt.reactiveElementPolyfillSupport, wt = (e, t) => e, Ft = { toAttribute(e, t) {
+const { is: vi, defineProperty: gi, getOwnPropertyDescriptor: bi, getOwnPropertyNames: wi, getOwnPropertySymbols: yi, getPrototypeOf: xi } = Object, It = globalThis, pe = It.trustedTypes, ki = pe ? pe.emptyScript : "", Si = It.reactiveElementPolyfillSupport, wt = (e, t) => e, Ft = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
       e = e ? ki : null;
@@ -73,8 +73,8 @@ const { is: vi, defineProperty: gi, getOwnPropertyDescriptor: bi, getOwnProperty
       }
   }
   return i;
-} }, ee = (e, t) => !vi(e, t), pe = { attribute: !0, type: String, converter: Ft, reflect: !1, useDefault: !1, hasChanged: ee };
-Symbol.metadata ??= Symbol("metadata"), Dt.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
+} }, ie = (e, t) => !vi(e, t), ue = { attribute: !0, type: String, converter: Ft, reflect: !1, useDefault: !1, hasChanged: ie };
+Symbol.metadata ??= Symbol("metadata"), It.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
 let lt = class extends HTMLElement {
   static addInitializer(t) {
     this._$Ei(), (this.l ??= []).push(t);
@@ -82,7 +82,7 @@ let lt = class extends HTMLElement {
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(t, i = pe) {
+  static createProperty(t, i = ue) {
     if (i.state && (i.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(t) && ((i = Object.create(i)).wrapped = !0), this.elementProperties.set(t, i), !i.noAccessor) {
       const s = Symbol(), o = this.getPropertyDescriptor(t, s, i);
       o !== void 0 && gi(this.prototype, t, o);
@@ -100,7 +100,7 @@ let lt = class extends HTMLElement {
     }, configurable: !0, enumerable: !0 };
   }
   static getPropertyOptions(t) {
-    return this.elementProperties.get(t) ?? pe;
+    return this.elementProperties.get(t) ?? ue;
   }
   static _$Ei() {
     if (this.hasOwnProperty(wt("elementProperties"))) return;
@@ -129,8 +129,8 @@ let lt = class extends HTMLElement {
     const i = [];
     if (Array.isArray(t)) {
       const s = new Set(t.flat(1 / 0).reverse());
-      for (const o of s) i.unshift(ce(o));
-    } else t !== void 0 && i.push(ce(t));
+      for (const o of s) i.unshift(de(o));
+    } else t !== void 0 && i.push(de(t));
     return i;
   }
   static _$Eu(t, i) {
@@ -188,7 +188,7 @@ let lt = class extends HTMLElement {
   requestUpdate(t, i, s, o = !1, r) {
     if (t !== void 0) {
       const a = this.constructor;
-      if (o === !1 && (r = this[t]), s ??= a.getPropertyOptions(t), !((s.hasChanged ?? ee)(r, i) || s.useDefault && s.reflect && r === this._$Ej?.get(t) && !this.hasAttribute(a._$Eu(t, s)))) return;
+      if (o === !1 && (r = this[t]), s ??= a.getPropertyOptions(t), !((s.hasChanged ?? ie)(r, i) || s.useDefault && s.reflect && r === this._$Ej?.get(t) && !this.hasAttribute(a._$Eu(t, s)))) return;
       this.C(t, i, s);
     }
     this.isUpdatePending === !1 && (this._$ES = this._$EP());
@@ -256,28 +256,28 @@ let lt = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-lt.elementStyles = [], lt.shadowRootOptions = { mode: "open" }, lt[wt("elementProperties")] = /* @__PURE__ */ new Map(), lt[wt("finalized")] = /* @__PURE__ */ new Map(), Si?.({ ReactiveElement: lt }), (Dt.reactiveElementVersions ??= []).push("2.1.2");
+lt.elementStyles = [], lt.shadowRootOptions = { mode: "open" }, lt[wt("elementProperties")] = /* @__PURE__ */ new Map(), lt[wt("finalized")] = /* @__PURE__ */ new Map(), Si?.({ ReactiveElement: lt }), (It.reactiveElementVersions ??= []).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ie = globalThis, ue = (e) => e, Rt = ie.trustedTypes, _e = Rt ? Rt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Ke = "$lit$", Y = `lit$${Math.random().toFixed(9).slice(2)}$`, Ye = "?" + Y, $i = `<${Ye}>`, it = document, yt = () => it.createComment(""), xt = (e) => e === null || typeof e != "object" && typeof e != "function", se = Array.isArray, Ti = (e) => se(e) || typeof e?.[Symbol.iterator] == "function", Wt = `[ 	
-\f\r]`, ft = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, fe = /-->/g, me = />/g, Z = RegExp(`>|${Wt}(?:([^\\s"'>=/]+)(${Wt}*=${Wt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), ve = /'/g, ge = /"/g, Xe = /^(?:script|style|textarea|title)$/i, Ci = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), p = Ci(1), st = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), be = /* @__PURE__ */ new WeakMap(), et = it.createTreeWalker(it, 129);
+const se = globalThis, _e = (e) => e, Rt = se.trustedTypes, fe = Rt ? Rt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Ke = "$lit$", Y = `lit$${Math.random().toFixed(9).slice(2)}$`, Ye = "?" + Y, $i = `<${Ye}>`, it = document, yt = () => it.createComment(""), xt = (e) => e === null || typeof e != "object" && typeof e != "function", oe = Array.isArray, Ti = (e) => oe(e) || typeof e?.[Symbol.iterator] == "function", Wt = `[ 	
+\f\r]`, mt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, me = /-->/g, ve = />/g, Z = RegExp(`>|${Wt}(?:([^\\s"'>=/]+)(${Wt}*=${Wt}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), ge = /'/g, be = /"/g, Xe = /^(?:script|style|textarea|title)$/i, Ci = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), p = Ci(1), st = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), we = /* @__PURE__ */ new WeakMap(), et = it.createTreeWalker(it, 129);
 function Ze(e, t) {
-  if (!se(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-  return _e !== void 0 ? _e.createHTML(t) : t;
+  if (!oe(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+  return fe !== void 0 ? fe.createHTML(t) : t;
 }
 const Ai = (e, t) => {
   const i = e.length - 1, s = [];
-  let o, r = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", a = ft;
+  let o, r = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", a = mt;
   for (let n = 0; n < i; n++) {
     const l = e[n];
-    let u, _, c = -1, v = 0;
-    for (; v < l.length && (a.lastIndex = v, _ = a.exec(l), _ !== null); ) v = a.lastIndex, a === ft ? _[1] === "!--" ? a = fe : _[1] !== void 0 ? a = me : _[2] !== void 0 ? (Xe.test(_[2]) && (o = RegExp("</" + _[2], "g")), a = Z) : _[3] !== void 0 && (a = Z) : a === Z ? _[0] === ">" ? (a = o ?? ft, c = -1) : _[1] === void 0 ? c = -2 : (c = a.lastIndex - _[2].length, u = _[1], a = _[3] === void 0 ? Z : _[3] === '"' ? ge : ve) : a === ge || a === ve ? a = Z : a === fe || a === me ? a = ft : (a = Z, o = void 0);
+    let _, u, c = -1, v = 0;
+    for (; v < l.length && (a.lastIndex = v, u = a.exec(l), u !== null); ) v = a.lastIndex, a === mt ? u[1] === "!--" ? a = me : u[1] !== void 0 ? a = ve : u[2] !== void 0 ? (Xe.test(u[2]) && (o = RegExp("</" + u[2], "g")), a = Z) : u[3] !== void 0 && (a = Z) : a === Z ? u[0] === ">" ? (a = o ?? mt, c = -1) : u[1] === void 0 ? c = -2 : (c = a.lastIndex - u[2].length, _ = u[1], a = u[3] === void 0 ? Z : u[3] === '"' ? be : ge) : a === be || a === ge ? a = Z : a === me || a === ve ? a = mt : (a = Z, o = void 0);
     const g = a === Z && e[n + 1].startsWith("/>") ? " " : "";
-    r += a === ft ? l + $i : c >= 0 ? (s.push(u), l.slice(0, c) + Ke + l.slice(c) + Y + g) : l + Y + (c === -2 ? n : g);
+    r += a === mt ? l + $i : c >= 0 ? (s.push(_), l.slice(0, c) + Ke + l.slice(c) + Y + g) : l + Y + (c === -2 ? n : g);
   }
   return [Ze(e, r + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
@@ -286,16 +286,16 @@ class kt {
     let o;
     this.parts = [];
     let r = 0, a = 0;
-    const n = t.length - 1, l = this.parts, [u, _] = Ai(t, i);
-    if (this.el = kt.createElement(u, s), et.currentNode = this.el.content, i === 2 || i === 3) {
+    const n = t.length - 1, l = this.parts, [_, u] = Ai(t, i);
+    if (this.el = kt.createElement(_, s), et.currentNode = this.el.content, i === 2 || i === 3) {
       const c = this.el.content.firstChild;
       c.replaceWith(...c.childNodes);
     }
     for (; (o = et.nextNode()) !== null && l.length < n; ) {
       if (o.nodeType === 1) {
         if (o.hasAttributes()) for (const c of o.getAttributeNames()) if (c.endsWith(Ke)) {
-          const v = _[a++], g = o.getAttribute(c).split(Y), y = /([.?@])?(.*)/.exec(v);
-          l.push({ type: 1, index: r, name: y[2], strings: g, ctor: y[1] === "." ? Ei : y[1] === "?" ? Mi : y[1] === "@" ? Fi : It }), o.removeAttribute(c);
+          const v = u[a++], g = o.getAttribute(c).split(Y), w = /([.?@])?(.*)/.exec(v);
+          l.push({ type: 1, index: r, name: w[2], strings: g, ctor: w[1] === "." ? Ei : w[1] === "?" ? Mi : w[1] === "@" ? Fi : Dt }), o.removeAttribute(c);
         } else c.startsWith(Y) && (l.push({ type: 6, index: r }), o.removeAttribute(c));
         if (Xe.test(o.tagName)) {
           const c = o.textContent.split(Y), v = c.length - 1;
@@ -318,11 +318,11 @@ class kt {
     return s.innerHTML = t, s;
   }
 }
-function pt(e, t, i = e, s) {
+function ut(e, t, i = e, s) {
   if (t === st) return t;
   let o = s !== void 0 ? i._$Co?.[s] : i._$Cl;
   const r = xt(t) ? void 0 : t._$litDirective$;
-  return o?.constructor !== r && (o?._$AO?.(!1), r === void 0 ? o = void 0 : (o = new r(e), o._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = o : i._$Cl = o), o !== void 0 && (t = pt(e, o._$AS(e, t.values), o, s)), t;
+  return o?.constructor !== r && (o?._$AO?.(!1), r === void 0 ? o = void 0 : (o = new r(e), o._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = o : i._$Cl = o), o !== void 0 && (t = ut(e, o._$AS(e, t.values), o, s)), t;
 }
 class Pi {
   constructor(t, i) {
@@ -340,8 +340,8 @@ class Pi {
     let r = et.nextNode(), a = 0, n = 0, l = s[0];
     for (; l !== void 0; ) {
       if (a === l.index) {
-        let u;
-        l.type === 2 ? u = new ut(r, r.nextSibling, this, t) : l.type === 1 ? u = new l.ctor(r, l.name, l.strings, this, t) : l.type === 6 && (u = new Ri(r, this, t)), this._$AV.push(u), l = s[++n];
+        let _;
+        l.type === 2 ? _ = new _t(r, r.nextSibling, this, t) : l.type === 1 ? _ = new l.ctor(r, l.name, l.strings, this, t) : l.type === 6 && (_ = new Ri(r, this, t)), this._$AV.push(_), l = s[++n];
       }
       a !== l?.index && (r = et.nextNode(), a++);
     }
@@ -352,7 +352,7 @@ class Pi {
     for (const s of this._$AV) s !== void 0 && (s.strings !== void 0 ? (s._$AI(t, s, i), i += s.strings.length - 2) : s._$AI(t[i])), i++;
   }
 }
-class ut {
+class _t {
   get _$AU() {
     return this._$AM?._$AU ?? this._$Cv;
   }
@@ -371,7 +371,7 @@ class ut {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = pt(this, t, i), xt(t) ? t === b || t == null || t === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : t !== this._$AH && t !== st && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : Ti(t) ? this.k(t) : this._(t);
+    t = ut(this, t, i), xt(t) ? t === b || t == null || t === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : t !== this._$AH && t !== st && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : Ti(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -391,27 +391,27 @@ class ut {
     }
   }
   _$AC(t) {
-    let i = be.get(t.strings);
-    return i === void 0 && be.set(t.strings, i = new kt(t)), i;
+    let i = we.get(t.strings);
+    return i === void 0 && we.set(t.strings, i = new kt(t)), i;
   }
   k(t) {
-    se(this._$AH) || (this._$AH = [], this._$AR());
+    oe(this._$AH) || (this._$AH = [], this._$AR());
     const i = this._$AH;
     let s, o = 0;
-    for (const r of t) o === i.length ? i.push(s = new ut(this.O(yt()), this.O(yt()), this, this.options)) : s = i[o], s._$AI(r), o++;
+    for (const r of t) o === i.length ? i.push(s = new _t(this.O(yt()), this.O(yt()), this, this.options)) : s = i[o], s._$AI(r), o++;
     o < i.length && (this._$AR(s && s._$AB.nextSibling, o), i.length = o);
   }
   _$AR(t = this._$AA.nextSibling, i) {
     for (this._$AP?.(!1, !0, i); t !== this._$AB; ) {
-      const s = ue(t).nextSibling;
-      ue(t).remove(), t = s;
+      const s = _e(t).nextSibling;
+      _e(t).remove(), t = s;
     }
   }
   setConnected(t) {
     this._$AM === void 0 && (this._$Cv = t, this._$AP?.(t));
   }
 }
-class It {
+class Dt {
   get tagName() {
     return this.element.tagName;
   }
@@ -424,11 +424,11 @@ class It {
   _$AI(t, i = this, s, o) {
     const r = this.strings;
     let a = !1;
-    if (r === void 0) t = pt(this, t, i, 0), a = !xt(t) || t !== this._$AH && t !== st, a && (this._$AH = t);
+    if (r === void 0) t = ut(this, t, i, 0), a = !xt(t) || t !== this._$AH && t !== st, a && (this._$AH = t);
     else {
       const n = t;
-      let l, u;
-      for (t = r[0], l = 0; l < r.length - 1; l++) u = pt(this, n[s + l], i, l), u === st && (u = this._$AH[l]), a ||= !xt(u) || u !== this._$AH[l], u === b ? t = b : t !== b && (t += (u ?? "") + r[l + 1]), this._$AH[l] = u;
+      let l, _;
+      for (t = r[0], l = 0; l < r.length - 1; l++) _ = ut(this, n[s + l], i, l), _ === st && (_ = this._$AH[l]), a ||= !xt(_) || _ !== this._$AH[l], _ === b ? t = b : t !== b && (t += (_ ?? "") + r[l + 1]), this._$AH[l] = _;
     }
     a && !o && this.j(t);
   }
@@ -436,7 +436,7 @@ class It {
     t === b ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
-class Ei extends It {
+class Ei extends Dt {
   constructor() {
     super(...arguments), this.type = 3;
   }
@@ -444,7 +444,7 @@ class Ei extends It {
     this.element[this.name] = t === b ? void 0 : t;
   }
 }
-class Mi extends It {
+class Mi extends Dt {
   constructor() {
     super(...arguments), this.type = 4;
   }
@@ -452,12 +452,12 @@ class Mi extends It {
     this.element.toggleAttribute(this.name, !!t && t !== b);
   }
 }
-class Fi extends It {
+class Fi extends Dt {
   constructor(t, i, s, o, r) {
     super(t, i, s, o, r), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = pt(this, t, i, 0) ?? b) === st) return;
+    if ((t = ut(this, t, i, 0) ?? b) === st) return;
     const s = this._$AH, o = t === b && s !== b || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, r = t !== b && (s === b || o);
     o && this.element.removeEventListener(this.name, this, s), r && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
@@ -473,17 +473,17 @@ class Ri {
     return this._$AM._$AU;
   }
   _$AI(t) {
-    pt(this, t);
+    ut(this, t);
   }
 }
-const Li = { I: ut }, zi = ie.litHtmlPolyfillSupport;
-zi?.(kt, ut), (ie.litHtmlVersions ??= []).push("3.3.3");
+const Li = { I: _t }, zi = se.litHtmlPolyfillSupport;
+zi?.(kt, _t), (se.litHtmlVersions ??= []).push("3.3.3");
 const Je = (e, t, i) => {
   const s = i?.renderBefore ?? t;
   let o = s._$litPart$;
   if (o === void 0) {
     const r = i?.renderBefore ?? null;
-    s._$litPart$ = o = new ut(t.insertBefore(yt(), r), r, void 0, i ?? {});
+    s._$litPart$ = o = new _t(t.insertBefore(yt(), r), r, void 0, i ?? {});
   }
   return o._$AI(e), o;
 };
@@ -492,8 +492,8 @@ const Je = (e, t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const oe = globalThis;
-let j = class extends lt {
+const re = globalThis;
+let q = class extends lt {
   constructor() {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
@@ -515,10 +515,10 @@ let j = class extends lt {
     return st;
   }
 };
-j._$litElement$ = !0, j.finalized = !0, oe.litElementHydrateSupport?.({ LitElement: j });
-const Oi = oe.litElementPolyfillSupport;
-Oi?.({ LitElement: j });
-(oe.litElementVersions ??= []).push("4.2.2");
+q._$litElement$ = !0, q.finalized = !0, re.litElementHydrateSupport?.({ LitElement: q });
+const Oi = re.litElementPolyfillSupport;
+Oi?.({ LitElement: q });
+(re.litElementVersions ??= []).push("4.2.2");
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -534,7 +534,7 @@ const at = (e) => (t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Di = { attribute: !0, type: String, converter: Ft, reflect: !1, hasChanged: ee }, Ii = (e = Di, t, i) => {
+const Ii = { attribute: !0, type: String, converter: Ft, reflect: !1, hasChanged: ie }, Di = (e = Ii, t, i) => {
   const { kind: s, metadata: o } = i;
   let r = globalThis.litPropertyMetadata.get(o);
   if (r === void 0 && globalThis.litPropertyMetadata.set(o, r = /* @__PURE__ */ new Map()), s === "setter" && ((e = Object.create(e)).wrapped = !0), r.set(i.name, e), s === "accessor") {
@@ -556,7 +556,7 @@ const Di = { attribute: !0, type: String, converter: Ft, reflect: !1, hasChanged
   throw Error("Unsupported decorator location: " + s);
 };
 function d(e) {
-  return (t, i) => typeof i == "object" ? Ii(e, t, i) : ((s, o, r) => {
+  return (t, i) => typeof i == "object" ? Di(e, t, i) : ((s, o, r) => {
     const a = o.hasOwnProperty(r);
     return o.constructor.createProperty(r, s), a ? Object.getOwnPropertyDescriptor(o, r) : void 0;
   })(e, t, i);
@@ -604,8 +604,8 @@ function Vi(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Wi = { CHILD: 2 }, re = (e) => (...t) => ({ _$litDirective$: e, values: t });
-let ae = class {
+const Wi = { CHILD: 2 }, ae = (e) => (...t) => ({ _$litDirective$: e, values: t });
+let ne = class {
   constructor(t) {
   }
   get _$AU() {
@@ -626,10 +626,10 @@ let ae = class {
  * Copyright 2020 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { I: Ni } = Li, we = (e) => e, ye = (e, t) => e?._$litType$ !== void 0, Ui = (e) => e?._$litType$?.h != null, xe = () => document.createComment(""), Q = (e, t, i) => {
+const { I: Ni } = Li, ye = (e) => e, xe = (e, t) => e?._$litType$ !== void 0, Ui = (e) => e?._$litType$?.h != null, ke = () => document.createComment(""), Q = (e, t, i) => {
   const s = e._$AA.parentNode, o = t === void 0 ? e._$AB : t._$AA;
   if (i === void 0) {
-    const r = s.insertBefore(xe(), o), a = s.insertBefore(xe(), o);
+    const r = s.insertBefore(ke(), o), a = s.insertBefore(ke(), o);
     i = new Ni(r, a, e, e.options);
   } else {
     const r = i._$AB.nextSibling, a = i._$AM, n = a !== e;
@@ -640,13 +640,13 @@ const { I: Ni } = Li, we = (e) => e, ye = (e, t) => e?._$litType$ !== void 0, Ui
     if (r !== o || n) {
       let l = i._$AA;
       for (; l !== r; ) {
-        const u = we(l).nextSibling;
-        we(s).insertBefore(l, o), l = u;
+        const _ = ye(l).nextSibling;
+        ye(s).insertBefore(l, o), l = _;
       }
     }
   }
   return i;
-}, J = (e, t, i = e) => (e._$AI(t, i), e), Hi = {}, Lt = (e, t = Hi) => e._$AH = t, Gt = (e) => e._$AH, Nt = (e) => {
+}, J = (e, t, i = e) => (e._$AI(t, i), e), Hi = {}, Lt = (e, t = Hi) => e._$AH = t, Kt = (e) => e._$AH, Nt = (e) => {
   e._$AR(), e._$AA.remove();
 }, ji = (e) => {
   e._$AR();
@@ -656,7 +656,7 @@ const { I: Ni } = Li, we = (e) => e, ye = (e, t) => e?._$litType$ !== void 0, Ui
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ke = (e) => Ui(e) ? e._$litType$.h : e.strings, qi = re(class extends ae {
+const Se = (e) => Ui(e) ? e._$litType$.h : e.strings, qi = ae(class extends ne {
   constructor(e) {
     super(e), this.et = /* @__PURE__ */ new WeakMap();
   }
@@ -664,9 +664,9 @@ const ke = (e) => Ui(e) ? e._$litType$.h : e.strings, qi = re(class extends ae {
     return [e];
   }
   update(e, [t]) {
-    const i = ye(this.it) ? ke(this.it) : null, s = ye(t) ? ke(t) : null;
+    const i = xe(this.it) ? Se(this.it) : null, s = xe(t) ? Se(t) : null;
     if (i !== null && (s === null || i !== s)) {
-      const o = Gt(e).pop();
+      const o = Kt(e).pop();
       let r = this.et.get(i);
       if (r === void 0) {
         const a = document.createDocumentFragment();
@@ -678,7 +678,7 @@ const ke = (e) => Ui(e) ? e._$litType$.h : e.strings, qi = re(class extends ae {
       if (i === null || i !== s) {
         const o = this.et.get(s);
         if (o !== void 0) {
-          const r = Gt(o).pop();
+          const r = Kt(o).pop();
           ji(e), Q(e, void 0, r), Lt(e, [r]);
         }
       }
@@ -686,17 +686,17 @@ const ke = (e) => Ui(e) ? e._$litType$.h : e.strings, qi = re(class extends ae {
     } else this.it = void 0;
     return this.render(t);
   }
-}), vt = typeof navigator < "u" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent), Gi = "/protect_scrub", ne = "/protect_thumbs", Se = "/local/protect_thumbs";
+}), ht = typeof navigator < "u" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent), Gi = "/protect_scrub", le = "/protect_thumbs", $e = "/local/protect_thumbs";
 function Ki(e) {
-  return e.startsWith(`${Se}/`) ? ne + e.slice(Se.length) : e;
+  return e.startsWith(`${$e}/`) ? le + e.slice($e.length) : e;
 }
-function Kt(e) {
+function Yt(e) {
   return (e instanceof Date ? e : new Date(e)).toISOString();
 }
 function ti(e, t, i, s) {
   let o = `/api/unifiprotect/snapshot/${encodeURIComponent(e)}/${encodeURIComponent(
     t
-  )}/${encodeURIComponent(Kt(i))}`;
+  )}/${encodeURIComponent(Yt(i))}`;
   const r = [];
   return s?.width && r.push(`width=${Math.round(s.width)}`), s?.height && r.push(`height=${Math.round(s.height)}`), r.length && (o += `?${r.join("&")}`), o;
 }
@@ -708,7 +708,7 @@ function Bt(e, t, i) {
     headers: { ...i.headers, ...s ? { Authorization: `Bearer ${s}` } : {} }
   });
 }
-async function $e(e, t, i, s, o, r) {
+async function Te(e, t, i, s, o, r) {
   const a = await Bt(e, "/api/protect_clip/session", {
     method: "POST",
     signal: r,
@@ -716,8 +716,8 @@ async function $e(e, t, i, s, o, r) {
     body: JSON.stringify({
       nvr_id: t,
       camera_id: i,
-      start: Kt(s),
-      end: Kt(o)
+      start: Yt(s),
+      end: Yt(o)
     })
   });
   if (!a.ok) {
@@ -727,7 +727,7 @@ async function $e(e, t, i, s, o, r) {
   return await a.json();
 }
 function nt(e, t) {
-  vt || Bt(e, `/api/protect_clip/session/${encodeURIComponent(t)}`, {
+  ht || Bt(e, `/api/protect_clip/session/${encodeURIComponent(t)}`, {
     method: "DELETE",
     keepalive: !0
     // survives the view being torn down mid-flight
@@ -787,15 +787,15 @@ async function ii(e) {
   } catch {
   }
 }
-const si = 1e3, ot = 60 * si, Ji = 60 * ot, Yt = 4 * ot, oi = 60 * ot, W = (() => {
-  const t = Math.pow(oi / Yt, 0.034482758620689655);
-  return Array.from({ length: 30 }, (i, s) => Math.round(Yt * Math.pow(t, s)));
+const si = 1e3, ot = 60 * si, Ji = 60 * ot, Xt = 4 * ot, oi = 60 * ot, W = (() => {
+  const t = Math.pow(oi / Xt, 0.034482758620689655);
+  return Array.from({ length: 30 }, (i, s) => Math.round(Xt * Math.pow(t, s)));
 })(), Vt = 0.15, Qi = 0.179;
 function P(e) {
   return e.end - e.start;
 }
 function ts(e) {
-  return Math.min(oi, Math.max(Yt, e));
+  return Math.min(oi, Math.max(Xt, e));
 }
 function A(e, t = Vt) {
   return e.end - P(e) * t;
@@ -814,7 +814,7 @@ function ss(e, t) {
   const o = Math.min(W.length - 1, Math.max(0, i + t));
   return W[o];
 }
-function Te(e, t) {
+function Ce(e, t) {
   const i = -new Date(e.start).getTimezoneOffset() * 6e4, s = Math.ceil((e.start + i) / t) * t - i, o = [];
   for (let r = s; r <= e.end; r += t) o.push(r);
   return o;
@@ -855,22 +855,22 @@ async function ds(e, t, i, s, o = 24) {
   const r = [];
   let a = o;
   for (const n of s) {
-    const l = `${i}|${n.start}|${n.end}`, u = Ct.get(l);
-    if (u !== void 0) {
-      u && r.push(n);
+    const l = `${i}|${n.start}|${n.end}`, _ = Ct.get(l);
+    if (_ !== void 0) {
+      _ && r.push(n);
       continue;
     }
-    let _ = !1;
+    let u = !1;
     for (const c of ls) {
       if (a <= 0) break;
       a--;
       const v = await cs(e, t, i, n.start + (n.end - n.start) * c);
       if (v !== null && v) {
-        _ = !0;
+        u = !0;
         break;
       }
     }
-    _ || r.push(n), (_ || a > 0) && (Ct.size >= hs && Ct.clear(), Ct.set(l, !_));
+    u || r.push(n), (u || a > 0) && (Ct.size >= hs && Ct.clear(), Ct.set(l, !u));
   }
   return r;
 }
@@ -900,10 +900,10 @@ function ri(e, t) {
 function Et(e) {
   history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 }
-const Ce = ["person", "vehicle", "animal", "package", "license plate"];
-function Ae(e) {
-  const t = Ce.indexOf(e.label.toLowerCase());
-  return t === -1 ? Ce.length : t;
+const Ae = ["person", "vehicle", "animal", "package", "license plate"];
+function Pe(e) {
+  const t = Ae.indexOf(e.label.toLowerCase());
+  return t === -1 ? Ae.length : t;
 }
 function ai(e, t) {
   if (t <= 0 || e.length === 0) return e;
@@ -918,7 +918,7 @@ function ai(e, t) {
 function us(e) {
   const t = e[0];
   if (e.length === 1) return { ...t, members: e };
-  const i = e.reduce((a, n) => Math.max(a, n.end), t.end), s = e.reduce((a, n) => Ae(n) < Ae(a) ? n : a, t), o = e.find((a) => a.file), r = e.some((a) => a.ongoing);
+  const i = e.reduce((a, n) => Math.max(a, n.end), t.end), s = e.reduce((a, n) => Pe(n) < Pe(a) ? n : a, t), o = e.find((a) => a.file), r = e.some((a) => a.ongoing);
   return {
     type: t.type,
     label: s.label,
@@ -1002,13 +1002,13 @@ class li {
     }
   }
 }
-const Pe = /* @__PURE__ */ new Map();
+const Ee = /* @__PURE__ */ new Map();
 function Mt(e) {
   const t = JSON.stringify(e);
-  let i = Pe.get(t);
-  return i || (i = new Intl.DateTimeFormat(void 0, e), Pe.set(t, i)), i;
+  let i = Ee.get(t);
+  return i || (i = new Intl.DateTimeFormat(void 0, e), Ee.set(t, i)), i;
 }
-function dt(e, t) {
+function pt(e, t) {
   return Mt(t).format(new Date(e));
 }
 function ms(e) {
@@ -1053,11 +1053,11 @@ class bs {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ee = (e, t, i) => {
+const Me = (e, t, i) => {
   const s = /* @__PURE__ */ new Map();
   for (let o = t; o <= i; o++) s.set(e[o], o);
   return s;
-}, le = re(class extends ae {
+}, he = ae(class extends ne {
   constructor(e) {
     if (super(e), e.type !== Wi.CHILD) throw Error("repeat() can only be used in text expressions");
   }
@@ -1073,27 +1073,27 @@ const Ee = (e, t, i) => {
     return this.dt(e, t, i).values;
   }
   update(e, [t, i, s]) {
-    const o = Gt(e), { values: r, keys: a } = this.dt(t, i, s);
+    const o = Kt(e), { values: r, keys: a } = this.dt(t, i, s);
     if (!Array.isArray(o)) return this.ut = a, r;
     const n = this.ut ??= [], l = [];
-    let u, _, c = 0, v = o.length - 1, g = 0, y = r.length - 1;
-    for (; c <= v && g <= y; ) if (o[c] === null) c++;
+    let _, u, c = 0, v = o.length - 1, g = 0, w = r.length - 1;
+    for (; c <= v && g <= w; ) if (o[c] === null) c++;
     else if (o[v] === null) v--;
     else if (n[c] === a[g]) l[g] = J(o[c], r[g]), c++, g++;
-    else if (n[v] === a[y]) l[y] = J(o[v], r[y]), v--, y--;
-    else if (n[c] === a[y]) l[y] = J(o[c], r[y]), Q(e, l[y + 1], o[c]), c++, y--;
+    else if (n[v] === a[w]) l[w] = J(o[v], r[w]), v--, w--;
+    else if (n[c] === a[w]) l[w] = J(o[c], r[w]), Q(e, l[w + 1], o[c]), c++, w--;
     else if (n[v] === a[g]) l[g] = J(o[v], r[g]), Q(e, o[c], o[v]), v--, g++;
-    else if (u === void 0 && (u = Ee(a, g, y), _ = Ee(n, c, v)), u.has(n[c])) if (u.has(n[v])) {
-      const R = _.get(a[g]), B = R !== void 0 ? o[R] : null;
+    else if (_ === void 0 && (_ = Me(a, g, w), u = Me(n, c, v)), _.has(n[c])) if (_.has(n[v])) {
+      const R = u.get(a[g]), B = R !== void 0 ? o[R] : null;
       if (B === null) {
-        const q = Q(e, o[c]);
-        J(q, r[g]), l[g] = q;
+        const U = Q(e, o[c]);
+        J(U, r[g]), l[g] = U;
       } else l[g] = J(B, r[g]), Q(e, o[c], B), o[R] = null;
       g++;
     } else Nt(o[v]), v--;
     else Nt(o[c]), c++;
-    for (; g <= y; ) {
-      const R = Q(e, l[y + 1]);
+    for (; g <= w; ) {
+      const R = Q(e, l[w + 1]);
       J(R, r[g]), l[g++] = R;
     }
     for (; c <= v; ) {
@@ -1108,7 +1108,7 @@ var ws = Object.defineProperty, ys = Object.getOwnPropertyDescriptor, x = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && ws(t, i, o), o;
 };
-const xs = 62, ks = 80, Me = 86, Fe = 98, ht = 104, Ss = 2, $s = 6, Ts = 8, Cs = 8, As = 20, Ps = 12, Ut = 5, Es = 24, Ms = 5e3, Fs = 80, Rs = 0.325, Ls = 20, Re = 4e3, zs = 120, Le = 4, Os = 3, ze = 48, At = 520;
+const xs = 62, ks = 80, Fe = 86, Re = 98, ct = 104, Ss = 2, $s = 6, Ts = 8, Cs = 8, As = 20, Ps = 12, Ut = 5, Es = 24, Ms = 5e3, Fs = 80, Rs = 0.325, Ls = 20, Le = 4e3, zs = 120, ze = 4, Os = 3, Oe = 48, At = 520;
 function Ht(e) {
   return e.id ?? `${e.type}@${e.start}`;
 }
@@ -1120,19 +1120,19 @@ function hi() {
     window.removeEventListener("pointerup", e, !0), window.removeEventListener("click", e, !0);
   }, 700);
 }
-function Ds(e, t) {
+function Is(e, t) {
   const i = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(e.trim());
   if (!i) return "";
   const s = i[1].length === 3 ? i[1].split("").map((a) => a + a).join("") : i[1], o = parseInt(s, 16), r = [o >> 16 & 255, o >> 8 & 255, o & 255].map((a) => Math.round(a * t));
   return `rgb(${r[0]}, ${r[1]}, ${r[2]})`;
 }
-function Is(e) {
+function Ds(e) {
   const t = ot, i = si;
   return e <= 5 * t ? { major: 1 * t, minor: 15 * i } : e <= 10 * t ? { major: 1 * t, minor: 30 * i } : e <= 20 * t ? { major: 2 * t, minor: 30 * i } : e <= 40 * t ? { major: 5 * t, minor: 1 * t } : e <= 80 * t ? { major: 10 * t, minor: 1 * t } : { major: 10 * t, minor: 1 * t };
 }
-let w = class extends j {
+let y = class extends q {
   constructor() {
-    super(...arguments), this.bands = [], this.gaps = [], this.gapColor = "", this.now = Date.now(), this.nvrId = "", this.cameraId = "", this.fontSize = 11, this.fontColor = "", this.accentColor = "", this.tickColor = "", this.tickSize = 7, this.recordedColor = "", this.futureColor = "", this.thumbSize = 79, this.thumbSizeActive = 95, this.thumbVersion = 0, this.live = !1, this.livePaused = !1, this.indent = 0, this.pillIndent = 0, this.mirror = !1, this.zoomUi = !0, this.rotated = !1, this.liveArrow = !1, this.compact = !1, this.playheadFrac = Vt, this.gutter = 0, this._zoomOpen = !1, this._dpr = 1, this._width = 0, this._height = 0, this._setupTs = 0, this._frame = 0, this._evtAnchor = ht, this._hits = [], this._gapHits = [], this._animRaf = 0, this._pointers = /* @__PURE__ */ new Map(), this._dragStartY = 0, this._dragSlop = Le, this._moved = !1, this._gestureStarted = !1, this._gestureScrubbed = !1, this._velSamples = [], this._scrubOpen = !1, this._pillBig = !1, this._glideBig = !1, this._momentumRaf = 0, this._momentumV = 0, this._momentumLast = 0, this._seekRaf = 0, this._onLostCapture = (e) => {
+    super(...arguments), this.bands = [], this.gaps = [], this.gapColor = "", this.now = Date.now(), this.nvrId = "", this.cameraId = "", this.fontSize = 11, this.fontColor = "", this.accentColor = "", this.tickColor = "", this.tickSize = 7, this.recordedColor = "", this.futureColor = "", this.thumbSize = 79, this.thumbSizeActive = 95, this.thumbVersion = 0, this.live = !1, this.livePaused = !1, this.indent = 0, this.pillIndent = 0, this.mirror = !1, this.zoomUi = !0, this.rotated = !1, this.liveArrow = !1, this.compact = !1, this.playheadFrac = Vt, this.gutter = 0, this._zoomOpen = !1, this._dpr = 1, this._width = 0, this._height = 0, this._setupTs = 0, this._frame = 0, this._evtAnchor = ct, this._hits = [], this._gapHits = [], this._animRaf = 0, this._pointers = /* @__PURE__ */ new Map(), this._dragStartY = 0, this._dragSlop = ze, this._moved = !1, this._gestureStarted = !1, this._gestureScrubbed = !1, this._velSamples = [], this._scrubOpen = !1, this._pillBig = !1, this._glideBig = !1, this._momentumRaf = 0, this._momentumV = 0, this._momentumLast = 0, this._seekRaf = 0, this._onLostCapture = (e) => {
       this._pointers.has(e.pointerId) && (this._pointers.delete(e.pointerId), !this._pointers.size && (this._dragStartDomain = void 0, this._scrubOpen && this._emitScrubEnd()));
     }, this._onPointerDown = (e) => {
       const t = this._scrubEl;
@@ -1141,7 +1141,7 @@ let w = class extends j {
         t.setPointerCapture(e.pointerId);
       } catch {
       }
-      this._refreshRect(), this._cancelMomentum(), this._cancelSeek(), this._velSamples = [], this._gestureScrubbed = !1, this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._moved = !1, this._hoverBand = void 0, this._hoverGap = void 0, this._pointers.size === 1 && (this._dragStartY = this._localY(e), this._dragStartDomain = { ...this.domain }, this._gestureStarted = !1, this._dragSlop = e.pointerType === "mouse" ? Os : Le);
+      this._refreshRect(), this._cancelMomentum(), this._cancelSeek(), this._velSamples = [], this._gestureScrubbed = !1, this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._moved = !1, this._hoverBand = void 0, this._hoverGap = void 0, this._pointers.size === 1 && (this._dragStartY = this._localY(e), this._dragStartDomain = { ...this.domain }, this._gestureStarted = !1, this._dragSlop = e.pointerType === "mouse" ? Os : ze);
     }, this._onPointerMove = (e) => {
       if (this._pointers.size === 0) {
         this._updateHover(e);
@@ -1165,7 +1165,7 @@ let w = class extends j {
       };
       const n = this._height || 1, l = A(a, this.playheadFrac) - this.now;
       if (l > 0) {
-        const u = l / o * n, c = ze * u / (u + ze) / n * o, v = l - c;
+        const _ = l / o * n, c = Oe * _ / (_ + Oe) / n * o, v = l - c;
         if (a = { start: a.start - v, end: a.end - v }, this._setDomain(a, c), !this._gestureScrubbed) return;
       } else
         this._setDomain(a), this._gestureScrubbed = !0;
@@ -1270,7 +1270,7 @@ let w = class extends j {
     this._canvas && (this._setupTs = performance.now(), this._dpr = window.devicePixelRatio || 1, this._ro?.disconnect(), this._ro = new ResizeObserver(() => this._resize()), this._ro.observe(this._canvas), this._bindPointer(), this._resize(), requestAnimationFrame(() => requestAnimationFrame(() => this._resize())));
   }
   updated(e) {
-    w._redrawProps.some((t) => e.has(t)) && this._scheduleDraw();
+    y._redrawProps.some((t) => e.has(t)) && this._scheduleDraw();
   }
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -1355,7 +1355,7 @@ let w = class extends j {
    *  exponentially (tau ~325ms), emitting `scrub` per frame. Ends (and emits
    *  `scrub-end`) when slow enough or when the playhead hits the live edge. */
   _startMomentum(e) {
-    this._momentumV = Math.max(-Re, Math.min(Re, e)), this._momentumLast = performance.now();
+    this._momentumV = Math.max(-Le, Math.min(Le, e)), this._momentumLast = performance.now();
     const t = (i) => {
       const s = Math.min(0.1, (i - this._momentumLast) / 1e3);
       this._momentumLast = i, this._panByPixels(this._momentumV * s), this._draw(), this.dispatchEvent(
@@ -1552,11 +1552,11 @@ let w = class extends j {
       return {
         labelRight: xs,
         tickRight: ks,
-        trackX0: Me,
-        trackX1: Fe,
-        evtAnchor: ht
+        trackX0: Fe,
+        trackX1: Re,
+        evtAnchor: ct
       };
-    const t = this._width || 1, i = Math.max(2, Math.min(this.tickSize + 5, 18)), s = t - Ss, o = s - i - $s, r = Fe - Me, a = Math.max(r, o - e - Ts), n = a - r;
+    const t = this._width || 1, i = Math.max(2, Math.min(this.tickSize + 5, 18)), s = t - Ss, o = s - i - $s, r = Re - Fe, a = Math.max(r, o - e - Ts), n = a - r;
     return { labelRight: o, tickRight: s, trackX0: n, trackX1: a, evtAnchor: t - n + Cs };
   }
   _draw() {
@@ -1566,16 +1566,16 @@ let w = class extends j {
     if (!t) return;
     const i = this._width, s = this._height;
     t.setTransform(this._dpr, 0, 0, this._dpr, 0, 0), t.clearRect(0, 0, i, s), this.indent && t.translate(this.indent, 0);
-    const o = getComputedStyle(this), r = o.getPropertyValue("--secondary-text-color").trim() || "#9aa0a6", a = o.getPropertyValue("--divider-color").trim() || "rgba(255,255,255,0.12)", n = this.accentColor || o.getPropertyValue("--primary-color").trim() || "#03a9f4", l = this.fontSize || 11, u = o.fontFamily || "sans-serif";
-    t.font = `${l}px ${u}`;
-    const _ = this._geo(
+    const o = getComputedStyle(this), r = o.getPropertyValue("--secondary-text-color").trim() || "#9aa0a6", a = o.getPropertyValue("--divider-color").trim() || "rgba(255,255,255,0.12)", n = this.accentColor || o.getPropertyValue("--primary-color").trim() || "#03a9f4", l = this.fontSize || 11, _ = o.fontFamily || "sans-serif";
+    t.font = `${l}px ${_}`;
+    const u = this._geo(
       this.mirror ? t.measureText(this._fmt(this._dd.end, { hour: "2-digit", minute: "2-digit" })).width : 0
     );
-    this._evtAnchor !== _.evtAnchor && (this._evtAnchor = _.evtAnchor, this.requestUpdate());
-    const c = this.recordedColor || a, v = Math.max(0, Math.min(this._timeToY(this.now), s)), g = _.trackX1 - _.trackX0;
-    if (v > 0 && (this._roundRect(t, _.trackX0, 0, g, v, 3), this.futureColor ? (t.fillStyle = this.futureColor, t.globalAlpha = 1) : (t.fillStyle = c, t.globalAlpha = 0.7), t.fill(), t.globalAlpha = 1), v < s && (this._roundRect(t, _.trackX0, v, g, s - v, 3), t.fillStyle = c, t.fill()), this._gapHits = [], this.gaps && this.gaps.length) {
-      const H = this.gapColor || "#4a4a52";
-      t.fillStyle = H, t.globalAlpha = 1;
+    this._evtAnchor !== u.evtAnchor && (this._evtAnchor = u.evtAnchor, this.requestUpdate());
+    const c = this.recordedColor || a, v = Math.max(0, Math.min(this._timeToY(this.now), s)), g = u.trackX1 - u.trackX0;
+    if (v > 0 && (this._roundRect(t, u.trackX0, 0, g, v, 3), this.futureColor ? (t.fillStyle = this.futureColor, t.globalAlpha = 1) : (t.fillStyle = c, t.globalAlpha = 0.7), t.fill(), t.globalAlpha = 1), v < s && (this._roundRect(t, u.trackX0, v, g, s - v, 3), t.fillStyle = c, t.fill()), this._gapHits = [], this.gaps && this.gaps.length) {
+      const j = this.gapColor || "#4a4a52";
+      t.fillStyle = j, t.globalAlpha = 1;
       for (const $ of this.gaps) {
         let L = this._timeToY($.end), G = this._timeToY($.start);
         if (!(G < 0 || L > s)) {
@@ -1583,38 +1583,38 @@ let w = class extends j {
             const X = (L + G) / 2;
             L = X - 1.5, G = X + 1.5;
           }
-          this._roundRect(t, _.trackX0, L, g, G - L, 3), t.fill(), this._gapHits.push({ gap: $, yTop: L, yBot: G });
+          this._roundRect(t, u.trackX0, L, g, G - L, 3), t.fill(), this._gapHits.push({ gap: $, yTop: L, yBot: G });
         }
       }
     }
-    const { major: y, minor: R } = Is(P(this._dd)), B = this.tickColor || r, q = Math.max(2, Math.min(this.tickSize, 16)), k = Math.max(2, Math.min(this.tickSize + 5, 18)), U = Math.max(1, Math.min(this.tickSize / 5, 2.5));
-    t.strokeStyle = B, t.lineWidth = U, t.globalAlpha = 0.7;
-    for (const H of Te(this._dd, R)) {
-      const $ = this._timeToY(H);
-      $ < 4 || $ > s - 4 || (t.beginPath(), t.moveTo(_.tickRight - q, $), t.lineTo(_.tickRight, $), t.stroke());
+    const { major: w, minor: R } = Ds(P(this._dd)), B = this.tickColor || r, U = Math.max(2, Math.min(this.tickSize, 16)), k = Math.max(2, Math.min(this.tickSize + 5, 18)), H = Math.max(1, Math.min(this.tickSize / 5, 2.5));
+    t.strokeStyle = B, t.lineWidth = H, t.globalAlpha = 0.7;
+    for (const j of Ce(this._dd, R)) {
+      const $ = this._timeToY(j);
+      $ < 4 || $ > s - 4 || (t.beginPath(), t.moveTo(u.tickRight - U, $), t.lineTo(u.tickRight, $), t.stroke());
     }
     t.globalAlpha = 1, t.lineWidth = 1, t.textBaseline = "middle", t.textAlign = "right";
     const K = l * 0.55;
-    for (const H of Te(this._dd, y)) {
-      const $ = this._timeToY(H);
-      $ < K || $ > s - K || (t.strokeStyle = B, t.lineWidth = Math.max(U, 1.5), t.globalAlpha = 0.95, t.beginPath(), t.moveTo(_.tickRight - k, $), t.lineTo(_.tickRight, $), t.stroke(), t.globalAlpha = 1, t.lineWidth = 1, t.fillStyle = this.fontColor || r, t.fillText(this._fmt(H, { hour: "2-digit", minute: "2-digit" }), _.labelRight, $));
+    for (const j of Ce(this._dd, w)) {
+      const $ = this._timeToY(j);
+      $ < K || $ > s - K || (t.strokeStyle = B, t.lineWidth = Math.max(H, 1.5), t.globalAlpha = 0.95, t.beginPath(), t.moveTo(u.tickRight - k, $), t.lineTo(u.tickRight, $), t.stroke(), t.globalAlpha = 1, t.lineWidth = 1, t.fillStyle = this.fontColor || r, t.fillText(this._fmt(j, { hour: "2-digit", minute: "2-digit" }), u.labelRight, $));
     }
     this._hits = [];
     const $t = g;
-    for (const H of this.bands) {
-      let $ = this._timeToY(H.end), L = this._timeToY(H.start);
+    for (const j of this.bands) {
+      let $ = this._timeToY(j.end), L = this._timeToY(j.start);
       if (L < 0 || $ > s) continue;
       if (L - $ < Ut) {
         const X = ($ + L) / 2;
         $ = X - Ut / 2, L = X + Ut / 2;
       }
-      this._hits.push({ band: H, colX: _.trackX1, yTop: $, yBot: L }), t.fillStyle = n;
+      this._hits.push({ band: j, colX: u.trackX1, yTop: $, yBot: L }), t.fillStyle = n;
       const G = Math.min($t / 2, (L - $) / 2);
-      t.beginPath(), t.roundRect(_.trackX0, $, $t, L - $, G), t.fill();
+      t.beginPath(), t.roundRect(u.trackX0, $, $t, L - $, G), t.fill();
     }
     t.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
-    const Tt = this._playheadY, _t = this.mirror ? Math.max(0, _.trackX0 - 6) : 0;
-    t.fillStyle = n, t.globalAlpha = 0.18, t.fillRect(_t, Tt - 6, i - _t, 12), t.globalAlpha = 1, t.strokeStyle = n, t.lineWidth = 3, t.beginPath(), t.moveTo(_t, Tt), t.lineTo(i, Tt), t.stroke(), t.lineWidth = 1;
+    const Tt = this._playheadY, ft = this.mirror ? Math.max(0, u.trackX0 - 6) : 0;
+    t.fillStyle = n, t.globalAlpha = 0.18, t.fillRect(ft, Tt - 6, i - ft, 12), t.globalAlpha = 1, t.strokeStyle = n, t.lineWidth = 3, t.beginPath(), t.moveTo(ft, Tt), t.lineTo(i, Tt), t.stroke(), t.lineWidth = 1;
   }
   _roundRect(e, t, i, s, o, r) {
     const a = Math.max(0, Math.min(r, s / 2, o / 2));
@@ -1626,18 +1626,18 @@ let w = class extends j {
   // playhead pill. See data/fmt.ts for the measurements.
   // Revert: `return new Intl.DateTimeFormat(undefined, opts).format(new Date(t));`
   _fmt(e, t) {
-    return dt(e, t);
+    return pt(e, t);
   }
   render() {
-    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = Ds(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - A(this.domain, this.playheadFrac) < Ms, o = !s && this.domain ? this._fmt(Math.min(A(this.domain, this.playheadFrac), this.now), {
+    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = Is(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - A(this.domain, this.playheadFrac) < Ms, o = !s && this.domain ? this._fmt(Math.min(A(this.domain, this.playheadFrac), this.now), {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
-    }) : "", r = this._height > 0 && (s || !!o), a = `--upc-thumb-w:${this.thumbSize}px;--upc-thumb-w-lg:${this.thumbSizeActive}px;`, n = 1 - this._sliderValue / (W.length - 1), l = this._renderThumbs(), u = this._evtAnchor + As + (this._pillDodge() ? this.thumbSizeActive + Ps : 0);
+    }) : "", r = this._height > 0 && (s || !!o), a = `--upc-thumb-w:${this.thumbSize}px;--upc-thumb-w-lg:${this.thumbSizeActive}px;`, n = 1 - this._sliderValue / (W.length - 1), l = this._renderThumbs(), _ = this._evtAnchor + As + (this._pillDodge() ? this.thumbSizeActive + Ps : 0);
     return p`
       <div
         class="col"
-        style="--upc-accent:${e};${t ? `--upc-accent-deep:${t};` : ""}--upc-indent:${this.indent}px;--upc-pill-left:${this.pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${u}px;--upc-fab-right:${i}px;--upc-ph-y:${this._height * this.playheadFrac}px;${a}"
+        style="--upc-accent:${e};${t ? `--upc-accent-deep:${t};` : ""}--upc-indent:${this.indent}px;--upc-pill-left:${this.pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${_}px;--upc-fab-right:${i}px;--upc-ph-y:${this._height * this.playheadFrac}px;${a}"
       >
         <div class="scrub">
           <canvas></canvas>
@@ -1659,7 +1659,7 @@ let w = class extends j {
           ${this.liveArrow && !this.live ? p`<button
                 class="live-arrow"
                 title="Jump to live"
-                @pointerdown=${(_) => _.stopPropagation()}
+                @pointerdown=${(u) => u.stopPropagation()}
                 @click=${this._goLive}
               >
                 ↑
@@ -1749,8 +1749,8 @@ let w = class extends j {
       a = [];
       let c = 1 / 0;
       for (const { m: v, g } of this._members()) {
-        const y = (this._timeToY(v.end) + this._timeToY(v.start)) / 2;
-        c - y < s || (c = y, a.push({ m: v, g }));
+        const w = (this._timeToY(v.end) + this._timeToY(v.start)) / 2;
+        c - w < s || (c = w, a.push({ m: v, g }));
       }
       this._keptSel = { bands: this.bands, span: o, height: this._height, spacing: s, sel: a };
     }
@@ -1760,21 +1760,21 @@ let w = class extends j {
       y: (this._timeToY(c.end) + this._timeToY(c.start)) / 2
     }));
     this._kept = n;
-    let l, u = 1 / 0;
+    let l, _ = 1 / 0;
     for (const c of n) {
       if (e < c.g.start || e > c.g.end) continue;
       const v = e < c.m.start ? c.m.start - e : e > c.m.end ? e - c.m.end : 0;
-      v < u && (u = v, l = c);
+      v < _ && (_ = v, l = c);
     }
-    const _ = n.filter((c) => {
+    const u = n.filter((c) => {
       const v = c === l || this._hoverBand === c.m ? t : i;
       return c.y + v >= 0 && c.y - v <= this._height;
     });
-    return le(
-      _,
+    return he(
+      u,
       (c) => Ht(c.m),
       (c) => {
-        const v = c === l, g = this._hoverBand === c.m, y = this.loader?.get(c.m);
+        const v = c === l, g = this._hoverBand === c.m, w = this.loader?.get(c.m);
         return p`<div
           class="evt ${v ? "active" : ""} ${g ? "hovered" : ""}"
           style="top:${c.y}px"
@@ -1786,14 +1786,14 @@ let w = class extends j {
             @mouseenter=${() => this._setHover(c.m)}
             @mouseleave=${this._clearHover}
           >
-            ${y ? p`<img class="evt-thumb" .src=${y} alt=${c.g.label} />` : p`<span class="evt-thumb evt-ph"></span>`}
+            ${w ? p`<img class="evt-thumb" .src=${w} alt=${c.g.label} />` : p`<span class="evt-thumb evt-ph"></span>`}
           </div>
         </div>`;
       }
     );
   }
 };
-w.styles = rt`
+y.styles = rt`
     :host {
       display: block;
       height: 100%;
@@ -2059,7 +2059,7 @@ w.styles = rt`
        the gap's vertical center. */
     .gap-tip {
       position: absolute;
-      left: calc(${ht}px + var(--upc-indent, 0px));
+      left: calc(${ct}px + var(--upc-indent, 0px));
       transform: translateY(-50%);
       background: rgba(0, 0, 0, 0.82);
       color: #fff;
@@ -2100,7 +2100,7 @@ w.styles = rt`
        so scrolling over a thumbnail still pans the timeline. */
     .evt {
       position: absolute;
-      left: calc(${ht}px + var(--upc-indent, 0px));
+      left: calc(${ct}px + var(--upc-indent, 0px));
       transform: translateY(-50%);
       display: flex;
       align-items: center;
@@ -2159,7 +2159,7 @@ w.styles = rt`
     :host([mirror]) .evt,
     :host([mirror]) .gap-tip {
       left: auto;
-      right: var(--upc-evt-right, ${ht}px);
+      right: var(--upc-evt-right, ${ct}px);
     }
     :host([mirror]) .evt {
       flex-direction: row-reverse;
@@ -2169,7 +2169,7 @@ w.styles = rt`
        steps further left when a thumbnail shares its row (see _pillDodge). */
     :host([mirror]) .live-pill {
       left: auto;
-      right: var(--upc-pill-right, ${ht}px);
+      right: var(--upc-pill-right, ${ct}px);
       font-size: 15px;
       padding: 5px 14px;
       border-radius: 9px;
@@ -2283,7 +2283,7 @@ w.styles = rt`
       -webkit-tap-highlight-color: transparent;
     }
   `;
-w._redrawProps = [
+y._redrawProps = [
   "domain",
   "bands",
   "gaps",
@@ -2300,121 +2300,121 @@ w._redrawProps = [
 ];
 x([
   d({ attribute: !1 })
-], w.prototype, "domain", 2);
+], y.prototype, "domain", 2);
 x([
   d({ attribute: !1 })
-], w.prototype, "bands", 2);
+], y.prototype, "bands", 2);
 x([
   d({ attribute: !1 })
-], w.prototype, "gaps", 2);
+], y.prototype, "gaps", 2);
 x([
   d()
-], w.prototype, "gapColor", 2);
+], y.prototype, "gapColor", 2);
 x([
   d({ attribute: !1 })
-], w.prototype, "now", 2);
+], y.prototype, "now", 2);
 x([
   d({ attribute: !1 })
-], w.prototype, "hass", 2);
+], y.prototype, "hass", 2);
 x([
   d()
-], w.prototype, "nvrId", 2);
+], y.prototype, "nvrId", 2);
 x([
   d()
-], w.prototype, "cameraId", 2);
+], y.prototype, "cameraId", 2);
 x([
   d({ type: Number })
-], w.prototype, "fontSize", 2);
+], y.prototype, "fontSize", 2);
 x([
   d()
-], w.prototype, "fontColor", 2);
+], y.prototype, "fontColor", 2);
 x([
   d()
-], w.prototype, "accentColor", 2);
+], y.prototype, "accentColor", 2);
 x([
   d()
-], w.prototype, "tickColor", 2);
+], y.prototype, "tickColor", 2);
 x([
   d({ type: Number })
-], w.prototype, "tickSize", 2);
+], y.prototype, "tickSize", 2);
 x([
   d()
-], w.prototype, "recordedColor", 2);
+], y.prototype, "recordedColor", 2);
 x([
   d()
-], w.prototype, "futureColor", 2);
+], y.prototype, "futureColor", 2);
 x([
   d({ type: Number })
-], w.prototype, "thumbSize", 2);
+], y.prototype, "thumbSize", 2);
 x([
   d({ type: Number })
-], w.prototype, "thumbSizeActive", 2);
+], y.prototype, "thumbSizeActive", 2);
 x([
   d({ attribute: !1 })
-], w.prototype, "loader", 2);
+], y.prototype, "loader", 2);
 x([
   d({ type: Number })
-], w.prototype, "thumbVersion", 2);
+], y.prototype, "thumbVersion", 2);
 x([
   d({ type: Boolean })
-], w.prototype, "live", 2);
+], y.prototype, "live", 2);
 x([
   d({ type: Boolean })
-], w.prototype, "livePaused", 2);
+], y.prototype, "livePaused", 2);
 x([
   d({ type: Number })
-], w.prototype, "indent", 2);
+], y.prototype, "indent", 2);
 x([
   d({ type: Number })
-], w.prototype, "pillIndent", 2);
+], y.prototype, "pillIndent", 2);
 x([
   d({ type: Boolean, reflect: !0 })
-], w.prototype, "mirror", 2);
+], y.prototype, "mirror", 2);
 x([
   d({ type: Boolean })
-], w.prototype, "zoomUi", 2);
+], y.prototype, "zoomUi", 2);
 x([
   d({ type: Boolean })
-], w.prototype, "rotated", 2);
+], y.prototype, "rotated", 2);
 x([
   d({ type: Boolean })
-], w.prototype, "liveArrow", 2);
+], y.prototype, "liveArrow", 2);
 x([
   d({ type: Boolean, reflect: !0 })
-], w.prototype, "compact", 2);
+], y.prototype, "compact", 2);
 x([
   d({ type: Number })
-], w.prototype, "playheadFrac", 2);
+], y.prototype, "playheadFrac", 2);
 x([
   d({ type: Number })
-], w.prototype, "gutter", 2);
+], y.prototype, "gutter", 2);
 x([
   m()
-], w.prototype, "_hoverBand", 2);
+], y.prototype, "_hoverBand", 2);
 x([
   m()
-], w.prototype, "_hoverGap", 2);
+], y.prototype, "_hoverGap", 2);
 x([
   m()
-], w.prototype, "_zoomOpen", 2);
+], y.prototype, "_zoomOpen", 2);
 x([
   N("canvas")
-], w.prototype, "_canvas", 2);
+], y.prototype, "_canvas", 2);
 x([
   N(".scrub")
-], w.prototype, "_scrubEl", 2);
+], y.prototype, "_scrubEl", 2);
 x([
   m()
-], w.prototype, "_pillBig", 2);
-w = x([
+], y.prototype, "_pillBig", 2);
+y = x([
   at("upc-scrubber-timeline")
-], w);
+], y);
 var Bs = Object.defineProperty, Vs = Object.getOwnPropertyDescriptor, M = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Vs(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Bs(t, i, o), o;
 };
-let C = class extends j {
+let C = class extends q {
   constructor() {
     super(...arguments), this.bands = [], this.thumbVersion = 0, this.textSize = 12, this.textColor = "", this.durationSize = 12, this.durationColor = "", this.activeTextSize = 12, this.activeTextColor = "#000", this.activeDurationSize = 12, this.activeDurationColor = "#000", this.activeBg = "#fff", this.playingKey = "", this.dateFontSize = 13, this.dateFontColor = "", this.dividerColor = "", this.thumbWidth = 104, this.showCamera = !1, this.line1White = !1, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map();
   }
@@ -2458,14 +2458,14 @@ let C = class extends j {
   // PERF-SCRUB-2026-08-03: memoised formatters — one per rendered row before.
   // Revert: inline `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
   _fmtTime(e) {
-    return dt(e, {
+    return pt(e, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
     });
   }
   _fmtDay(e) {
-    return dt(e, {
+    return pt(e, {
       weekday: "short",
       month: "short",
       day: "numeric"
@@ -2510,13 +2510,13 @@ let C = class extends j {
     const e = [...this.bands].sort((i, s) => s.start - i.start), t = `--list-size:${this.textSize}px;--list-dur-size:${this.durationSize}px;--list-active-size:${this.activeTextSize}px;--list-active-dur-size:${this.activeDurationSize}px;--list-active-color:${this.activeTextColor};--list-active-dur-color:${this.activeDurationColor};--list-active-bg:${this.activeBg};--list-thumb-w:${this.thumbWidth}px;` + (this.dividerColor ? `--upc-divider:${this.dividerColor};` : "") + (this.textColor ? `--list-color:${this.textColor};` : "") + (this.durationColor ? `--list-dur-color:${this.durationColor};--list-dur-op:1;` : "");
     return this._bandByKey.clear(), p`
       <div class="list" style=${t}>
-        ${e.length === 0 ? p`<div class="empty">No events in this range</div>` : le(
+        ${e.length === 0 ? p`<div class="empty">No events in this range</div>` : he(
       e,
       (i) => `${i.type}@${i.start}`,
       (i, s) => {
         const o = `${i.type}@${i.start}`;
         this._bandByKey.set(o, i);
-        const r = this._requested.has(o) ? this.loader?.get(i) : void 0, a = this.playingKey === o, n = i.ongoing ? "In progress" : this._fmtDur(i.durMs ?? i.end - i.start), l = this.showCamera && !!i.cameraName, u = l ? i.cameraName : this._fmtTime(i.start), _ = l ? `${this._fmtTime(i.start)} · ${n}` : n, c = s === 0 || !this._sameDay(e[s - 1].start, i.start);
+        const r = this._requested.has(o) ? this.loader?.get(i) : void 0, a = this.playingKey === o, n = i.ongoing ? "In progress" : this._fmtDur(i.durMs ?? i.end - i.start), l = this.showCamera && !!i.cameraName, _ = l ? i.cameraName : this._fmtTime(i.start), u = l ? `${this._fmtTime(i.start)} · ${n}` : n, c = s === 0 || !this._sameDay(e[s - 1].start, i.start);
         return p`
                   ${c ? p`<div class="day-divider">
                         <span
@@ -2527,8 +2527,8 @@ let C = class extends j {
                       </div>` : b}
                   <button class="row ${a ? "playing" : ""}" @click=${() => this._play(i)}>
                     <div class="info">
-                      <div class="t1">${u}</div>
-                      <div class="t2">${_}</div>
+                      <div class="t1">${_}</div>
+                      <div class="t2">${u}</div>
                     </div>
                     <div class="thumb" data-key=${o}>
                       ${r ? p`<img src=${r} alt=${i.label} />` : p`<span class="ph"></span>`}
@@ -2744,7 +2744,7 @@ C = M([
  * Copyright 2021 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const gt = re(class extends ae {
+const gt = ae(class extends ne {
   constructor() {
     super(...arguments), this.key = b;
   }
@@ -2765,9 +2765,9 @@ function Ns(e) {
 function Us(e) {
   return !!e.eventVideo && e.eventVideo === e.currentVideo && e.sourceToken === e.videoToken && !!e.currentSession && e.sourceSession === e.currentSession && !!e.expectedUrl && e.actualUrl === e.expectedUrl;
 }
-const Oe = [750, 1500, 3e3];
+const Ie = [750, 1500, 3e3];
 function Hs(e, t, i, s) {
-  return typeof e == "string" && e.length > 0 && !t && i < Oe.length && s >= Oe[i];
+  return typeof e == "string" && e.length > 0 && !t && i < Ie.length && s >= Ie[i];
 }
 function js(e, t) {
   if (!t) return e.currentTime;
@@ -2794,7 +2794,7 @@ class De {
 function qs(e, t, i, s) {
   return i || !s || t === "muted" ? !1 : e === "auto" || t === "unmuted";
 }
-const Ie = 6e4, Gs = 1e4, Ks = 5e3, Ys = 5e3, Xs = 8e3, Zs = 15e3, Js = 400, Qs = 15, to = 25 * 6e4, eo = 5 * 6e4, io = 16, so = 6, oo = 2;
+const Be = 6e4, Gs = 1e4, Ks = 5e3, Ys = 5e3, Xs = 8e3, Zs = 15e3, Js = 400, Qs = 15, to = 25 * 6e4, eo = 5 * 6e4, io = 16, so = 6, oo = 2;
 function ro(e, t, i) {
   return e ? [i ? "fast" : void 0, t ? "fine" : void 0].filter(
     (s) => !!s
@@ -2969,7 +2969,7 @@ class ao {
   async ensureIndex(t) {
     if (!this._dir) return;
     const i = Date.now() - this._indexAt;
-    if (i < Ie) {
+    if (i < Be) {
       const s = this._head;
       s && t !== void 0 && t >= s.start && i >= Gs && this._refreshIndex();
       return;
@@ -3003,7 +3003,7 @@ class ao {
       }
     } catch {
     }
-    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, Ie - Ks), i && this._requestSync();
+    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, Be - Ks), i && this._requestSync();
   }
   /** Fire the pyscript sync service (throttled). No-ops when pyscript isn't
    *  installed — the card just keeps the plain black scrub stage. */
@@ -3244,7 +3244,7 @@ function tt(e) {
   } catch {
   }
 }
-function ct(e) {
+function dt(e) {
   if (!e) return;
   e instanceof HTMLVideoElement && tt(e);
   const t = (i) => {
@@ -3253,32 +3253,32 @@ function ct(e) {
   };
   t(e), "shadowRoot" in e && e.shadowRoot && t(e.shadowRoot);
 }
-const no = 2e4, lo = 8e3, ci = 25e3, zt = /* @__PURE__ */ new Map(), Xt = /* @__PURE__ */ new Map();
-let Zt, Ot, Jt = !1, jt = !1;
+const no = 2e4, lo = 8e3, ci = 25e3, zt = /* @__PURE__ */ new Map(), Zt = /* @__PURE__ */ new Map();
+let Jt, Ot, Qt = !1, jt = !1;
 function di() {
   const e = /* @__PURE__ */ new Set();
   for (const t of zt.values()) for (const i of t) e.add(i);
   return [...e];
 }
-async function Be() {
+async function Ve() {
   const e = di();
-  if (!(!e.length || Jt || !Zt || jt)) {
+  if (!(!e.length || Qt || !Jt || jt)) {
     jt = !0;
     try {
-      const t = await Bt(Zt, "/api/protect_clip/warm", {
+      const t = await Bt(Jt, "/api/protect_clip/warm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entity_ids: e })
       });
       if (t.status === 404) {
-        Jt = !0, pi();
+        Qt = !0, pi();
         return;
       }
       if (!t.ok) return;
       const i = await t.json(), s = Date.now();
       for (const o of i.warm ?? []) {
-        const r = Xt.get(o);
-        r && s - r.last < ci ? r.last = s : Xt.set(o, { since: s, last: s });
+        const r = Zt.get(o);
+        r && s - r.last < ci ? r.last = s : Zt.set(o, { since: s, last: s });
       }
     } catch {
     } finally {
@@ -3294,17 +3294,17 @@ function ui(e, t, i) {
     St(e);
     return;
   }
-  Zt = t;
+  Jt = t;
   const s = new Set(di());
-  if (zt.set(e, i), Jt) return;
+  if (zt.set(e, i), Qt) return;
   const o = i.some((r) => !s.has(r));
-  Ot || (Ot = setInterval(() => void Be(), no)), o && Be();
+  Ot || (Ot = setInterval(() => void Ve(), no)), o && Ve();
 }
 function St(e) {
   zt.delete(e) && (zt.size || pi());
 }
 function ho(e) {
-  const t = Xt.get(e), i = Date.now();
+  const t = Zt.get(e), i = Date.now();
   return !!t && i - t.last < ci && i - t.since >= lo;
 }
 function bt(e) {
@@ -3323,11 +3323,11 @@ var co = Object.defineProperty, po = Object.getOwnPropertyDescriptor, f = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && co(t, i, o), o;
 };
-const Ve = 0.45, We = 5 * 6e4, uo = 400, _o = 1200, qt = 400, fo = 40, mo = 5, vo = 15, go = 5e3, bo = 15e3, Ne = 750, Ue = 3e3, wo = 3e3, yo = 350, xo = 3e3, ko = 1e4, So = 3e3, $o = 2500;
+const qt = 0.45, We = 5 * 6e4, uo = 400, _o = 1200, Gt = 400, fo = 40, mo = 5, vo = 15, go = 5e3, bo = 15e3, Ne = 750, Ue = 3e3, wo = 3e3, yo = 350, xo = 3e3, ko = 1e4, So = 3e3, $o = 2500;
 function He(e) {
   return e?.name === "NotAllowedError";
 }
-let h = class extends j {
+let h = class extends q {
   constructor() {
     super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.footageSpans = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.chunkSeconds = 300, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.maxClipSeconds = 600, this.accent = "", this.delaySeconds = 15, this.liveAudioStart = "muted", this.liveTransport = "auto", this.liveBridgeCameraId = "", this.prewarm = !0, this.stacked = !1, this.startFs = !1, this.fsHandoff = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._loadingVideo = !1, this._streamReady = !1, this._followActive = null, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._liveHealth = new De(Ne, Ue), this._livePlayerGeneration = 0, this._liveRestartKey = 0, this._highLiveReady = !1, this._bridgeRetired = !1, this._bridgeSkip = !1, this._warmKey = "", this._highStableAt = 0, this._liveMountedAt = 0, this._liveStartupAttempts = 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._clipPaused = !1, this._clipMuted = !0, this._clipRate = 1, this._clipProgress = 0, this._clipTime = 0, this._clipDuration = 0, this._preparing = !1, this._segmentSwitch = !1, this._clipBuffering = !1, this._clipFrameGeneration = 0, this._clipSeekTarget = 0, this._clipSeekWasPlaying = !1, this._clipRecoveryAttempts = 0, this._clipWatchFailed = !1, this._clipSourceToken = 0, this._clipSourceUrl = "", this._followToken = 0, this._followWatch = {
       a: void 0,
@@ -3354,7 +3354,7 @@ let h = class extends j {
       const i = this._clipStart + t.currentTime * 1e3;
       this.dispatchEvent(
         new CustomEvent("playback-time", { detail: { time: i }, bubbles: !0, composed: !0 })
-      ), isFinite(t.duration) && t.duration > 0 && (this._clipProgress = t.currentTime / t.duration), this._clipTime = t.currentTime, isFinite(t.duration) && (this._clipDuration = t.duration), vt && this.clipEndTime > 0 && !this._clipFinished && !t.paused && isFinite(t.duration) && t.duration > 1 && t.duration - t.currentTime < Ve * Math.max(1, t.playbackRate) && (t.pause(), this._finishClip());
+      ), isFinite(t.duration) && t.duration > 0 && (this._clipProgress = t.currentTime / t.duration), this._clipTime = t.currentTime, isFinite(t.duration) && (this._clipDuration = t.duration), ht && this.clipEndTime > 0 && !this._clipFinished && !t.paused && isFinite(t.duration) && t.duration > 1 && t.duration - t.currentTime < qt * Math.max(1, t.playbackRate) && (t.pause(), this._finishClip());
     }, this._onSeekDown = (e) => {
       e.stopPropagation();
       const t = e.currentTarget;
@@ -3437,7 +3437,11 @@ let h = class extends j {
     }, this._onStageHover = (e) => {
       e.pointerType === "mouse" && this._showFollowCtrl();
     }, this._toggleFollowPlay = (e) => {
-      e.stopPropagation(), this._followPaused = !this._followPaused;
+      if (e.stopPropagation(), this._followPaused && this._eventEndSent) {
+        this._seekFollowTo(this.targetTime), this._showFollowCtrl();
+        return;
+      }
+      this._followPaused = !this._followPaused;
       const t = this._followActive ? this._followVideo(this._followActive) : void 0;
       this._followPaused ? t?.pause() : t?.play().catch(() => {
       }), this._showFollowCtrl();
@@ -3593,7 +3597,7 @@ let h = class extends j {
     this._stageWatch = setInterval(() => this._checkStage(), 1e3), this.hasUpdated && (this._reattached = !0, this.requestUpdate());
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), clearInterval(this._stageWatch), this._dropParkedClip(), this._resumeAt = this._followContentTime(), this._loadedForTime = void 0, this._resetAudioSession(), clearTimeout(this._hideTimer), clearTimeout(this._followCtrlTimer), clearTimeout(this._scrubFineTimer), clearTimeout(this._livePreviewWarmTimer), clearTimeout(this._bridgeSwapTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this.removeEventListener("pointerdown", this._onPressCapture, !0), this.removeEventListener("pointerup", this._onReleaseCapture, !0), this.removeEventListener("pointercancel", this._onCancelCapture, !0), this.removeEventListener("click", this._onClickCapture, !0), clearTimeout(this._pendingTap?.timer), this._pendingTap = void 0, this._visObserver?.disconnect(), this._visObserver = void 0, document.removeEventListener("visibilitychange", this._onDocVisibility), clearTimeout(this._suspendTimer), St(this), this._warmKey = "", this._suspended = !1, this._stopLivePoll(), this._cancelLoad(), this._stopFollow(), this._setClipSrc(), this._resetPreviewSlots(), this._preview.destroy(), ct(this.renderRoot);
+    super.disconnectedCallback(), clearInterval(this._stageWatch), this._dropParkedClip(), this._resumeAt = this._followContentTime(), this._loadedForTime = void 0, this._resetAudioSession(), clearTimeout(this._hideTimer), clearTimeout(this._followCtrlTimer), clearTimeout(this._scrubFineTimer), clearTimeout(this._livePreviewWarmTimer), clearTimeout(this._bridgeSwapTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this.removeEventListener("pointerdown", this._onPressCapture, !0), this.removeEventListener("pointerup", this._onReleaseCapture, !0), this.removeEventListener("pointercancel", this._onCancelCapture, !0), this.removeEventListener("click", this._onClickCapture, !0), clearTimeout(this._pendingTap?.timer), this._pendingTap = void 0, this._visObserver?.disconnect(), this._visObserver = void 0, document.removeEventListener("visibilitychange", this._onDocVisibility), clearTimeout(this._suspendTimer), St(this), this._warmKey = "", this._suspended = !1, this._stopLivePoll(), this._cancelLoad(), this._stopFollow(), this._setClipSrc(), this._resetPreviewSlots(), this._preview.destroy(), dt(this.renderRoot);
   }
   willUpdate(e) {
     if (this.live && (e.has("live") || e.has("_streamReady") || e.has("cameraId") || e.has("liveTransport") || e.has("liveBridgeCameraId") || e.has("_suspended") && !this._suspended) && this._resetLiveSession(), this.clipEndTime > 0 && (e.has("targetTime") || e.has("cameraId")))
@@ -3602,7 +3606,7 @@ let h = class extends j {
       const i = e.has("scrubbing") && !this.scrubbing;
       this._holdFrame(i, !i && (this.live || e.get("live") === !0));
     }
-    if ((e.has("live") && !this.live || e.has("cameraId")) && (this._livePlayerGeneration++, ct(this.renderRoot?.querySelector(".live-stage"))), e.has("cameraId") && (this._loadedForTime = void 0), e.has("cameraId") && (this._holdPoster = "", this._posterPreload = "", this._posterAt = 0), e.has("cameraId") && this._releaseFrame(), e.has("scrubbing")) {
+    if ((e.has("live") && !this.live || e.has("cameraId")) && (this._livePlayerGeneration++, dt(this.renderRoot?.querySelector(".live-stage"))), e.has("cameraId") && (this._loadedForTime = void 0), e.has("cameraId") && (this._holdPoster = "", this._posterPreload = "", this._posterAt = 0), e.has("cameraId") && this._releaseFrame(), e.has("scrubbing")) {
       const i = this.scrubbing ? [this._followVidA, this._followVidB] : [this._previewVidA, this._previewVidB];
       for (const s of i) s && tt(s);
     }
@@ -3873,7 +3877,7 @@ let h = class extends j {
       if (this._loadedForTime !== this.targetTime) {
         this._loadedForTime = this.targetTime;
         const i = t && this._resumeAt !== void 0 ? this._resumeAt : void 0;
-        vt && this._videoSrc && !t && this._parkClipVideo(), this._cancelLoad(), this._setClipSrc(), this.clipEndTime > this.targetTime + 500 ? (this._eventEndSent = !1, this._followNow = void 0, i !== void 0 ? this._startFollow(i) : this._startFollow(this.targetTime, { newGrid: !0 })) : this._followActive !== null && i === void 0 ? this._seekFollowTo(this.targetTime) : this._startFollow(i ?? this.targetTime, {
+        ht && this._videoSrc && !t && this._parkClipVideo(), this._cancelLoad(), this._setClipSrc(), this.clipEndTime > this.targetTime + 500 ? (this._eventEndSent = !1, this._followNow = void 0, i !== void 0 ? this._startFollow(i) : this._startFollow(this.targetTime, { newGrid: !0 })) : this._followActive !== null && i === void 0 ? this._seekFollowTo(this.targetTime) : this._startFollow(i ?? this.targetTime, {
           newGrid: e.has("live") || e.has("cameraId")
         });
       }
@@ -3914,13 +3918,13 @@ let h = class extends j {
   _updateScrubSpeed(e) {
     const t = performance.now(), i = this._scrubVelPrev;
     this._scrubVelPrev = { t: e, at: t };
-    const s = i ? t - i.at : 0, o = i && s > 0 && s <= qt ? Math.abs(e - i.t) / s : 0;
+    const s = i ? t - i.at : 0, o = i && s > 0 && s <= Gt ? Math.abs(e - i.t) / s : 0;
     if (i && e !== i.t && (this._scrubDir = e > i.t ? 1 : -1), this.fastPreview === "off") {
       this._coarseScrub = !1;
       return;
     }
     if (this.fastPreview === "always") {
-      this._coarseScrub = !!i && e !== i.t && s > 0 && s <= qt;
+      this._coarseScrub = !!i && e !== i.t && s > 0 && s <= Gt;
       return;
     }
     const r = this._preview.blockMs();
@@ -3929,7 +3933,7 @@ let h = class extends j {
   _scheduleFineScrubUpgrade() {
     clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, !(!this._coarseScrub || !this.scrubbing) && (this._scrubFineTimer = setTimeout(() => {
       this._scrubFineTimer = void 0, this.scrubbing && this._updatePreview();
-    }, qt + 25));
+    }, Gt + 25));
   }
   async _resolvePlayable(e) {
     if (this._coarseScrub) {
@@ -4000,17 +4004,17 @@ let h = class extends j {
     let a = this._preview.tileIndexFor(e, s, t);
     const n = Math.floor(a / o), l = s.sheets[n];
     if (!l) return !0;
-    let u = this._preview.hasSheet(l) ? await this._preview.getSheet(l) : void 0;
-    if (u || (u = await this._preview.getSheet(l)), !u || !this.scrubbing || r !== this._spriteToken || (a = this._preview.tileIndexFor(e, s, this.targetTime), Math.floor(a / o) !== n)) return !0;
-    const _ = this._preview.tileAt(s, a);
-    if (!_) return !0;
+    let _ = this._preview.hasSheet(l) ? await this._preview.getSheet(l) : void 0;
+    if (_ || (_ = await this._preview.getSheet(l)), !_ || !this.scrubbing || r !== this._spriteToken || (a = this._preview.tileIndexFor(e, s, this.targetTime), Math.floor(a / o) !== n)) return !0;
+    const u = this._preview.tileAt(s, a);
+    if (!u) return !0;
     const c = this._spriteCanvas;
     if (!c) return !0;
     (c.width !== s.tileW || c.height !== s.tileH) && (c.width = s.tileW, c.height = s.tileH);
     const v = c.getContext("2d");
     if (!v) return !0;
     try {
-      v.drawImage(u, _.sx, _.sy, s.tileW, s.tileH, 0, 0, s.tileW, s.tileH);
+      v.drawImage(_, u.sx, u.sy, s.tileW, s.tileH, 0, 0, s.tileW, s.tileH);
     } catch {
       return !0;
     }
@@ -4025,9 +4029,9 @@ let h = class extends j {
     const { set: s } = i, o = s.cols * s.rows, r = e.end - e.start;
     if (r <= 0) return;
     const a = Math.min(1, Math.max(0, (t - e.start) / r)), n = Math.floor(Math.min(s.count - 1, Math.floor(a * s.count)) / o), l = this._scrubDir || 1;
-    for (const u of this._coarseScrub ? [n, n + l] : [n, n - 1, n + 1]) {
-      const _ = s.sheets[u];
-      _ && !this._preview.hasSheet(_) && this._preview.getSheet(_, !0);
+    for (const _ of this._coarseScrub ? [n, n + l] : [n, n - 1, n + 1]) {
+      const u = s.sheets[_];
+      u && !this._preview.hasSheet(u) && this._preview.getSheet(u, !0);
     }
   }
   /** Pull whichever representation of a unit this device will actually PAINT.
@@ -4258,7 +4262,7 @@ let h = class extends j {
     this._sessionAbort = a;
     const n = setTimeout(() => a.abort(new DOMException("deadline", "TimeoutError")), h.PREPARE_DEADLINE_MS);
     try {
-      const l = await $e(this.hass, this.nvrId, this.cameraId, s, o, a.signal);
+      const l = await Te(this.hass, this.nvrId, this.cameraId, s, o, a.signal);
       if (i !== this._videoToken) {
         nt(this.hass, l.session_id);
         return;
@@ -4268,12 +4272,12 @@ let h = class extends j {
       this._armClipFrameWatch("load");
     } catch (l) {
       if (i !== this._videoToken) return;
-      const u = l?.name;
-      if (u === "TimeoutError" || a.signal.reason?.name === "TimeoutError") {
+      const _ = l?.name;
+      if (_ === "TimeoutError" || a.signal.reason?.name === "TimeoutError") {
         console.warn("[unifi-timeline] clip session timed out", l), this._failClip("The NVR is taking too long to prepare this clip.");
         return;
       }
-      if (u === "AbortError") return;
+      if (_ === "AbortError") return;
       console.warn("[unifi-timeline] clip session failed", l), this._failClip("Clip unavailable for this time range.");
     } finally {
       clearTimeout(n), this._sessionAbort === a && (this._sessionAbort = void 0), i === this._videoToken && (this._preparing = !1);
@@ -4436,7 +4440,19 @@ let h = class extends j {
   }
   /** The latest instant continuous playback can show: the export floor. */
   get _seekCeiling() {
-    return this.now - Math.max(this.delaySeconds, 12) * 1e3;
+    const e = this.now - Math.max(this.delaySeconds, 12) * 1e3, t = this._eventEnd;
+    return t ? Math.min(t - 250, e) : e;
+  }
+  /** The end of the event being played, never later than the NVR can export;
+   *  0 when no event is (continuous timeline playback). Playback STOPS here. */
+  get _eventEnd() {
+    return this.clipEndTime > this.targetTime ? Math.min(this.clipEndTime, Date.now() - h.FOLLOW_AVAIL_LAG_MS) : 0;
+  }
+  /** The event's end has played: hold its last frame, paused, and tell the host
+   *  (once). Nothing follows it — continuing into the next file was a seam the
+   *  viewer always saw. Play replays the event; a skip or seek resumes it. */
+  _finishEvent(e) {
+    this._followPaused = !0, e.pause(), this._eventEndSent || (this._eventEndSent = !0, this.dispatchEvent(new CustomEvent("clip-ended", { bubbles: !0, composed: !0 }))), this._showFollowCtrl();
   }
   /** Play recorded footage from `t`: a cached chunk holding `t` if there is
    *  one, else the SLICE of its grid cell holding `t` (quick to prepare) —
@@ -4448,16 +4464,18 @@ let h = class extends j {
     const s = ++this._followToken;
     this._error = void 0, this._loadingVideo = !0, this._followPaused = !1, this._followFails = 0, this._followPrepares.clear(), this._nearLive = !1, this._followActive = "a", this._flashFollowCtrl();
     let o, r;
-    const a = this._cachedChunkAt(i);
-    if (a)
+    const a = this._cachedChunkAt(i), n = this._eventEnd;
+    if (n && n - this.targetTime <= h.EVENT_ONE_FILE_MS)
+      o = this.targetTime, r = n;
+    else if (a)
       ({ start: o, end: r } = a);
     else {
-      const l = this._chunkStartFor(i), u = h.FOLLOW_SEEK_CHUNK_MS;
-      o = l + Math.floor((i - l) / u) * u, r = this._sliceEndAfter(o), r - i < h.FOLLOW_QUICK_MS && (r = this._sliceEndAfter(r));
+      const _ = this._chunkStartFor(i), u = h.FOLLOW_SEEK_CHUNK_MS;
+      o = _ + Math.floor((i - _) / u) * u, r = this._sliceEndAfter(o), r - i < h.FOLLOW_QUICK_MS && (r = this._sliceEndAfter(r));
     }
     this._followPlayhead = o, this._followSeekTo.a = i > o ? i : 0;
-    const n = await this._fetchFollowChunk("a", o, s, r);
-    s === this._followToken && n === null && this._scheduleFollowRetry("a", o, s, r);
+    const l = await this._fetchFollowChunk("a", o, s, r);
+    s === this._followToken && l === null && this._scheduleFollowRetry("a", o, s, r);
   }
   /** Seek recorded playback to `t` — the seek bar, ±15 s, a timeline tap while
    *  footage is playing. Inside a chunk a slot already holds this is a native
@@ -4465,7 +4483,9 @@ let h = class extends j {
    *  else loads the grid chunk holding `t` (a cache hit when it was played
    *  recently) and opens it at `t`, holding the current frame meanwhile. */
   _seekFollowTo(e) {
-    const t = Math.max(this._seekFloor, Math.min(e, this._seekCeiling)), i = this._followActive;
+    const t = Math.max(this._seekFloor, Math.min(e, this._seekCeiling));
+    this._eventEndSent && (this._eventEndSent = !1, this._followPaused = !1);
+    const i = this._followActive;
     if (i) {
       const o = i === "a" ? "b" : "a";
       for (const r of [i, o]) {
@@ -4488,45 +4508,47 @@ let h = class extends j {
    *  already dealt with. */
   async _fetchFollowChunk(e, t, i, s) {
     let o = t, r = s ?? this._chunkStartFor(o) + h.FOLLOW_MAX_CHUNK_MS;
-    const a = this.gaps.find((v) => o >= v.start && o < v.end);
+    const a = this.gaps.find((g) => o >= g.start && o < g.end);
     a && (o = a.end, r = this._chunkStartFor(o) + h.FOLLOW_MAX_CHUNK_MS);
     let n = r;
     const l = this.now - h.FOLLOW_AVAIL_LAG_MS;
-    if (n > l && (n = l), n - o < 1500) return null;
+    n > l && (n = l);
+    const _ = this._eventEnd;
+    if (_ && n > _ && (n = _), n - o < 1500) return null;
     const u = {
       id: this._followSession[e],
       url: e === "a" ? this._followSrcA : this._followSrcB,
       start: this._followMeta[e].start,
       end: this._followMeta[e].end
     };
-    let _;
-    const c = this._chunkCache.get(`${o}-${n}`);
-    if (c)
-      this._chunkCache.delete(`${o}-${n}`), _ = { session_id: c.id, url: c.url };
+    let c;
+    const v = this._chunkCache.get(`${o}-${n}`);
+    if (v)
+      this._chunkCache.delete(`${o}-${n}`), c = { session_id: v.id, url: v.url };
     else {
-      const v = (this._followPrepares.get(o) ?? 0) + 1;
-      if (this._followPrepares.set(o, v), v > h.FOLLOW_MAX_PREPARES)
-        return this._reportPlaybackProblem(`continuous playback: chunk prepared ${v - 1} times — giving up`), this._giveUpFollow(), !1;
+      const g = (this._followPrepares.get(o) ?? 0) + 1;
+      if (this._followPrepares.set(o, g), g > h.FOLLOW_MAX_PREPARES)
+        return this._reportPlaybackProblem(`continuous playback: chunk prepared ${g - 1} times — giving up`), this._giveUpFollow(), !1;
       this._followAbort[e]?.abort();
-      const g = new AbortController();
-      this._followAbort[e] = g;
-      const y = setTimeout(
-        () => g.abort(new DOMException("deadline", "TimeoutError")),
+      const w = new AbortController();
+      this._followAbort[e] = w;
+      const R = setTimeout(
+        () => w.abort(new DOMException("deadline", "TimeoutError")),
         h.FOLLOW_FETCH_TIMEOUT_MS
       );
       try {
-        _ = await $e(this.hass, this.nvrId, this.cameraId, o, n, g.signal);
-      } catch (R) {
-        if (i !== this._followToken || this._followAbort[e] !== g) return null;
-        const B = g.signal.reason?.name === "TimeoutError" ? "timed out" : String(R);
-        return this._followFailed(e, o, i, `prepare ${B}`), !1;
+        c = await Te(this.hass, this.nvrId, this.cameraId, o, n, w.signal);
+      } catch (B) {
+        if (i !== this._followToken || this._followAbort[e] !== w) return null;
+        const U = w.signal.reason?.name === "TimeoutError" ? "timed out" : String(B);
+        return this._followFailed(e, o, i, `prepare ${U}`), !1;
       } finally {
-        clearTimeout(y), this._followAbort[e] === g && (this._followAbort[e] = void 0);
+        clearTimeout(R), this._followAbort[e] === w && (this._followAbort[e] = void 0);
       }
       if (i !== this._followToken)
-        return this._cacheChunk(o, n, _.session_id, _.url), null;
+        return this._cacheChunk(o, n, c.session_id, c.url), null;
     }
-    return i !== this._followToken ? (this._cacheChunk(o, n, _.session_id, _.url), null) : (this._followSession[e] = _.session_id, u.id && u.id !== _.session_id && (u.url && (u.start !== o || u.end !== n) ? this._cacheChunk(u.start, u.end, u.id, u.url) : nt(this.hass, u.id)), this._followMeta[e] = { start: o, end: n, ready: !1, leadIn: 0 }, e === "a" ? this._followSrcA = _.url : this._followSrcB = _.url, this._kickFollowSlot(e, i), { start: o, end: n });
+    return i !== this._followToken ? (this._cacheChunk(o, n, c.session_id, c.url), null) : (this._followSession[e] = c.session_id, u.id && u.id !== c.session_id && (u.url && (u.start !== o || u.end !== n) ? this._cacheChunk(u.start, u.end, u.id, u.url) : nt(this.hass, u.id)), this._followMeta[e] = { start: o, end: n, ready: !1, leadIn: 0 }, e === "a" ? this._followSrcA = c.url : this._followSrcB = c.url, this._kickFollowSlot(e, i), { start: o, end: n });
   }
   /** Start a follow slot playing, and DON'T lose the failure.
    *
@@ -4585,9 +4607,11 @@ let h = class extends j {
    *  swap is instant. Retries if footage isn't available yet. */
   _prefetchFollow(e) {
     if (e !== this._followToken || this._followActive === null) return;
-    const t = this._followActive === "a" ? "b" : "a", i = this._followPlayhead, s = this._followMeta[this._followActive], r = s.end - (this._followContentNow() ?? s.start) < h.FOLLOW_QUICK_MS ? this._sliceEndAfter(i) : void 0;
-    this._fetchFollowChunk(t, i, e, r).then((a) => {
-      e === this._followToken && a === null && this._scheduleFollowRetry(t, i, e, r);
+    const t = this._followActive === "a" ? "b" : "a", i = this._followPlayhead, s = this._eventEnd;
+    if (s && i >= s - 1500) return;
+    const o = this._followMeta[this._followActive], a = o.end - (this._followContentNow() ?? o.start) < h.FOLLOW_QUICK_MS ? this._sliceEndAfter(i) : void 0;
+    this._fetchFollowChunk(t, i, e, a).then((n) => {
+      e === this._followToken && n === null && this._scheduleFollowRetry(t, i, e, a);
     });
   }
   _scheduleFollowRetry(e, t, i, s) {
@@ -4669,17 +4693,27 @@ let h = class extends j {
     const s = i.end - t.duration * 1e3 + t.currentTime * 1e3;
     this.dispatchEvent(
       new CustomEvent("playback-time", { detail: { time: s }, bubbles: !0, composed: !0 })
-    ), this.clipEndTime > 0 && (this._followNow = s), this.clipEndTime > 0 && !this._eventEndSent && s >= this.clipEndTime && (this._eventEndSent = !0, this.dispatchEvent(new CustomEvent("clip-ended", { bubbles: !0, composed: !0 })));
-    const o = this.now - s < this._nearLiveMs;
-    if (o !== this._nearLive && (this._nearLive = o), o && this._followRate !== 1 && this._setFollowRate(1), vt && !t.paused && !this._followSwapArmed && t.duration - t.currentTime < Ve * Math.max(1, t.playbackRate)) {
-      const r = e === "a" ? "b" : "a";
-      this._followMeta[r].ready ? this._swapFollow() : (t.pause(), this._followSwapArmed = !0);
+    ), this.clipEndTime > 0 && (this._followNow = s);
+    const o = this._eventEnd, r = (ht ? qt * 1e3 : 250) * Math.max(1, t.playbackRate);
+    if (o && !t.paused && !this._eventEndSent && s >= o - r) {
+      this._finishEvent(t);
+      return;
+    }
+    const a = this.now - s < this._nearLiveMs;
+    if (a !== this._nearLive && (this._nearLive = a), a && this._followRate !== 1 && this._setFollowRate(1), ht && !t.paused && !this._followSwapArmed && t.duration - t.currentTime < qt * Math.max(1, t.playbackRate)) {
+      const n = e === "a" ? "b" : "a";
+      this._followMeta[n].ready ? this._swapFollow() : (t.pause(), this._followSwapArmed = !0);
     }
   }
   _onFollowEnded(e) {
     if (e !== this._followActive) return;
-    const t = e === "a" ? "b" : "a";
-    this._followMeta[t].ready ? this._swapFollow() : this._followSwapArmed = !0;
+    const t = this._eventEnd, i = this._followVideo(e);
+    if (t && i && this._followMeta[e].end >= t - 1500) {
+      this._finishEvent(i);
+      return;
+    }
+    const s = e === "a" ? "b" : "a";
+    this._followMeta[s].ready ? this._swapFollow() : this._followSwapArmed = !0;
   }
   /** Leap-frog: make the standby slot active (already buffered -> instant),
    *  pause the old one, advance the playhead, and prefetch the next chunk. */
@@ -4784,25 +4818,25 @@ let h = class extends j {
   /** Copy the current frame onto the overlay canvas and hold it. No-op when
    *  nothing is showing yet — a black hold is worse than the honest black. */
   _holdFrame(e = !1, t = !1) {
-    const i = vt ? void 0 : this._visibleVideo(), s = this._spriteReady && this._spriteCanvas && this._spriteCanvas.width > 0 ? this._spriteCanvas : void 0, r = (e ? [s, i ?? void 0] : [i ?? void 0, s]).find((v) => !!v), a = r instanceof HTMLCanvasElement, n = a ? r.width : r?.videoWidth ?? 0, l = a ? r.height : r?.videoHeight ?? 0, u = this._freezeCanvas;
+    const i = ht ? void 0 : this._visibleVideo(), s = this._spriteReady && this._spriteCanvas && this._spriteCanvas.width > 0 ? this._spriteCanvas : void 0, r = (e ? [s, i ?? void 0] : [i ?? void 0, s]).find((v) => !!v), a = r instanceof HTMLCanvasElement, n = a ? r.width : r?.videoWidth ?? 0, l = a ? r.height : r?.videoHeight ?? 0, _ = this._freezeCanvas;
     if (this._frozen && !r) {
       this._watchForFirstFrame();
       return;
     }
-    if (!u) return;
-    let _ = !1;
+    if (!_) return;
+    let u = !1;
     if (r && n > 0 && l > 0)
       try {
-        (u.width !== n || u.height !== l) && (u.width = n, u.height = l);
-        const v = u.getContext("2d", { willReadFrequently: !0 });
-        v?.clearRect(0, 0, u.width, u.height), v?.drawImage(r, 0, 0, u.width, u.height), _ = !!v && !this._looksBlack(v, u);
+        (_.width !== n || _.height !== l) && (_.width = n, _.height = l);
+        const v = _.getContext("2d", { willReadFrequently: !0 });
+        v?.clearRect(0, 0, _.width, _.height), v?.drawImage(r, 0, 0, _.width, _.height), u = !!v && !this._looksBlack(v, _);
       } catch {
-        _ = !1;
+        u = !1;
       }
-    if (this._holdPoster = _ || !t ? "" : this._posterPreload || this._posterUrl(), !_ && !this._holdPoster) return;
+    if (this._holdPoster = u || !t ? "" : this._posterPreload || this._posterUrl(), !u && !this._holdPoster) return;
     this._frozen = !0;
     const c = this._freezeImg;
-    _ ? (u.removeAttribute("hidden"), c?.setAttribute("hidden", "")) : c && (c.getAttribute("src") !== this._holdPoster && (c.src = this._holdPoster), c.removeAttribute("hidden"), u.setAttribute("hidden", "")), this._frozenFrom = i ? { el: i, src: i.currentSrc || i.src } : void 0, this._watchForFirstFrame();
+    u ? (_.removeAttribute("hidden"), c?.setAttribute("hidden", "")) : c && (c.getAttribute("src") !== this._holdPoster && (c.src = this._holdPoster), c.removeAttribute("hidden"), _.setAttribute("hidden", "")), this._frozenFrom = i ? { el: i, src: i.currentSrc || i.src } : void 0, this._watchForFirstFrame();
   }
   /** Drop the hold as soon as SOME player is painting again. Polled on rAF
    *  rather than wired into each player's events: four different sources take
@@ -4826,12 +4860,12 @@ let h = class extends j {
       }
       const a = this._visibleVideo(), n = this._frozenFrom, l = !!a && (!n || a !== n.el || (a.currentSrc || a.src) !== n.src);
       if (a && l) {
-        const u = a.requestVideoFrameCallback, _ = a.currentSrc || a.src || "";
-        if (u && (this._rvfcVideo !== a || this._rvfcSource !== _))
-          this._rvfcVideo = a, this._rvfcSource = _, u.call(a, () => {
-            e === this._frameWatchGeneration && this._rvfcVideo === a && this._rvfcSource === _ && (this._framePresented = !0);
+        const _ = a.requestVideoFrameCallback, u = a.currentSrc || a.src || "";
+        if (_ && (this._rvfcVideo !== a || this._rvfcSource !== u))
+          this._rvfcVideo = a, this._rvfcSource = u, _.call(a, () => {
+            e === this._frameWatchGeneration && this._rvfcVideo === a && this._rvfcSource === u && (this._framePresented = !0);
           });
-        else if (!u && a.readyState >= 3 && a.currentTime > 0 && !a.seeking) {
+        else if (!_ && a.readyState >= 3 && a.currentTime > 0 && !a.seeking) {
           this._releaseFrame();
           return;
         }
@@ -4954,7 +4988,7 @@ let h = class extends j {
     e.addEventListener("seeked", a, { once: !0 }), this._bridgeSwapTimer = setTimeout(a, 700);
   }
   _releaseBridge() {
-    ct(this.renderRoot.querySelector(".live-bridge")), this._highLiveReady = !0;
+    dt(this.renderRoot.querySelector(".live-bridge")), this._highLiveReady = !0;
   }
   _liveVideo() {
     const e = this._highLiveVideo();
@@ -5012,7 +5046,7 @@ let h = class extends j {
     this._livePlayerGeneration++, this._livePausedState = !1, this._liveMuted = this._audioUserChoice !== "unmuted", this._highLiveReady = !1, this._bridgeRetired = !1, this._bridgeSkip = ho(this.cameraId), this._highStableAt = 0, clearTimeout(this._bridgeSwapTimer), this._liveMountedAt = performance.now(), this._liveStartupAttempts = 0, clearTimeout(this._livePreviewWarmTimer), this._livePreviewWarmTimer = void 0, this._livePreviewWarmed = !1, this._liveAudioAttempted = this._audioUserChoice !== void 0, this._liveAudioTrying = !1, this._resetLiveHealth();
   }
   _restartLivePlayer(e = !1) {
-    this._livePlayerGeneration++, ct(this.renderRoot.querySelector(".live-stage")), this._highLiveReady = !1, this._liveRestartKey++, this._liveMountedAt = performance.now(), this._liveStartupAttempts = e ? this._liveStartupAttempts + 1 : 0, this._liveMuted = this._audioUserChoice !== "unmuted", this._liveAudioAttempted = this._audioUserChoice !== void 0, this._liveAudioTrying = !1, this._lastLivePlaying = void 0, this._resetLiveHealth();
+    this._livePlayerGeneration++, dt(this.renderRoot.querySelector(".live-stage")), this._highLiveReady = !1, this._liveRestartKey++, this._liveMountedAt = performance.now(), this._liveStartupAttempts = e ? this._liveStartupAttempts + 1 : 0, this._liveMuted = this._audioUserChoice !== "unmuted", this._liveAudioAttempted = this._audioUserChoice !== void 0, this._liveAudioTrying = !1, this._lastLivePlaying = void 0, this._resetLiveHealth();
   }
   /** Leave the HA player audio-enabled, but mute its nested media element before
    * media arrives so visual autoplay never depends on audible policy. */
@@ -5094,20 +5128,20 @@ let h = class extends j {
    *  skip-forward jumps to live there); a clip enables everything. */
   _renderCtrlBar(e, t = !1) {
     t || (this._ctrlMode = e);
-    const i = e === "live", s = e === "clip", o = i ? this._livePausedState : s ? this._clipPaused : this._followPaused, r = i ? this._liveMuted : s ? this._clipMuted : this._followMuted, a = s ? this._clipRate : i ? 1 : this._followRate, n = s ? this._clipRate > 1 : !i && this._followRate > 1, l = i || e === "follow" && this._nearLive, u = i ? this._liveSkipBack : s ? this._clipSkipBack : this._skipBack, _ = i ? this._toggleLivePlay : s ? this._toggleClipPlay : this._toggleFollowPlay, c = s ? this._clipSkipFwd : this._skipFwd, v = s ? this._toggleClipRate : this._toggleFollowRate, g = i ? this._toggleLiveMute : s ? this._toggleClipMute : this._toggleFollowMute, y = e === "follow" && this._nearLive ? "Go live" : "Forward 15s";
+    const i = e === "live", s = e === "clip", o = i ? this._livePausedState : s ? this._clipPaused : this._followPaused, r = i ? this._liveMuted : s ? this._clipMuted : this._followMuted, a = s ? this._clipRate : i ? 1 : this._followRate, n = s ? this._clipRate > 1 : !i && this._followRate > 1, l = i || e === "follow" && this._nearLive, _ = i ? this._liveSkipBack : s ? this._clipSkipBack : this._skipBack, u = i ? this._toggleLivePlay : s ? this._toggleClipPlay : this._toggleFollowPlay, c = s ? this._clipSkipFwd : this._skipFwd, v = s ? this._toggleClipRate : this._toggleFollowRate, g = i ? this._toggleLiveMute : s ? this._toggleClipMute : this._toggleFollowMute, w = e === "follow" && this._nearLive ? "Go live" : "Forward 15s";
     return p`
       <div
         class="vctrl ${this._followCtrl ? "show" : ""} ${this._isFs ? "fs" : ""} ${this._fsStrip ? "fs-inset" : ""} ${t ? "inert" : ""}"
         style="--upc-fs-tl-w:${this.fsTimelineWidth}px;--upc-fs-tl-gut:${this.fsTimelineGutter}px;--upc-fs-tl-pad:${this.fsTimelinePadding}px"
         @click=${(R) => R.stopPropagation()}
       >
-        <button @click=${u} title="Back 15s">
+        <button @click=${_} title="Back 15s">
           <ha-icon icon="mdi:rewind-15"></ha-icon>
         </button>
-        <button @click=${_} title=${o ? "Play" : "Pause"}>
+        <button @click=${u} title=${o ? "Play" : "Pause"}>
           <ha-icon icon=${o ? "mdi:play" : "mdi:pause"}></ha-icon>
         </button>
-        <button ?disabled=${i} @click=${i ? void 0 : c} title=${y}>
+        <button ?disabled=${i} @click=${i ? void 0 : c} title=${w}>
           <ha-icon icon="mdi:fast-forward-15"></ha-icon>
         </button>
         <button
@@ -5401,6 +5435,7 @@ h.FOLLOW_AVAIL_LAG_MS = 8e3;
 h.FOLLOW_MAX_CHUNK_MS = 12e4;
 h.FOLLOW_SEEK_CHUNK_MS = 3e4;
 h.FOLLOW_QUICK_MS = 1e4;
+h.EVENT_ONE_FILE_MS = 12e4;
 h.styles = rt`
     :host {
       display: block;
@@ -6306,7 +6341,7 @@ var Po = Object.defineProperty, Eo = Object.getOwnPropertyDescriptor, F = (e, t,
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Po(t, i, o), o;
 };
-let E = class extends j {
+let E = class extends q {
   constructor() {
     super(...arguments), this.bands = [], this.thumbVersion = 0, this.headerText = "Events", this.thumbSize = 0, this.timeSize = 12, this.playingKey = "", this.lastPlayedKey = "", this.keepLastPlayed = !1, this.expanded = !1, this.gridColumns = 2, this.accent = "#fc9df3", this.hideHead = !1, this.gridThumbWidth = 120, this.dateFontSize = 13, this.itemTextSize = 12, this.captions = !1, this.gridCaptions = !1, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map(), this._toggle = async () => {
       if (this.expanded) {
@@ -6370,14 +6405,14 @@ let E = class extends j {
   // ROW, so a strip re-render used to build dozens. Revert: inline
   // `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
   _fmtTime(e) {
-    return dt(e, {
+    return pt(e, {
       hour: "numeric",
       minute: "2-digit"
     });
   }
   /* Day-divider helpers — same formats as the timeline view's events list. */
   _fmtDay(e) {
-    return dt(e, {
+    return pt(e, {
       weekday: "short",
       month: "short",
       day: "numeric"
@@ -6389,7 +6424,7 @@ let E = class extends j {
   }
   /* Expanded-grid item texts: long time (matches the collapsed list) + duration. */
   _fmtTimeLong(e) {
-    return dt(e, {
+    return pt(e, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
@@ -6439,7 +6474,7 @@ let E = class extends j {
   }
   render() {
     this._bandByKey.clear();
-    const e = this.thumbSize > 0 ? `${this.thumbSize}px` : "calc((100% - 12px) / 2)", t = le(
+    const e = this.thumbSize > 0 ? `${this.thumbSize}px` : "calc((100% - 12px) / 2)", t = he(
       this.bands,
       (i) => `${i.type}@${i.start}`,
       (i, s) => {
@@ -6777,13 +6812,13 @@ F([
 E = F([
   at("upc-event-strip")
 ], E);
-var Mo = Object.defineProperty, Fo = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
+var Mo = Object.defineProperty, Fo = Object.getOwnPropertyDescriptor, I = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Fo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Mo(t, i, o), o;
 };
 const je = 0;
-let z = class extends j {
+let z = class extends q {
   constructor() {
     super(...arguments), this.entries = [], this.stacked = !1, this.newest = {}, this.minuteTick = 0, this.columns = 2, this.scrollMode = !1, this.aspect = "16/9", this.padTop = 0, this.prewarm = !0, this._warmKey = "", this._streamReady = !1, this._visible = !0, this._boxW = 0, this._boxH = 0, this._fullscreen = (e, t) => {
       e.stopPropagation(), this.dispatchEvent(
@@ -6807,7 +6842,7 @@ let z = class extends j {
       t.width && t.height && (t.width !== this._boxW || t.height !== this._boxH) && (this._boxW = t.width, this._boxH = t.height);
     }), this._ro.observe(this), this._visibilityObserver = new IntersectionObserver((e) => {
       const t = e[e.length - 1].isIntersecting;
-      t !== this._visible && (t || ct(this.renderRoot), this._visible = t);
+      t !== this._visible && (t || dt(this.renderRoot), this._visible = t);
     }), this._visibilityObserver.observe(this);
   }
   updated() {
@@ -6815,7 +6850,7 @@ let z = class extends j {
     t !== this._warmKey && (this._warmKey = t, e.length ? ui(this, this.hass, e) : St(this));
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), St(this), this._warmKey = "", this._ro?.disconnect(), this._visibilityObserver?.disconnect(), this._visibilityObserver = void 0, ct(this.renderRoot);
+    super.disconnectedCallback(), St(this), this._warmKey = "", this._ro?.disconnect(), this._visibilityObserver?.disconnect(), this._visibilityObserver = void 0, dt(this.renderRoot);
   }
   /** Aspect "16/9" -> 16/9 (safe fallback on garbage). */
   _ratio() {
@@ -7039,66 +7074,66 @@ z.styles = rt`
       --mdc-icon-size: 22px;
     }
   `;
-D([
+I([
   d({ attribute: !1 })
 ], z.prototype, "hass", 2);
-D([
+I([
   d({ attribute: !1 })
 ], z.prototype, "entries", 2);
-D([
+I([
   d({ type: Boolean, reflect: !0 })
 ], z.prototype, "stacked", 2);
-D([
+I([
   d({ attribute: !1 })
 ], z.prototype, "newest", 2);
-D([
+I([
   d({ type: Number })
 ], z.prototype, "minuteTick", 2);
-D([
+I([
   d({ type: Number })
 ], z.prototype, "columns", 2);
-D([
+I([
   d({ type: Boolean, reflect: !0, attribute: "scrollmode" })
 ], z.prototype, "scrollMode", 2);
-D([
+I([
   d()
 ], z.prototype, "aspect", 2);
-D([
+I([
   d({ type: Number })
 ], z.prototype, "padTop", 2);
-D([
+I([
   d({ type: Boolean })
 ], z.prototype, "prewarm", 2);
-D([
+I([
   m()
 ], z.prototype, "_streamReady", 2);
-D([
+I([
   m()
 ], z.prototype, "_visible", 2);
-D([
+I([
   m()
 ], z.prototype, "_boxW", 2);
-D([
+I([
   m()
 ], z.prototype, "_boxH", 2);
-z = D([
+z = I([
   at("upc-live-grid")
 ], z);
-var Ro = Object.defineProperty, Lo = Object.getOwnPropertyDescriptor, I = (e, t, i, s) => {
+var Ro = Object.defineProperty, Lo = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Lo(t, i) : t, r = e.length - 1, a; r >= 0; r--)
     (a = e[r]) && (o = (s ? a(t, i, o) : a(o)) || o);
   return s && o && Ro(t, i, o), o;
 };
-const zo = 3e4, Oo = 2 * 6e4, Do = 56, Io = p`<svg viewBox="0 0 24 24">
+const zo = 3e4, Oo = 2 * 6e4, Io = 56, Do = p`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="16" height="5.5" rx="1.5"></rect>
   <rect x="4" y="13.5" width="16" height="5.5" rx="1.5"></rect>
 </svg>`, Bo = p`<svg viewBox="0 0 24 24">
   <rect x="4" y="5" width="6.6" height="14" rx="1.5"></rect>
   <rect x="13.4" y="5" width="6.6" height="14" rx="1.5"></rect>
 </svg>`;
-let O = class extends j {
+let O = class extends q {
   constructor() {
-    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._eventDone = !1, this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._loader = new li(2, () => {
+    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._loader = new li(2, () => {
       this._thumbVersion++;
     }), this._lastSyncTrigger = 0, this._fetchSeq = 0, this._suspendedForFs = !1, this._savedScroll = [], this._keepLastPlayed = !1, this._onStripSelect = (e) => {
       this._playBand(e.detail);
@@ -7120,9 +7155,7 @@ let O = class extends j {
       } else
         this._closePlayback(), this._expanded = !0;
     }, this._closePlayback = () => {
-      this._playback = void 0, this._eventSpan = void 0, this._eventDone = !1;
-    }, this._onClipEnded = () => {
-      this._playback && (this._eventDone = !0);
+      this._playback = void 0, this._eventSpan = void 0;
     }, this._onTileOpen = (e) => {
       const t = e.detail.navigation_path;
       if (t) {
@@ -7244,7 +7277,7 @@ let O = class extends j {
     const t = ++this._fetchSeq, i = await Promise.all(
       e.map(async (a) => {
         const n = a.camera.split(".")[1];
-        return { e: a, loaded: n ? await ii(`${ne}/${n}`) : void 0 };
+        return { e: a, loaded: n ? await ii(`${le}/${n}`) : void 0 };
       })
     );
     if (t !== this._fetchSeq) return;
@@ -7273,7 +7306,7 @@ let O = class extends j {
     this._eventSpan = {
       start: Math.max(e.start - (t?.preMs ?? 0), 0),
       end: Math.min(e.end + (t?.postMs ?? 0), Date.now())
-    }, this._eventDone = !1;
+    };
   }
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
   _setGridView(e) {
@@ -7291,7 +7324,7 @@ let O = class extends j {
       </button>
     `;
     return p`<div class="grid-view">
-      ${t(1, "Single column", Io)} ${t(2, "Two columns", Bo)}
+      ${t(1, "Single column", Do)} ${t(2, "Two columns", Bo)}
     </div>`;
   }
   render() {
@@ -7361,7 +7394,7 @@ let O = class extends j {
    *  — click an event to play it on the right. Expanded (chevron): the events
    *  become a full-width grid to browse, cameras unmounted. */
   _renderTablet(e, t, i, s, o, r, a) {
-    const n = this.config, l = n.tablet_events_thumbnail_size ?? 145, u = n.list_text_size ?? 12, _ = Math.max(1, u - 1), c = this._gridView === 1 ? 1 : 2, v = c, g = p`
+    const n = this.config, l = n.tablet_events_thumbnail_size ?? 145, _ = n.list_text_size ?? 12, u = Math.max(1, _ - 1), c = this._gridView === 1 ? 1 : 2, v = c, g = p`
       <div class="ev-head">
         <span>${n.strip_title ?? "Events"}</span>
         <span class="ev-count">${this._strip.length}</span>
@@ -7394,7 +7427,7 @@ let O = class extends j {
                 .expanded=${!0}
                 .gridThumbWidth=${l}
                 .dateFontSize=${n.date_font_size ?? 13}
-                .itemTextSize=${u}
+                .itemTextSize=${_}
                 .accent=${t}
                 @strip-select=${this._onStripSelect}
               ></upc-event-strip>
@@ -7403,7 +7436,7 @@ let O = class extends j {
           ${i ? p`<div class="playoverlay" @click=${this._closePlayback}>
                 ${gt(
       o,
-      p`<div class="playbox" @click=${(y) => y.stopPropagation()}>
+      p`<div class="playbox" @click=${(w) => w.stopPropagation()}>
                     ${this._renderPlayer(i, r, t)}
                     <span class="play-cam">${i.cameraName}</span>
                     <button class="live-pill" @click=${this._closePlayback}>✕</button>
@@ -7420,9 +7453,9 @@ let O = class extends j {
               .bands=${this._strip}
               .loader=${this._loader}
               .thumbVersion=${this._thumbVersion}
-              .textSize=${u}
+              .textSize=${_}
               .textColor=${n.list_text_color ?? ""}
-              .durationSize=${_}
+              .durationSize=${u}
               .durationColor=${n.list_duration_color ?? ""}
               .showCamera=${!0}
               .line1White=${!0}
@@ -7456,7 +7489,7 @@ let O = class extends j {
                   .minuteTick=${this._minuteTick}
                   .columns=${c}
                   .scrollMode=${c === 1}
-                  .padTop=${c === 1 ? 0 : Do}
+                  .padTop=${c === 1 ? 0 : Io}
                   .aspect=${this.config.grid_aspect ?? "16/9"}
                   .prewarm=${this.config.live_prewarm ?? !0}
                   @tile-open=${this._onTileOpen}
@@ -7481,7 +7514,7 @@ let O = class extends j {
       .gaps=${[]}
       .footageSpans=${t?.spans ?? []}
       .targetTime=${s.start}
-      .clipEndTime=${this._eventDone ? 0 : s.end}
+      .clipEndTime=${s.end}
       .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
       .scrubbing=${!1}
       .live=${!1}
@@ -7492,7 +7525,6 @@ let O = class extends j {
       .now=${Date.now()}
       .fsHandoff=${!0}
       @fullscreen-handoff=${this._onFsHandoff}
-      @clip-ended=${this._onClipEnded}
       @clip-cancelled=${this._closePlayback}
     ></upc-media-view>`;
   }
@@ -7754,49 +7786,46 @@ O.styles = rt`
       display: block;
     }
   `;
-I([
+D([
   d({ attribute: !1 })
 ], O.prototype, "hass", 2);
-I([
+D([
   d({ attribute: !1 })
 ], O.prototype, "config", 2);
-I([
+D([
   d({ type: Boolean, reflect: !0 })
 ], O.prototype, "stacked", 2);
-I([
+D([
   m()
 ], O.prototype, "_data", 2);
-I([
+D([
   m()
 ], O.prototype, "_strip", 2);
-I([
+D([
   m()
 ], O.prototype, "_playback", 2);
-I([
-  m()
-], O.prototype, "_eventDone", 2);
-I([
+D([
   m()
 ], O.prototype, "_expanded", 2);
-I([
+D([
   m()
 ], O.prototype, "_lastPlayedKey", 2);
-I([
+D([
   m()
 ], O.prototype, "_minuteTick", 2);
-I([
+D([
   m()
 ], O.prototype, "_thumbVersion", 2);
-I([
+D([
   m()
 ], O.prototype, "_gridView", 2);
-I([
+D([
   m()
 ], O.prototype, "_keepLastPlayed", 2);
-I([
+D([
   m()
 ], O.prototype, "_eventSpan", 2);
-O = I([
+O = D([
   at("upc-multi-view")
 ], O);
 var Vo = Object.defineProperty, Wo = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
@@ -7805,7 +7834,7 @@ var Vo = Object.defineProperty, Wo = Object.getOwnPropertyDescriptor, T = (e, t,
   return s && o && Vo(t, i, o), o;
 };
 const No = 3e4, Uo = 2 * 6e4, Ho = "2.3.2", jo = 2e3, qo = 1e3, Go = 33, Ko = 1.3, Yo = 1.15;
-let mt = 0, qe = "", S = class extends j {
+let vt = 0, qe = "", S = class extends q {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._footageSpans = [], this._lastSyncTrigger = 0, this._loader = new li(2, () => {
       this._thumbVersion++;
@@ -7900,8 +7929,6 @@ let mt = 0, qe = "", S = class extends j {
       this._domain = i, this._glideRulers(t, i);
     }, this._onEventSelected = (e) => {
       this._playBand(e.detail);
-    }, this._onClipEnded = () => {
-      this._playingBand && (this._playingBand = void 0, this._clearClip());
     };
   }
   /** Events both views render: the manifest's raw NVR events, gap-merged into
@@ -8052,10 +8079,10 @@ let mt = 0, qe = "", S = class extends j {
     const e = this._config?.page_background;
     if (!e) return;
     const t = document.documentElement;
-    mt === 0 && (qe = t.style.backgroundColor), mt++, t.style.backgroundColor = e, this._pageBgApplied = !0;
+    vt === 0 && (qe = t.style.backgroundColor), vt++, t.style.backgroundColor = e, this._pageBgApplied = !0;
   }
   _removePageBackground() {
-    this._pageBgApplied && (this._pageBgApplied = !1, mt--, mt <= 0 && (mt = 0, document.documentElement.style.backgroundColor = qe));
+    this._pageBgApplied && (this._pageBgApplied = !1, vt--, vt <= 0 && (vt = 0, document.documentElement.style.backgroundColor = qe));
   }
   connectedCallback() {
     super.connectedCallback(), this._applyPageBackground(), this._tick = setInterval(() => this._onTick(), 1e3), this._bandInterval = setInterval(() => {
@@ -8109,7 +8136,7 @@ let mt = 0, qe = "", S = class extends j {
     if (this._config?.thumbnail_cache_dir && this._activeCamera === this._config.camera)
       return this._config.thumbnail_cache_dir;
     const e = this._activeCamera?.split(".")[1];
-    return e ? `${ne}/${e}` : "";
+    return e ? `${le}/${e}` : "";
   }
   /** Scrub-preview cache dir (pyscript protect_scrub job): explicit config for
    *  the CONFIG camera, else /protect_scrub/<object_id> — same per-camera
@@ -8339,24 +8366,24 @@ let mt = 0, qe = "", S = class extends j {
     i.setHours(0, 0, 0, 0);
     const s = new Date(i);
     s.setDate(s.getDate() - (this._config?.calendar_days ?? 30));
-    const o = new Date(e, t, 1), r = o.getDay(), a = new Date(e, t + 1, 0).getDate(), n = new Date(this._domain ? A(this._domain, this._phFrac()) : Date.now()), l = (k) => n.getFullYear() === e && n.getMonth() === t && n.getDate() === k, u = Mt({
+    const o = new Date(e, t, 1), r = o.getDay(), a = new Date(e, t + 1, 0).getDate(), n = new Date(this._domain ? A(this._domain, this._phFrac()) : Date.now()), l = (k) => n.getFullYear() === e && n.getMonth() === t && n.getDate() === k, _ = Mt({
       month: "long",
       year: "numeric"
-    }).format(o), _ = Array.from(
+    }).format(o), u = Array.from(
       { length: 7 },
-      (k, U) => Mt({ weekday: "narrow" }).format(new Date(2023, 0, U + 1))
+      (k, H) => Mt({ weekday: "narrow" }).format(new Date(2023, 0, H + 1))
     ), c = this._mode === "list" ? this._eventDayKeys() : void 0, v = !!c && c.size > 0, g = e * 12 + t;
-    let y = s.getFullYear() * 12 + s.getMonth();
+    let w = s.getFullYear() * 12 + s.getMonth();
     if (v) {
       let k = 1 / 0;
-      for (const U of c) U < k && (k = U);
-      y = Math.floor(k / 1e4) * 12 + Math.floor(k % 1e4 / 100);
+      for (const H of c) H < k && (k = H);
+      w = Math.floor(k / 1e4) * 12 + Math.floor(k % 1e4 / 100);
     }
-    const R = g > y, B = g < i.getFullYear() * 12 + i.getMonth(), q = [];
-    for (let k = 0; k < r; k++) q.push(p`<span class="cal-cell"></span>`);
+    const R = g > w, B = g < i.getFullYear() * 12 + i.getMonth(), U = [];
+    for (let k = 0; k < r; k++) U.push(p`<span class="cal-cell"></span>`);
     for (let k = 1; k <= a; k++) {
-      const U = new Date(e, t, k), K = v ? c.has(e * 1e4 + t * 100 + k) : U <= i && U >= s;
-      q.push(
+      const H = new Date(e, t, k), K = v ? c.has(e * 1e4 + t * 100 + k) : H <= i && H >= s;
+      U.push(
         p`<button
           class="cal-cell cal-day ${l(k) ? "sel" : ""}"
           ?disabled=${!K}
@@ -8368,7 +8395,7 @@ let mt = 0, qe = "", S = class extends j {
     }
     return p`<div class="cal-pop ${this._isStacked() ? "" : "wide"}">
       <div class="cal-head">
-        <span class="cal-title">${u}</span>
+        <span class="cal-title">${_}</span>
         <span>
           <button class="cal-chev" ?disabled=${!R} @click=${() => this._calShift(-1)}>
             <ha-icon icon="mdi:chevron-left"></ha-icon>
@@ -8379,8 +8406,8 @@ let mt = 0, qe = "", S = class extends j {
         </span>
       </div>
       <div class="cal-grid">
-        ${_.map((k) => p`<span class="cal-cell cal-wk">${k}</span>`)}
-        ${q}
+        ${u.map((k) => p`<span class="cal-cell cal-wk">${k}</span>`)}
+        ${U}
       </div>
     </div>`;
   }
@@ -8470,12 +8497,12 @@ let mt = 0, qe = "", S = class extends j {
     );
     const t = this._config.show_footage_gaps ?? !0 ? this._gaps : [];
     this._loader.setGaps(t);
-    const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, o = this._isStacked(), r = this._config.fs_timeline_width ?? (o ? 120 : 165), a = this._fsPad(), n = this._fsGutter(), l = this._config.fs_timeline_grab_width ?? 0, u = this._config.fs_timeline_scrim ?? 0.88, _ = this._config.fs_timeline_scrim_extend ?? (o ? 130 : 170), c = Mt({
+    const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, o = this._isStacked(), r = this._config.fs_timeline_width ?? (o ? 120 : 165), a = this._fsPad(), n = this._fsGutter(), l = this._config.fs_timeline_grab_width ?? 0, _ = this._config.fs_timeline_scrim ?? 0.88, u = this._config.fs_timeline_scrim_extend ?? (o ? 130 : 170), c = Mt({
       month: "short",
       day: "numeric"
-    }).format(new Date(A(this._domain, this._phFrac()))), v = this._isStacked(), g = this._config.tablet_events_thumbnail_size ?? 145, y = this._config.list_text_size ?? 12, R = Math.max(1, y - 1), B = g + 168, q = (v ? "" : `flex-basis:${B}px;min-width:${B}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, k = this._cameraEntries(), U = k.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", K = this._config.video_ratio ?? 0.45, $t = Math.max(15, Math.min(85, K > 1 ? K : K * 100)), _t = `height:${this._config.height || (v ? "100dvh" : "80vh")}`, H = v ? `--upc-video-frac:${$t}%` : "", $ = this._config.list_divider_color || i, L = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), G = v && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", X = (k.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
+    }).format(new Date(A(this._domain, this._phFrac()))), v = this._isStacked(), g = this._config.tablet_events_thumbnail_size ?? 145, w = this._config.list_text_size ?? 12, R = Math.max(1, w - 1), B = g + 168, U = (v ? "" : `flex-basis:${B}px;min-width:${B}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, k = this._cameraEntries(), H = k.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", K = this._config.video_ratio ?? 0.45, $t = Math.max(15, Math.min(85, K > 1 ? K : K * 100)), ft = `height:${this._config.height || (v ? "100dvh" : "80vh")}`, j = v ? `--upc-video-frac:${$t}%` : "", $ = this._config.list_divider_color || i, L = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), G = v && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", X = (k.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
     return p`
-      <ha-card style=${_t}>
+      <ha-card style=${ft}>
         <div class="header" style=${X}>
           ${this._config.back_button || this._drill ? p`<button
                 class="back-btn"
@@ -8485,7 +8512,7 @@ let mt = 0, qe = "", S = class extends j {
               >
                 <ha-icon icon="mdi:chevron-left"></ha-icon>
               </button>` : b}
-          <span class="title-text">${U}</span>
+          <span class="title-text">${H}</span>
           ${k.length ? p`<button
                 class="strip-toggle"
                 @click=${this._toggleGallery}
@@ -8506,8 +8533,8 @@ let mt = 0, qe = "", S = class extends j {
               </div>
             </div>` : b}
 
-        <div class="row ${v ? "stacked" : ""}" style=${H}>
-          <div class="timeline-col" style=${q}>
+        <div class="row ${v ? "stacked" : ""}" style=${j}>
+          <div class="timeline-col" style=${U}>
             <div class="view-toggle" style=${L}>
               <button
                 class="seg ${this._mode === "timeline" ? "active" : ""}"
@@ -8529,7 +8556,7 @@ let mt = 0, qe = "", S = class extends j {
                       .bands=${this._viewBands}
                       .loader=${this._loader}
                       .thumbVersion=${this._thumbVersion}
-                      .textSize=${y}
+                      .textSize=${w}
                       .textColor=${this._config.list_text_color ?? ""}
                       .durationSize=${R}
                       .durationColor=${this._config.list_duration_color ?? ""}
@@ -8597,11 +8624,10 @@ let mt = 0, qe = "", S = class extends j {
               .fsTimelinePadding=${a}
               .fsTimelineGutter=${n}
               .fsTimelineGrabWidth=${l}
-              .fsTimelineScrim=${u}
-              .fsTimelineScrimExtend=${_}
+              .fsTimelineScrim=${_}
+              .fsTimelineScrimExtend=${u}
               @playback-time=${this._onPlaybackTime}
               @playback-seek=${this._onPlaybackSeek}
-              @clip-ended=${this._onClipEnded}
               @live-playing=${this._onLivePlaying}
               @go-live=${this._onLive}
               @rewind=${this._onRewind}

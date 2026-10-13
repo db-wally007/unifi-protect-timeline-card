@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- A clip stops at its end, paused on its last frame. Play replays it; a skip or a seek resumes it.
+  It no longer rolls on into the footage after it.
+- A clip up to two minutes long is one file: nothing is stitched between its first frame and its
+  last, and every skip or seek inside it is a native seek. Longer clips are still prepared in
+  two-minute pieces, and never past the clip's end.
+
 ## [2.3.2] - 2026-10-08
 
 ### Fixed

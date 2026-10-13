@@ -438,6 +438,11 @@ export class MediaView extends LitElement {
   // A chunk that will play for less than this cannot hide a full cell's
   // prepare behind it, so the chunk after it is a slice too.
   private static readonly FOLLOW_QUICK_MS = 10_000;
+  // An event up to this long is ONE file: nothing is stitched between its first
+  // frame and its last, and every skip or seek inside it is a native seek (a
+  // 2-minute export prepares in ~2.5 s). Hand-overs between files were never
+  // invisible on the devices that matter — a jump back or forward at the seam.
+  private static readonly EVENT_ONE_FILE_MS = 120_000;
 
   // ---- scrub preview (low-res timelapse frames while dragging the timeline) --
   // Two <video>s leap-frog here for the same reason the follow engine does it:
@@ -3244,7 +3249,31 @@ export class MediaView extends LitElement {
 
   /** The latest instant continuous playback can show: the export floor. */
   private get _seekCeiling(): number {
-    return this.now - Math.max(this.delaySeconds, 12) * 1000;
+    const ceiling = this.now - Math.max(this.delaySeconds, 12) * 1000;
+    const ev = this._eventEnd;
+    // An event stops at its end: nothing past it is ever played or prepared.
+    return ev ? Math.min(ev - 250, ceiling) : ceiling;
+  }
+
+  /** The end of the event being played, never later than the NVR can export;
+   *  0 when no event is (continuous timeline playback). Playback STOPS here. */
+  private get _eventEnd(): number {
+    return this.clipEndTime > this.targetTime
+      ? Math.min(this.clipEndTime, Date.now() - MediaView.FOLLOW_AVAIL_LAG_MS)
+      : 0;
+  }
+
+  /** The event's end has played: hold its last frame, paused, and tell the host
+   *  (once). Nothing follows it — continuing into the next file was a seam the
+   *  viewer always saw. Play replays the event; a skip or seek resumes it. */
+  private _finishEvent(v: HTMLVideoElement): void {
+    this._followPaused = true;
+    v.pause();
+    if (!this._eventEndSent) {
+      this._eventEndSent = true;
+      this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
+    }
+    this._showFollowCtrl();
   }
 
   /** Play recorded footage from `t`: a cached chunk holding `t` if there is
@@ -3272,7 +3301,13 @@ export class MediaView extends LitElement {
     let start: number;
     let end: number;
     const cached = this._cachedChunkAt(target);
-    if (cached) {
+    const ev = this._eventEnd;
+    if (ev && ev - this.targetTime <= MediaView.EVENT_ONE_FILE_MS) {
+      // A short event is always the same ONE file, whatever the entry point —
+      // the first play, a replay, a resume after the card was hidden.
+      start = this.targetTime;
+      end = ev;
+    } else if (cached) {
       ({ start, end } = cached);
     } else {
       const cell = this._chunkStartFor(target);
@@ -3298,6 +3333,11 @@ export class MediaView extends LitElement {
    *  recently) and opens it at `t`, holding the current frame meanwhile. */
   private _seekFollowTo(tIn: number): void {
     const t = Math.max(this._seekFloor, Math.min(tIn, this._seekCeiling));
+    // A skip or seek after an event finished resumes it from where it lands.
+    if (this._eventEndSent) {
+      this._eventEndSent = false;
+      this._followPaused = false;
+    }
     const active = this._followActive;
     if (active) {
       const other = active === 'a' ? 'b' : 'a';
@@ -3361,6 +3401,8 @@ export class MediaView extends LitElement {
     let end = CUT_CHUNKS_AT_EVENTS ? segmentEndFor(start, gridEnd, this.footageSpans) : gridEnd;
     const availEdge = this.now - MediaView.FOLLOW_AVAIL_LAG_MS;
     if (end > availEdge) end = availEdge;
+    const ev = this._eventEnd;
+    if (ev && end > ev) end = ev; // an event's last file ends with the event
     if (end - start < 1500) return null; // not enough finalized footage yet
     const prev = {
       id: this._followSession[slot],
@@ -3532,6 +3574,9 @@ export class MediaView extends LitElement {
     if (token !== this._followToken || this._followActive === null) return;
     const standby = this._followActive === 'a' ? 'b' : 'a';
     const from = this._followPlayhead;
+    // Nothing follows an event: playback stops at its end.
+    const ev = this._eventEnd;
+    if (ev && from >= ev - 1500) return;
     // Normally the rest of the cell (up to two minutes), prepared while the
     // active chunk plays. If that has too little left to play to cover a whole
     // cell's prepare, take just the next slice so there is no stall.
@@ -3694,13 +3739,16 @@ export class MediaView extends LitElement {
     this.dispatchEvent(
       new CustomEvent('playback-time', { detail: { time: real }, bubbles: true, composed: true }),
     );
-    // Playing an event and past its end: tell the host (row highlight, seek bar
-    // off) and simply keep going — what follows the event is the next chunk on
-    // the same grid, so the rollover needs no reload at all.
     if (this.clipEndTime > 0) this._followNow = real; // the event's seek bar
-    if (this.clipEndTime > 0 && !this._eventEndSent && real >= this.clipEndTime) {
-      this._eventEndSent = true;
-      this.dispatchEvent(new CustomEvent('clip-ended', { bubbles: true, composed: true }));
+    // Playing an event and at its end: STOP there (see _finishEvent). Just
+    // before the very end — a timeupdate may not land on it, and on Apple WebKit
+    // a video must never be left `ended` (IOS-FREEZE-2026-09-26); a missed one
+    // is caught by _onFollowEnded.
+    const ev = this._eventEnd;
+    const margin = (APPLE_WEBKIT ? APPLE_END_MARGIN_S * 1000 : 250) * Math.max(1, v.playbackRate);
+    if (ev && !v.paused && !this._eventEndSent && real >= ev - margin) {
+      this._finishEvent(v);
+      return;
     }
     // Caught up near the live edge: 2×/4× can't be sustained (no finalized
     // footage ahead), so drop back to real time automatically + disable speed.
@@ -3728,6 +3776,13 @@ export class MediaView extends LitElement {
 
   private _onFollowEnded(slot: 'a' | 'b'): void {
     if (slot !== this._followActive) return;
+    // An event's last file: the event is over, nothing follows it.
+    const ev = this._eventEnd;
+    const v = this._followVideo(slot);
+    if (ev && v && this._followMeta[slot].end >= ev - 1500) {
+      this._finishEvent(v);
+      return;
+    }
     const standby = slot === 'a' ? 'b' : 'a';
     if (this._followMeta[standby].ready) this._swapFollow();
     else this._followSwapArmed = true; // hold last frame; swap when standby loads
@@ -4301,6 +4356,12 @@ export class MediaView extends LitElement {
 
   private _toggleFollowPlay = (e: Event): void => {
     e.stopPropagation();
+    // Play on a finished event plays it again, from its start.
+    if (this._followPaused && this._eventEndSent) {
+      this._seekFollowTo(this.targetTime);
+      this._showFollowCtrl();
+      return;
+    }
     this._followPaused = !this._followPaused;
     const v = this._followActive ? this._followVideo(this._followActive) : undefined;
     if (this._followPaused) v?.pause();

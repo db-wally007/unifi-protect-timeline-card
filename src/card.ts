@@ -1512,20 +1512,6 @@ export class UnifiProtectTimelineCard extends LitElement {
     this._playBand(e.detail);
   };
 
-  // A bounded event clip finished playing. ONE behaviour everywhere: keep
-  // rolling into the footage that follows the event. These cameras record
-  // continuously, so what comes after an event is usually the interesting part
-  // — and jumping to some other event instead is both surprising and expensive
-  // (every jump is another NVR export and another decode on the phone).
-  private _onClipEnded = (): void => {
-    if (!this._playingBand) return;
-    // The media view is already playing what follows (same chunk grid, no
-    // reload). Only the event state goes; `_targetTime` must NOT move, or the
-    // media view would take it as a new position and seek.
-    this._playingBand = undefined;
-    this._clearClip();
-  };
-
   /** The multi-camera page (card_version: multi): same ha-card + header shell
    *  (title, optional back button) as the single card, with <upc-multi-view>
    *  (event strip + live grid / clip playback) filling the rest. */
@@ -2020,7 +2006,6 @@ export class UnifiProtectTimelineCard extends LitElement {
               .fsTimelineScrimExtend=${fsTimelineScrimExtend}
               @playback-time=${this._onPlaybackTime}
               @playback-seek=${this._onPlaybackSeek}
-              @clip-ended=${this._onClipEnded}
               @live-playing=${this._onLivePlaying}
               @go-live=${this._onLive}
               @rewind=${this._onRewind}

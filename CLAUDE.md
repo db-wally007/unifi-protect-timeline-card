@@ -75,9 +75,15 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
   whole cells — measured prepare 30 s 0.7-1.1 s, 60 s 1.3 s, 120 s 2.2-2.7 s, so starts stay ~1 s
   while continuous playback exports a quarter as often. A chunk with < `FOLLOW_QUICK_MS` left to
   play prefetches a slice instead of a cell (no stall). The seek bar spans the
-  event in wall-clock time (`_renderEventSeekRow`), and `clip-ended` fires when playback passes
-  `clipEndTime` while playback simply carries on (the host only clears `clipEndTime` and its
-  highlight — rollover with no reload). `_seekFollowTo(t)` is THE seek: native inside a slot's
+  event in wall-clock time (`_renderEventSeekRow`).
+  **An event STOPS at its end (2026-10-12, user decision):** `_finishEvent` pauses on the last
+  frame and fires `clip-ended` once; hosts no longer react (the selection, highlight and seek bar
+  stay); Play replays from the start, a skip/seek resumes. Nothing is prepared past `_eventEnd`
+  and every chunk end is clamped to it. An event ≤ `EVENT_ONE_FILE_MS` (2 min) is ONE file
+  whatever the entry point — no seam inside it, every seek native. Reason: the user saw a jump
+  back/forward at EVERY hand-over between files on the tablet (headless measured them clean: 80
+  ms hold, +0.03 s), so rolling on after a clip read as "switching streams". The real fix for
+  seams is a single-element engine (zero-switch investigation). `_seekFollowTo(t)` is THE seek: native inside a slot's
   chunk, else a cached chunk covering `t` (`_chunkCache`, the last 4 sessions, kept instead of
   deleted) or one slice prepare. Seek bar: knob only while dragging, one seek on release, and the
   knob HOLDS the released position (`_followNow = t`) — `_onFollowTime` ignores a slot that is

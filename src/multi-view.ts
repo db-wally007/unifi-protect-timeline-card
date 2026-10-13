@@ -69,10 +69,6 @@ export class MultiView extends LitElement {
   @state() private _data = new Map<string, CameraData>(); // by camera entity_id
   @state() private _strip: MultiBand[] = []; // merged, newest-first
   @state() private _playback?: MultiBand; // undefined = live grid
-  // The event's end is behind us: playback has rolled on into the footage
-  // after it (same player, no reload), so the media view gets no event end.
-  // The start it was given must NOT change — it would read that as a seek.
-  @state() private _eventDone = false;
   // Events browsing mode (header chevron): the strip becomes a grid LIST and
   // the live cameras are UNMOUNTED (no video decode while browsing events).
   @state() private _expanded = false;
@@ -597,7 +593,6 @@ export class MultiView extends LitElement {
       start: Math.max(band.start - (d?.preMs ?? 0), 0),
       end: Math.min(band.end + (d?.postMs ?? 0), Date.now()),
     };
-    this._eventDone = false;
   }
 
   @state() private _eventSpan?: { start: number; end: number };
@@ -638,17 +633,6 @@ export class MultiView extends LitElement {
   private _closePlayback = (): void => {
     this._playback = undefined; // media-view unmounts (cancels the NVR export)
     this._eventSpan = undefined;
-    this._eventDone = false;
-  };
-
-  /** The event's end has played: keep rolling into the footage that FOLLOWS it,
-   *  exactly like the single-camera views do. These cameras record
-   *  continuously, so what happens after an event is usually the interesting
-   *  part. The media view is already playing it — this only drops the event
-   *  end (and with it the seek bar); the player stays mounted. */
-  private _onClipEnded = (): void => {
-    if (!this._playback) return;
-    this._eventDone = true;
   };
 
   // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
@@ -959,8 +943,8 @@ export class MultiView extends LitElement {
   /** The clip player, identical in both homes: the in-place .playwrap
    *  (collapsed page) and the .playbox lightbox over the expanded grid. */
   private _renderPlayer(b: MultiBand, d: CameraData | undefined, accent: string) {
-    // The event's span: its start stays put for the life of the selection (the
-    // media view seeks within it itself); its end goes once playback passes it.
+    // The event's span, fixed for the life of the selection: the media view
+    // seeks within it itself and stops at its end (paused on the last frame).
     const span = this._eventSpan ?? {
       start: Math.max(b.start - (d?.preMs ?? 0), 0),
       end: Math.min(b.end + (d?.postMs ?? 0), Date.now()),
@@ -972,7 +956,7 @@ export class MultiView extends LitElement {
       .gaps=${[]}
       .footageSpans=${d?.spans ?? []}
       .targetTime=${span.start}
-      .clipEndTime=${this._eventDone ? 0 : span.end}
+      .clipEndTime=${span.end}
       .maxClipSeconds=${this.config.max_clip_seconds ?? 600}
       .scrubbing=${false}
       .live=${false}
@@ -983,7 +967,6 @@ export class MultiView extends LitElement {
       .now=${Date.now()}
       .fsHandoff=${true}
       @fullscreen-handoff=${this._onFsHandoff}
-      @clip-ended=${this._onClipEnded}
       @clip-cancelled=${this._closePlayback}
     ></upc-media-view>`;
   }
