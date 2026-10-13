@@ -24,7 +24,12 @@ Protocol (card <-> this view, one websocket per player)
 -------------------------------------------------------
 Client -> server, text JSON:
     {"op": "live", "gen": n, "nvr_id", "camera_id", "channel"}
-    {"op": "play", "gen": n, "nvr_id", "camera_id", "channel", "start", "end"?}
+    {"op": "play", "gen": n, "nvr_id", "camera_id", "channel", "start", "end"?,
+     "withIdrs"?, "idrFrequency"?, "reverse"?, "source"?}
+        withIdrs + idrFrequency (ms) = keyframes only, at most one per
+        idrFrequency (1000 -> every keyframe, ~5 s apart, full resolution);
+        source "timelapse" = the NVR's timelapse track (640x360, one frame a
+        minute, only together with withIdrs).
     {"op": "pause"} | {"op": "resume"}      flow control for "play" streams
     {"op": "stop"}
 A new "live"/"play" replaces the stream in flight. `gen` is chosen by the
@@ -77,6 +82,8 @@ CLIENT_HEARTBEAT_S = 30
 
 PLAYBACK_PATH = "/proxy/protect/api/ws/playback"
 LIVESTREAM_PATH = "/proxy/protect/api/ws/livestream"
+# The Protect web app's Timelapse page: same parameters as playback.
+TIMELAPSE_PATH = "/proxy/protect/api/ws/timelapse"
 
 # The Protect web UI's own livestream parameters. `useWallClock` without
 # `rebaseTimestampsToZero` is what puts live on the same timeline as playback.
@@ -120,6 +127,59 @@ def _parse_packet(data: bytes) -> tuple[dict[str, Any], dict[str, Any]] | None:
         return None
     header, body = frames
     return (header if isinstance(header, dict) else {}), (body if isinstance(body, dict) else {})
+
+
+class PlaybackRefused(ValueError):
+    """The NVR answered a playback request with `success: false`."""
+
+
+async def connect_nvr(api: Any, path: str, params: dict[str, str]) -> aiohttp.ClientWebSocketResponse:
+    """Negotiate one NVR websocket (`GET <path>?... -> {url}`) and connect it.
+
+    Uses the unifiprotect integration's own authenticated session. The NVR mints
+    the URL with its own idea of its address; its port, path and query (they
+    carry the token) are kept and the configured host is used.
+    """
+    async with asyncio.timeout(CONNECT_TIMEOUT_S):
+        response = await api.request(
+            "get", f"{path}?{urlencode(params)}", require_auth=True, auto_close=False
+        )
+        try:
+            if response.status != 200:
+                raise ValueError(f"NVR refused the stream ({response.status})")
+            url = (await response.json(content_type=None))["url"]
+        finally:
+            response.release()
+        parts = urlsplit(url)
+        host = getattr(api, "_host", None) or parts.hostname
+        netloc = f"{host}:{parts.port}" if parts.port else host
+        url = urlunsplit((parts.scheme, netloc, parts.path, parts.query, ""))
+        session = await api.get_session()
+        return await session.ws_connect(
+            url, ssl=False if not getattr(api, "_verify_ssl", False) else None,
+            max_msg_size=0, heartbeat=CLIENT_HEARTBEAT_S,
+        )
+
+
+async def read_playback_grant(upstream: aiohttp.ClientWebSocketResponse) -> dict[str, Any]:
+    """The playback socket's opening packet -> its body ({channelName, start, end}).
+
+    Raises PlaybackRefused when the NVR declines the range (e.g. it starts past
+    the recording edge). The socket then idles until it is sent `resume`.
+    """
+    async with asyncio.timeout(CONNECT_TIMEOUT_S):
+        first = await upstream.receive()
+    if first.type != aiohttp.WSMsgType.BINARY or (parsed := _parse_packet(first.data)) is None:
+        raise ValueError("unexpected playback reply")
+    header, body = parsed
+    if not header.get("success", False):
+        raise PlaybackRefused(str(body.get("error") or "playback refused"))
+    return body
+
+
+def command_packet(command: str) -> bytes:
+    """A playback flow-control packet: `resume` or `pause`."""
+    return _packet({"command": command}, {})
 
 
 def resolve_camera(hass: HomeAssistant, data: Any, camera_id: str) -> str | None:
@@ -184,7 +244,7 @@ class _Relay:
         if self.kind != "play" or self.upstream is None or self.upstream.closed:
             return
         with suppress(ConnectionError, RuntimeError):
-            await self.upstream.send_bytes(_packet({"command": op["op"]}, {}))
+            await self.upstream.send_bytes(command_packet(op["op"]))
 
     async def start(self, op: dict[str, Any]) -> None:
         await self.stop()
@@ -203,6 +263,13 @@ class _Relay:
             await self._stream(gen, op)
         except asyncio.CancelledError:
             raise
+        except PlaybackRefused as err:
+            # Routine, not a fault: a player near the recording edge asks for
+            # footage the NVR has not written yet and asks again ~2 s later
+            # (the card's _notRecordedYet). At WARNING that filled the log.
+            _LOGGER.debug("Protect playback refused (%s): %s", op.get("camera_id"), err)
+            message = str(err) if "refused" in str(err) else f"playback refused: {err}"
+            await self.send_event({"ev": "error", "gen": gen, "message": message})
         except Exception as err:  # noqa: BLE001 - every failure goes back to the card
             _LOGGER.warning("Protect stream failed (%s %s): %s", op.get("op"), op.get("camera_id"), err)
             await self.send_event({"ev": "error", "gen": gen, "message": str(err) or type(err).__name__})
@@ -238,50 +305,28 @@ class _Relay:
             params = {"camera": camera, "channel": str(channel), **LIVE_PARAMS,
                       "requestId": f"upc-{camera}-{channel}"}
         else:
-            path = PLAYBACK_PATH
+            path = TIMELAPSE_PATH if op.get("source") == "timelapse" else PLAYBACK_PATH
             params = {"format": "FMP4", "camera": camera, "channel": str(channel),
                       "start": str(int(op["start"]))}
             if op.get("end"):
                 params["end"] = str(int(op["end"]))
+            # Playback modes the Protect web app also uses: withIdrs (keyframes
+            # only - its Timelapse page), reverse and idrFrequency.
+            for key in ("withIdrs", "reverse"):
+                if op.get(key):
+                    params[key] = "true"
+            if isinstance(op.get("idrFrequency"), (int, float)):
+                params["idrFrequency"] = str(int(op["idrFrequency"]))
 
-        api = data.api
-        async with asyncio.timeout(CONNECT_TIMEOUT_S):
-            response = await api.request(
-                "get", f"{path}?{urlencode(params)}", require_auth=True, auto_close=False
-            )
-            try:
-                if response.status != 200:
-                    raise ValueError(f"NVR refused the stream ({response.status})")
-                url = (await response.json(content_type=None))["url"]
-            finally:
-                response.release()
-            # The NVR mints the URL with its own idea of its address; keep its
-            # port, path and query (they carry the token) and use the configured host.
-            parts = urlsplit(url)
-            host = getattr(api, "_host", None) or parts.hostname
-            netloc = f"{host}:{parts.port}" if parts.port else host
-            url = urlunsplit((parts.scheme, netloc, parts.path, parts.query, ""))
-            session = await api.get_session()
-            self.upstream = await session.ws_connect(
-                url, ssl=False if not getattr(api, "_verify_ssl", False) else None,
-                max_msg_size=0, heartbeat=CLIENT_HEARTBEAT_S,
-            )
-
-        upstream = self.upstream
+        self.upstream = upstream = await connect_nvr(data.api, path, params)
         if op["op"] == "play":
             # The playback socket opens with one packet saying what it granted,
             # then sits idle until it is told to resume.
-            async with asyncio.timeout(CONNECT_TIMEOUT_S):
-                first = await upstream.receive()
-            if first.type != aiohttp.WSMsgType.BINARY or (parsed := _parse_packet(first.data)) is None:
-                raise ValueError("unexpected playback reply")
-            header, body = parsed
-            if not header.get("success", False):
-                raise ValueError(str(body.get("error") or "playback refused"))
+            body = await read_playback_grant(upstream)
             await self.send_event({"ev": "open", "gen": gen,
                                    "start": body.get("start"), "end": body.get("end")})
             if not self.paused:
-                await upstream.send_bytes(_packet({"command": "resume"}, {}))
+                await upstream.send_bytes(command_packet("resume"))
         else:
             await self.send_event({"ev": "open", "gen": gen, "start": None, "end": None})
 

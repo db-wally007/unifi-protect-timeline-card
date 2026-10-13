@@ -1,0 +1,7 @@
+scrub_sync:
+  name: Sync scrub preview
+  description: >-
+    Turns the newest footage's keyframes into the photos the timeline card shows
+    while it is dragged, and prunes the 7-day window. Returns {"ok": true, ...}
+    or {"ok": false, "error": "..."}; run it from a script to have failures
+    recorded.

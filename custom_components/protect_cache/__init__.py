@@ -37,6 +37,10 @@ and keeps live streams warm while a camera page is visible (`stream_warm.py`):
 and relays the NVR's own fMP4 playback/live streams to the card's single-player
 engine (`nvr_stream.py`, authenticated with a signed path):
     GET    /api/protect_stream/ws   (websocket)
+
+and builds the scrub-preview photos in config/.cache/protect_scrub from the
+NVR's keyframes (`scrub.py`, replacing pyscript/protect_scrub.py):
+    action protect_cache.scrub_sync   (also run every minute unless switched off)
 """
 
 from __future__ import annotations
@@ -50,6 +54,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .clip_session import async_setup_clip_sessions
 from .nvr_stream import async_setup_nvr_stream
+from .scrub import async_setup_scrub
 from .stream_warm import async_setup_stream_warm
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,4 +103,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_stream_warm(hass)
     # The NVR's own playback/live streams for the single-player engine (see nvr_stream.py).
     async_setup_nvr_stream(hass)
+    # Scrub-preview photos from the NVR's keyframes (see scrub.py).
+    await async_setup_scrub(hass, config)
     return True
