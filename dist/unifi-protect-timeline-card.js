@@ -2906,12 +2906,13 @@ class js {
     }
     this._indexAt = t ? Date.now() : Date.now() - Math.max(0, Ae - zs), i && this._requestSync();
   }
-  /** Fire the pyscript sync service (throttled). No-ops when pyscript isn't
-   *  installed — the card just keeps the plain black scrub stage. */
+  /** Ask protect_cache for a pass (throttled). It runs itself every 15 s, so
+   *  a stale index means it is failing; the call at least records why. No-ops
+   *  when protect_cache isn't installed — the card keeps a plain scrub stage. */
   _requestSync() {
     if (!this._hass) return;
     const t = Date.now();
-    t - this._lastSync < Ns || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_scrub_sync" }).catch(() => {
+    t - this._lastSync < Ns || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "protect_cache", service: "scrub_sync" }).catch(() => {
     }));
   }
   /** The block covering `t`, if any. Completed blocks win; the rolling head
@@ -7066,7 +7067,7 @@ var Vr = Object.defineProperty, Hr = Object.getOwnPropertyDescriptor, T = (e, t,
     (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
   return s && r && Vr(t, i, r), r;
 };
-const Wr = 3e4, jr = 2 * 6e4, qr = "2.3.2", Gr = 2e3, Yr = 1e3, Xr = 33, Kr = 1.3, Zr = 1.15;
+const Wr = 3e4, jr = 2 * 6e4, qr = "3.0.0", Gr = 2e3, Yr = 1e3, Xr = 33, Kr = 1.3, Zr = 1.15;
 let ut = 0, Ue = "", S = class extends j {
   constructor() {
     super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._loader = new si(2, () => {
@@ -7285,9 +7286,6 @@ let ut = 0, Ue = "", S = class extends j {
       thumbnail_cache_dir: "",
       scrub_preview: !0,
       scrub_preview_dir: "",
-      scrub_tip: !0,
-      scrub_preview_mode: "sprites",
-      // SPRITE-PREVIEW-2026-08-04 (temp; 'auto' long-term)
       scrub_fast_preview: "speed",
       fs_timeline: !0,
       fs_timeline_width: 165,
@@ -7828,8 +7826,6 @@ let ut = 0, Ue = "", S = class extends j {
               .live=${this._liveMode}
               .stacked=${this._isStacked()}
               .previewDir=${this._scrubDir()}
-              .tipEnabled=${this._config.scrub_tip !== !1}
-              .previewMode=${this._config.scrub_preview_mode ?? "sprites"}
               .fastPreview=${this._config.scrub_fast_preview ?? "speed"}
               .accent=${i}
               .clipEndTime=${this._clipEnd}

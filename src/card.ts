@@ -53,7 +53,7 @@ const BAND_REFRESH_MS = 30_000;
 // The card calls the sync service itself when the manifest is stale (job not
 // running / not run yet), at most once per SYNC_THROTTLE_MS.
 const SYNC_THROTTLE_MS = 2 * 60_000;
-const VERSION = '2.3.2';
+const VERSION = '3.0.0';
 
 // A playback-time step at least this large is a SKIP, not playback advancing;
 // the ruler glides across it. Well above the sub-second cadence of normal
@@ -818,8 +818,6 @@ export class UnifiProtectTimelineCard extends LitElement {
       thumbnail_cache_dir: '',
       scrub_preview: true,
       scrub_preview_dir: '',
-      scrub_tip: true,
-      scrub_preview_mode: 'sprites', // SPRITE-PREVIEW-2026-08-04 (temp; 'auto' long-term)
       scrub_fast_preview: 'speed',
       fs_timeline: true,
       fs_timeline_width: 165,
@@ -1960,8 +1958,6 @@ export class UnifiProtectTimelineCard extends LitElement {
               .live=${this._liveMode}
               .stacked=${this._isStacked()}
               .previewDir=${this._scrubDir()}
-              .tipEnabled=${this._config.scrub_tip !== false}
-              .previewMode=${this._config.scrub_preview_mode ?? 'sprites'}
               .fastPreview=${this._config.scrub_fast_preview ?? 'speed'}
               .accent=${accent}
               .clipEndTime=${this._clipEnd}

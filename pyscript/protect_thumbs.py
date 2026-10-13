@@ -35,15 +35,18 @@ Configuration (env wins; see the block below the imports)
   UNIFI_PROTECT_CAMERAS / unifi_protect_cameras    required
   UNIFI_PROTECT_ENTRY_ID / unifi_protect_entry_id  optional, "" = auto-discover
   UNIFI_PROTECT_SCHEDULE / unifi_protect_schedule  optional, false = no built-in
-                                                   timers (both jobs), see below
+                                                   timer, see below
+The camera list and entry id are shared with the scrub-preview job in
+custom_components/protect_cache/scrub.py, which reads the same settings (it
+reads this pyscript: block from configuration.yaml), so the two cannot drift.
 
 Monitoring
 ----------
 By default this job runs itself once a minute, and that leaves no run history:
 a sync that fails reaches only the log. To have failures seen, set
-`unifi_protect_schedule: false` (it applies to protect_scrub.py too) and run
-both syncs from Home Assistant SCRIPTS on an automation's schedule. Each sync
-RETURNS {"ok": true, ...} or {"ok": false, "error": "..."}, because pyscript
+`unifi_protect_schedule: false` and run the sync from a Home Assistant SCRIPT
+on an automation's schedule (protect_cache.scrub_sync can run from one too).
+The sync RETURNS {"ok": true, ...} or {"ok": false, "error": "..."}, because pyscript
 catches any exception raised in a service and only logs it, so the script has
 to check `ok` and stop with an error, which records a failed run:
 
@@ -117,7 +120,9 @@ from datetime import datetime, timezone
 # then fails to load, pyscript never retries it, and pyscript.protect_thumbs_sync stays
 # missing until a reload - the every-minute script dying with ServiceNotFound (2026-10-08).
 
-# ---- install configuration — KEEP THIS BLOCK IDENTICAL IN BOTH FILES --------
+# ---- install configuration ---------------------------------------------------
+# protect_cache/scrub.py reads the same settings in the same order (it reads
+# this pyscript: block from configuration.yaml) - change both together.
 # Nothing install-specific is hardcoded, so this file is pure code: it can live
 # in a git checkout and be symlinked into /config/pyscript/ with no local edits.
 # Read ONCE, when pyscript loads this module. First match wins:
@@ -150,8 +155,8 @@ def _parse_cameras(raw):
     mapping when configured in configuration.yaml.
 
     NEVER raises: a malformed entry is logged and dropped, and a value that
-    yields no pairs leaves the map empty — which both sync jobs already treat as
-    "not configured yet" and no-op on. Raising here would abort the module load
+    yields no pairs leaves the map empty — which the sync already treats as
+    "not configured yet" and no-ops on. Raising here would abort the module load
     and take every @service in this file down with it.
     """
     out = {}
@@ -211,9 +216,9 @@ def _schedule_conf():
     return str(val).strip().lower() not in ("false", "0", "no", "off")
 
 
-# Both jobs' built-in once-a-minute timers. `false` switches them off, to run
-# the syncs from Home Assistant scripts instead, where a failed run is recorded
-# (see "Monitoring" in each file's docstring).
+# The built-in once-a-minute timer. `false` switches it off, to run the sync
+# from a Home Assistant script instead, where a failed run is recorded (see
+# "Monitoring" in the docstring).
 SCHEDULED = _schedule_conf()
 # ---- end install configuration ----------------------------------------------
 

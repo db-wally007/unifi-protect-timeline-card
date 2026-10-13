@@ -10,7 +10,14 @@ pick up where the last session left off.
 **UniFi Protect** camera UX: a vertical **timeline** scrubber (fixed playhead, drag footage past
 it, pinch/wheel zoom, live + historical playback) plus an **events** list (detections newest-first,
 grouped by day, with thumbnails). Lit + a `<canvas>` timeline, built with Vite into a single ESM
-file. It talks only to Home Assistant's `unifiprotect` integration — there is no direct NVR access.
+file. The browser never talks to the NVR: footage comes through `protect_cache`'s relay, which uses
+the `unifiprotect` integration's own authenticated NVR session.
+
+**3.0 (2026-10-14) replaced the whole playback stack** — HA's `<ha-camera-stream>` for live, clip
+sessions (export -> faststart remux -> Range-served file) for events, the two-slot "follow" engine
+for continuous footage, stream warming, and the pyscript scrub job — with ONE player fed by the
+NVR's own websockets plus a keyframe-based scrub job. The old design and its measurements live at
+tag `v2.3.2` / branch `checkpoint/pre-zero-switch`; don't resurrect its gotchas from memory.
 
 ## Layout
 
@@ -20,8 +27,13 @@ src/card.ts               root <unifi-protect-timeline-card>: config, state, orc
                           live tick, band/manifest fetching, mode (timeline/list) switching.
 src/scrubber-timeline.ts  the <canvas> timeline: ticks, track, event bars, inline thumbnails,
                           playhead/LIVE pill, pointer gestures (drag/pinch/wheel), zoom.
-src/media-view.ts         the video pane: live <ha-camera-stream> + streamed historical clips
-                          + the scrub preview (cached timelapse blocks/parts).
+src/media-view.ts         the video pane: ONE stable stage around the player (live, recorded,
+                          events), the control bar / seek bar, and the scrub preview layer.
+src/nvr-player.ts         the player engine: one <video> + one MediaSource fed by the relay.
+src/data/nvr-frames.ts    deframes the NVR's stream framing into init/media segments + keyframe
+                          times (unit-tested; byte-identical to the Python port in scrub.py).
+src/data/scrub-preview.ts loader for the scrub-preview photos (index, sidecars, sheet LRU).
+src/live-grid.ts          multi page's live grid — still HA's <ha-camera-stream> per tile.
 src/events-list.ts        the events list view (day dividers, lazy thumbnails, infinite scroll).
 src/data/thumbnail-loader.ts  shared NVR-safe thumbnail loader (manifest-first, blob cache).
 src/data/detections.ts    binary_sensor history -> detection bands (pure, unit-tested).
@@ -29,12 +41,11 @@ src/data/time-scale.ts    time<->pixel + pan/zoom math (pure, unit-tested).
 src/data/ha-urls.ts       proxy URL builders + auth/sign_path.
 src/data/types.ts         CardConfig + shared interfaces.
 pyscript/protect_thumbs.py  OPTIONAL server-side event/thumbnail cache (see README).
-pyscript/protect_scrub.py   OPTIONAL scrub-preview cache: timelapse blocks + head/tip tiers.
-custom_components/protect_cache/  serves both caches from config/.cache/ (NOT www/, so
-                          HA backups skip them — Core has no configurable excludes, and a
-                          symlink can't work: aiohttp static uses follow_symlinks=False).
-                          clip_session.py = the on-demand clip sessions (export -> faststart
-                          remux -> Range-served file -> deleted), see "Historical" below.
+custom_components/protect_cache/  REQUIRED. __init__.py serves both caches from config/.cache/
+                          (NOT www/, so HA backups skip them — Core has no configurable excludes,
+                          and a symlink can't work: aiohttp static uses follow_symlinks=False);
+                          nvr_stream.py = the stream relay (/api/protect_stream/ws);
+                          scrub.py = the scrub-preview job (action protect_cache.scrub_sync).
 dist/                     the built bundle — COMMITTED on purpose (HACS installs it directly).
 ```
 
@@ -44,78 +55,56 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
   near the top (`PLAYHEAD_FRAC`). Dragging pans the domain; tap/drag/wheel emit `scrub`/`scrub-end`
   with a time; the card loads footage for that time. Zoom is stepped (`SPAN_STEPS`) with an eased
   animation (`_animDomain`).
-- **Live.** Live is HA's `<ha-camera-stream>`, which negotiates both LL-HLS and go2rtc WebRTC for
-  these H.264 2688x1512 cameras. A fresh session starts MUTED so asynchronous player setup cannot
-  lose autoplay permission. HA normally settles on WebRTC while muted; unmuting the OUTER
-  `ha-camera-stream` lets HA switch to HLS when WebRTC has no audio. The card must always target
-  HA's NON-HIDDEN player (`data/live-video.ts`), never the first nested `<video>`: during startup
-  HLS is visible while WebRTC is hidden, then HA can reverse them. Live is unmounted when leaving
-  it, and remounted muted on return. Polling the visible video drives play/pause state.
-- **Historical (bounded event clips).** The export proxy IGNORES `Range:` and the NVR writes the
-  MP4 index (`moov`) LAST, so the export can be neither started nor seeked as a stream. It used to
-  be downloaded whole into a Blob; at the measured ~52 MB/min of high-res footage that peaked near 740 MB for a
-  7-minute event and got the WKWebView content process killed on iOS (the Companion app appeared to
-  "jump back to the dashboard" exactly when the download finished). Now the card POSTs
-  `/api/protect_clip/session`; `custom_components/protect_cache` exports the range to disk,
-  remuxes it with `-c copy -movflags +faststart` (~0.3 s) into a throwaway session directory, and
-  serves it via `FileResponse` — real HTTP Range, so `<video>` streams and seeks natively.
-  Measured: a 7-min clip prepares in ~9 s and playback pulls **18.5 MB of 332 MB** (5.6%) to play
-  the head and seek to 95%. Sessions are deleted when the clip is superseded or the view is torn
-  down, and swept after 30 min (a hard page navigation runs no `disconnectedCallback`, so the
-  sweep — not the client — is what reaps those). `ffmpeg -f mp4` is REQUIRED: the temp file ends
-  in `.tmp` and ffmpeg won't infer a muxer from that.
-  **Both stages are all-or-nothing before the client sees a frame** (the export has to reach its
-  last byte because `moov` is there, and faststart is a two-pass rewrite), which is why the
-  request handed to that pipeline has to be SMALL — see the playlist gotcha below.
-- **EVERY event — merged or not, any length — plays on the follow engine's chunk grid (since
-  2026-10-01).** The host passes the event's span as `targetTime`/`clipEndTime` and never moves
-  `targetTime` again for that selection; media-view starts a fresh grid at the event start
-  (`_followOrigin`). Grid CELLS are 2 min (`FOLLOW_MAX_CHUNK_MS`), but a start or seek loads only
-  the 30 s SLICE of its cell holding `t` (`FOLLOW_SEEK_CHUNK_MS`), then the rest of the cell, then
-  whole cells — measured prepare 30 s 0.7-1.1 s, 60 s 1.3 s, 120 s 2.2-2.7 s, so starts stay ~1 s
-  while continuous playback exports a quarter as often. A chunk with < `FOLLOW_QUICK_MS` left to
-  play prefetches a slice instead of a cell (no stall). The seek bar spans the
-  event in wall-clock time (`_renderEventSeekRow`).
-  **An event STOPS at its end (2026-10-12, user decision):** `_finishEvent` pauses on the last
-  frame and fires `clip-ended` once; hosts no longer react (the selection, highlight and seek bar
-  stay); Play replays from the start, a skip/seek resumes. Nothing is prepared past `_eventEnd`
-  and every chunk end is clamped to it. An event ≤ `EVENT_ONE_FILE_MS` (2 min) is ONE file
-  whatever the entry point — no seam inside it, every seek native. Reason: the user saw a jump
-  back/forward at EVERY hand-over between files on the tablet (headless measured them clean: 80
-  ms hold, +0.03 s), so rolling on after a clip read as "switching streams". The real fix for
-  seams is a single-element engine (zero-switch investigation). `_seekFollowTo(t)` is THE seek: native inside a slot's
-  chunk, else a cached chunk covering `t` (`_chunkCache`, the last 4 sessions, kept instead of
-  deleted) or one slice prepare. Seek bar: knob only while dragging, one seek on release, and the
-  knob HOLDS the released position (`_followNow = t`) — `_onFollowTime` ignores a slot that is
-  not `ready`, whose stale media against a reset range snapped bar and ruler back. Skip ±15 s,
-  timeline taps while playing and the bar all go through it.
-  **Why the playlist it replaced failed (user-reported 2026-10-01 on a 17m15s row):** each seek
-  re-exported FROM the seek point, so skip-back clamped to that partial file's start (15 s
-  became 1 s), and the bar emitted `playlist-seek` per pointer move — an export per pixel,
-  landing wherever the last one finished. Measured after, same row: drag to 3:51 = 1 prepare on
-  release, lands 3:52; skip back = native, 0 requests; skip back across a chunk = 1 prepare;
-  skip forward into a played chunk = cache hit, 0 prepares; end of event = no reload.
-  `max_clip_seconds`/`_loadSegment` remain only for the live fallback's bounded clip.
-- **Historical (delayed-follow).** Chunks follow the grid above (2-min cells entered through a
-  30 s slice, ~97 MB per cell) across two leap-frogging `<video>` slots. **Since 2026-09-24 each chunk is a clip SESSION**
-  (`startClipSession`, the same pipeline as event clips), not a Blob pulled from the export
-  proxy: the Blob path (raw export, `moov` at the END, whole chunk in page memory) is what WebKit
-  would not reliably play — Safari on a Mac showed 45-60 s of black after a clip ended, and the
-  iPhone app dropped its connection — while the same footage as a faststart session file served
-  with HTTP Range played every time. Each slot owns one session (`_followSession`), released 5 s
-  after the slot is refilled and on `_stopFollow`; prepares are abortable with a 45 s deadline.
-  Measured: clip end → moving footage 2.1 s, timeline tap → 2.9 s, 2 session dirs while following.
-  **Failures are BUDGETED** (`_followFailed`, `FOLLOW_RETRY_DELAYS_MS` = 1/3/8 s, then a message):
-  an unbounded 700 ms retry re-exported an unplayable chunk 29 times (~870 MB) in 40 s. Only a
-  "not finalized yet" miss (no request made) retries freely. Failures are written to the HA log
-  via `system_log.write` with the device's user agent (capped per page load) — the way to see
-  what a phone did.
-  Segments are CUT at event boundaries (`segmentEndFor`): adaptive recording keeps high-res (2K) around
-  events and a continuous 640×360 tier between, and the NVR serves ONE tier per export — a
-  request overlapping an event comes from the high-res track where idle is just sparse keyframes
-  (played it fast-forwards and desyncs the marker). Single-tier segments play real time, so
-  `clipStart + currentTime` drives the playhead correctly (`playback-time` event), high-res during
-  events, low-quality between — UniFi-app parity.
+- **The player (`nvr-player.ts`, "zero switch").** ONE `<video>` + ONE MediaSource
+  (ManagedMediaSource on iOS, attached via `srcObject` with `disableRemotePlayback`), fed from the
+  NVR's own websockets — exactly what the Protect web app does. Media time = wall-clock seconds −
+  `base` (`base` = now − 45 days, segments mode, `timestampOffset = −base`), so live and recorded
+  footage share ONE timeline and every seek is a seek inside one buffer; nothing is ever handed
+  from one element to another. Buffer kept ~45 s behind / 12-30 s ahead (`BACK_KEEP_S`,
+  `AHEAD_LOW_S`/`AHEAD_HIGH_S`); recorded streams are flow-controlled with pause/resume; live joins
+  on a keyframe and holds ~1 s behind its edge (`LIVE_TARGET_S`, catches up past 4 s). Failures are
+  BUDGETED (`RETRY_DELAYS_MS` 1/3/8 s, then a message). Hooks to media-view: frame/change/
+  boundReached/failed/problem/play. Measured on the LAN (2688x1512): live drill-in 0.86 s (0.2-0.6 s
+  behind real time), back to LIVE 0.89 s, Back 15 s exact (−0.02 s), skips ±0.05 s, a 30-min scrub
+  lands exactly, an event's first frame 0.42 s, zero exports. Device results: iPhone HA app (iOS
+  26.6.1) ManagedMediaSource OK; the Android 16 wall tablet (WebView Chrome 153) MediaSource OK.
+- **The relay (`protect_cache/nvr_stream.py`, `/api/protect_stream/ws`).** The browser cannot
+  reach the NVR (Protect login, self-signed cert, remote access through HA), so this view relays
+  bytes with the integration's session; it does NOT parse them. The card opens it via
+  `auth/sign_path` (a browser websocket can't send a header). Client JSON ops live/play/pause/
+  resume/stop with a `gen`; server = binary (4-byte gen + raw NVR bytes) + text events
+  open/end/error. Relaying costs ~1% of a core per live stream, ~3% at full playback speed.
+- **NVR stream protocol (measured, keep).** Negotiate `GET /proxy/protect/api/ws/{playback|
+  livestream}?...` → `{url}`, then connect with the configured host (keep port/path/query — the
+  token). Playback params `format=FMP4, camera, channel, start, end`; it first sends a Protect
+  packet (`{success}` + `{channelName,start,end}`), then IDLES until a `{command:"resume"}` packet
+  (two frames `[1|2, fmt=1, deflated=1, 0, len32] + zlib(JSON)`); `pause` stops it within ~250 ms.
+  Live uses the web UI's params (`useWallClock=true`, `rebaseTimestampsToZero=false`,
+  `allowPartialGOP`, 100 ms fragments); first keyframe 0.10-0.15 s after the request. Frames
+  `[type:1][len:3][payload]`: 248 codec, 250 init, 249/255 segment begin/end, 251 = PIECES of one
+  moof (tfdt in a later piece), 254 mdat header, 252 video, 253 audio, 247 timestamps. Wall-clock
+  tfdt at 90 kHz. Recorded footage only on channel 0. Keyframes every 4.99 s.
+  `withIdrs=true&idrFrequency=<ms>` = keyframes only (idrFrequency is MILLISECONDS and needs
+  withIdrs; withIdrs alone = the full stream). `ws/timelapse` needs withIdrs and is the NVR's own
+  640x360 track at ONE frame a minute. A finished playback socket is NOT closed by the NVR.
+- **Events stop at their end (2026-10-12, user decision).** `_finishEvent` pauses on the last frame
+  and fires `clip-ended` once; hosts no longer react (selection, highlight and seek bar stay); Play
+  replays from the start, a skip/seek resumes. The engine's `setBound` stops at `_eventEnd`
+  (`END_MARGIN_MS` short of it). The seek bar moves only its knob while dragging and seeks once on
+  release (`_followNow` holds the released position) — an earlier engine fired an export per
+  pixel. (Parked idea, user liked it: paint the scrub-preview photos while that bar is dragged.)
+- **Scrub preview job (`protect_cache/scrub.py`, since 3.0).** Every 15 s, per camera: playback
+  socket in keyframe-only mode from a persisted cursor → one ffmpeg decodes the keyframes
+  (`-skip_frame nokey`, showinfo pts → wall time) into 640x360 tiles → Pillow packs 4x4 sheets
+  (JPEG 60) on a fixed 5 s SLOT grid (120 per 10-min block; every 6th slot → 120 per hour
+  overview). Writes the layout the card already read (`<S>.fast-sprite.json` + `<S>.f<k>.jpg`,
+  `o<H>…`, head `h<S>-<E>.fast-sprite.json` whose full sheets are the block's own `<S>.f<k>.jpg`).
+  The cursor stands just after the last keyframe that ARRIVED (the NVR writes ~13-20 s late and
+  simply delivers what it has); an empty range is a gap only once it ended >60 s ago. Measured: a
+  10-min block = 120 keyframes / 37 MB (night) in ~1.3 s, ~33 ms CPU per keyframe; newest photo
+  20-31 s behind live; HA container 50-100% (old pyscript job, spikes ~170%) → 18.8%. Monitoring:
+  an HA script calls `protect_cache.scrub_sync`, which JOINS the pass in flight (a "skipped" would
+  report success for a failing job).
 - **Events.** Two sources are unioned: the optional thumbnail-cache **manifest** (exact Protect
   events with local thumbnails, a rolling window) for recent events, plus **binary_sensor history**
   for older ones (back to recorder retention). The list lazy-loads thumbnails via
@@ -123,50 +112,63 @@ dist/                     the built bundle — COMMITTED on purpose (HACS instal
 
 ## The server-side helpers hold NO install-specific values
 
-`pyscript/*.py` and `custom_components/protect_cache/` are **the deployed files** — a working
-install symlinks `/config/pyscript/protect_{thumbs,scrub}.py` and
+`pyscript/protect_thumbs.py` and `custom_components/protect_cache/` are **the deployed files** — a
+working install symlinks `/config/pyscript/protect_thumbs.py` and
 `/config/custom_components/protect_cache` straight at this checkout, so there is exactly one copy
 of each and editing either path edits this repo. Two consequences:
 
 - **Never hardcode a camera id, entity id, config-entry id or NVR address in them.** They are read
   from `UNIFI_PROTECT_CAMERAS` / `UNIFI_PROTECT_ENTRY_ID` in the environment, falling back to
-  `unifi_protect_*` under `pyscript:` in `configuration.yaml` (see the fenced *install
-  configuration* block, which must stay byte-identical in both pyscript files). This is not just
-  hygiene: the checkout lives under `config/www/`, which HA serves **unauthenticated** at
-  `/local/...`, so anything written into these files is published.
+  `unifi_protect_*` under `pyscript:` in `configuration.yaml` — protect_thumbs.py's *install
+  configuration* block and `_conf` in scrub.py read the SAME settings in the same order (scrub.py
+  reads the pyscript block out of the config HA hands `async_setup`); change both together. This
+  is not just hygiene: the checkout lives under `config/www/`, which HA serves
+  **unauthenticated** at `/local/...`, so anything written into these files is published. Never
+  put camera footage under `/local` either.
 - **An edit here is live on the next `pyscript.reload`** (or HA restart for `protect_cache`). There
   is no separate deploy step, and no second copy to keep in sync.
 
 ## Gotchas (these cost real debugging time — keep them)
 
-- **A merged display event is NOT a clip, and the gap setting cannot save you.** `groupBands`
-  merges events with sub-`event_merge_gap_seconds` gaps into one row; on 2026-09-19 that was 43
-  garden events over **37m56s**. Handing that span to one clip session measured **34.9 s and
-  1.29 GB** on disk (plus the same again through the remux) — and because the overlay had no
-  progress, no deadline and no Cancel, the user retapped, and each retap started another export.
-  Re-grouping seven days at different settings: 60 s → longest row 37m56s, 30 s → 23m50s,
-  15 s → 19m38s. The activity genuinely is continuous, so the merge gap is a browsing preference,
-  not a remedy. Measured prepare times (2688x1512, LAN): 14 s → 0.60 s / 12.5 MB; 120 s → 4.14 s /
-  97 MB; 600 s → 17.1 s / 525 MB; 1500 s → 34.9 s / 1.29 GB. Playback then STREAMS: 14.4 MB
-  fetched to play the first 10 s of a 102 MB clip.
+- **The NVR REFUSES a playback that starts past its recording edge** (~13-20 s behind now) and
+  LIVE has no history. So a rewind into that band lands on the earliest live frame, recorded
+  playback that catches the edge waits (`_notRecordedYet`, retried every ~2 s), and the relay logs
+  those refusals at DEBUG — at WARNING they filled the HA log.
+- **A seek before the init segment is LOST** (currentTime resets to 0): `_tick` re-applies the
+  target. **MediaSource duration only grows with appends** — a seek past it is CLAMPED to the
+  buffered end and hangs `seeking`: keep `ms.duration` a day past now (`_extendDuration`).
+- **WebKit: append the init segment ALONE first.** A SourceBuffer gets 5% of its budget until a
+  video track exists, so init + media in one append threw QuotaExceeded on the iPhone ("it
+  doesn't even start"). iOS budget ~105 MB per SourceBuffer.
+- **Headless Chrome (software decode) STALLS on a backward seek** that must decode from a keyframe
+  seconds back (plain MSE, any resolution). Recovery after 1.2 s: seek to the keyframe, then
+  forward (`_recoverSeek`, keyframes from trun flags). Real devices did direct backward seeks in
+  0.5-1 s; the recovery is only a fallback — don't "fix" device behaviour from headless results.
+- **aiohttp's `WebSocketResponse` deflates by DEFAULT.** The relay passes `compress=False`: with
+  it on, every video frame went through zlib in HA's executor (44.7% of a core at full playback
+  speed) and a browser leaving mid-send logged "exception in shielded future ...
+  ClientConnectionResetError".
+- **A playback socket is never closed by the NVR when its range is done** — the scrub job treats
+  1.5 s of silence as the end. The relay instead relies on the card's flow control and windows.
+- **The scrub job's cursor follows ARRIVED keyframes, never the requested end.** Accepting the
+  requested end near live filled not-yet-written slots with the previous photo FOREVER (sheets
+  are immutable). Only an empty range that ended >60 s ago is a gap.
 - **These cameras record `always`, not `adaptive`** (`select.*_recording_mode`, all three).
-  So there is no cheap 640x360 idle tier — idle costs the same ~50 MB/min as event footage, and
-  the mixed-tier fast-forward hazard `footage-map.ts` describes cannot occur here
-  (`CUT_CHUNKS_AT_EVENTS` is already `false`). Re-check before relying on either behaviour.
-- **A cancelled request cannot stop an executor thread.** HA runs aiohttp with
-  `handler_cancellation=True`, so a client that gives up DOES cancel the handler — but the remux
-  used `subprocess.run` inside `async_add_executor_job`, which no cancellation can reach, and the
-  view's cleanup caught `Exception`, not `CancelledError`, so the session directory leaked too.
-  `clip_session.py` now uses `asyncio.create_subprocess_exec`, catches `BaseException` around the
-  build, counts waiters so an export nobody wants is cancelled, and dedupes identical in-flight
-  requests. uiprotect calls the NVR with `timeout=0` — any timeout has to be ours.
+  So there is no cheap 640x360 idle tier — idle costs the same ~50 MB/min as event footage.
+  Re-check before relying on either behaviour.
+- **A merged display event can be long** (`groupBands`, `event_merge_gap_seconds`: 43 garden
+  events over 37m56s on 2026-09-19; 30 s gap → 23m50s, 15 s → 19m38s — the activity genuinely is
+  continuous). The single player streams it like any footage; the old clip pipeline needed 35 s
+  and 1.3 GB to export it, which is what made HA crawl when the user retapped.
+- **uiprotect calls the NVR with `timeout=0`** — any timeout has to be ours (`CONNECT_TIMEOUT_S`).
 
 - **Canvas `ctx.font` cannot use CSS `var()`** — it silently fails and the font stays default.
   Resolve the family with `getComputedStyle(this).fontFamily` and use a concrete `${px}` size.
 - **Canvas sizing flash:** resize the backing store and `_draw()` **synchronously** (not via rAF)
   and skip zero-size measurements, or text flashes the wrong size while layout settles.
-- **`<ha-camera-stream>` fights you:** don't try to pause/mute it to "keep it alive" — it re-asserts
-  autoplay every render (CPU + audio bleed). Unmount it; poll for pause.
+- **`<ha-camera-stream>` fights you** (only the multi page's live grid uses it since 3.0): don't
+  try to pause/mute it to "keep it alive" — it re-asserts autoplay every render (CPU + audio
+  bleed). Unmount it.
 - **rAF-driven loops must call `_draw()` synchronously** (momentum glide, zoom animation): a loop
   that panned via `_setDomain` → `_scheduleDraw` left the canvas FROZEN for the whole glide,
   because the loop's own next-frame scheduling kept cancelling the pending draw callback before
@@ -192,53 +194,24 @@ of each and editing either path edits this repo. Two consequences:
   coverage to ~50 s and jumps a whole block at every `xx:x1:00` run. Result: a preview frame up to
   ~9 minutes from its own label, only ever near live (completed blocks are named `<start>.mp4` and
   were always fine). Fixed by naming it `h<start>-<end>.mp4`. Same trap applies to any future
-  re-exported artefact.
-- **`ha-camera-stream` needs `--video-max-height: 100%`, or live is top-aligned AND undersized in
-  fullscreen.** Both HA players style their inner `<video>` (in their own shadow root, unreachable
-  by our CSS) as `max-height: var(--video-max-height, calc(100vh - 97px))` — the 97px being HA's
-  allowance for its own toolbar. Our fullscreen stage IS `100vh`, so the cap binds: the video box
-  became 703px inside an 800px stage and, being `display:block`, sat at the TOP, while
-  scrub/clip/follow centre via `object-fit: contain`. Measured 1250x703 @ gap 0/97 before,
-  1280x720 @ gap 40/40 after. The custom property inherits through the shadow boundary — that is
-  the only lever. **Not reproducible outside fullscreen** (the stage is then shorter than the cap),
-  so always verify this one with the player actually fullscreen. Same override in `live-grid.ts`.
-- **Reliable high-resolution startup needs the HA worker warm and segment cadence aligned.**
-  Measured 2026-08-05: with HA's default six-second segment target, UniFi's five-second keyframes
-  produced 10-second HLS segments. `stream.segment_duration: 5`, `part_duration: 1`, and LL-HLS
-  produce ~4.994-second segments with ~1-second parts. `preload_stream: true` on the three high-res
-  camera preferences removed cold-start outliers: standalone starts were 756-1388 ms (10 trials),
-  return-to-LIVE was 428-1858 ms (10 trials), and audio handoff was 1436 ms. Preload has continuous
-  network cost; document that tradeoff rather than silently enabling it in a reusable component.
-- **A hidden HA transport is not a presented frame.** Both HA candidates can have an empty
-  `currentSrc`, so requestVideoFrameCallback deduplication keys by VIDEO IDENTITY + source and a
-  transition generation. A stale callback cannot release a newer hold. LIVE holds have a hard
-  five-second backstop; historical exports retain a 15-second backstop.
+  re-made artefact — scrub.py's head sidecars and partial sheets carry `h<start>-<end>` too, and a
+  sheet is never rewritten under the same name.
 - **`upc-live-grid` can be hidden without disconnecting.** Bubble popups and cached views use
   `display:none`; removing a video later does not stop its pipeline. The grid's IntersectionObserver
   calls `releaseVideosIn()` BEFORE rendering streams out, then remounts fresh players when visible.
-- **Anything cached off `cameraId` must be reset when `cameraId` changes.** The held-frame
-  poster fallback (`_posterWarm`) is latched — `if (this.live && !this._posterWarm)` — because
-  `entity_picture` carries a token that changes on every state update, so refreshing it freely
-  re-fetches constantly. That latch had no camera-switch reset, so it kept the FIRST camera's
-  still for the life of the card, and `_holdFrame` prefers `_posterWarm` over `_posterUrl()`.
-  A second latch (`if (!img.getAttribute('src'))`) pinned the `<img class="freeze">` src the
-  same way. Result: after switching cameras, every hold that couldn't copy its frame — i.e.
-  **every scrub start while live is on screen**, which cannot be drawn to a canvas on
-  Apple/Android hardware decoders — flashed the OLD camera's picture. Fixed 2026-08-04, tagged
-  `BUGFIX-POSTER-2026-08-04`; `_holdFrame`'s "already holding, nothing better to copy" early
-  return needed the same treatment (`_releaseFrame()` on camera change) or a hold captured from
-  the old camera survived the switch and got re-armed forever.
-  **Not reproducible in headless Chromium**, which software-decodes and copies the frame
-  happily — force the path with `_looksBlack = () => true` to test it.
+- **Anything cached off `cameraId` must be reset when `cameraId` changes.** In 2.x a latched
+  held-frame poster kept the FIRST camera's still for the life of the card, so every hold that
+  couldn't copy its frame flashed the OLD camera's picture (`BUGFIX-POSTER-2026-08-04`). The 3.0
+  hold frame is canvas-only, but `willUpdate` still releases it (`_releaseFrame()`) on a new
+  event/camera — keep that. Hardware decoders often can't be drawn to a canvas; headless
+  Chromium software-decodes and copies happily — force that path with `_looksBlack = () => true`.
 - **Don't grep the minified bundle** to verify a fix — build with `--minify false` if you must.
-- **Never walk a full directory listing in pyscript.** The scrub cache is ~24k files per camera
-  and the job runs every minute; the name-classification loops this used to do were measured
-  (2026-09-21) pinning the HA event loop at 88-96% of a core for 15-20 s of every minute — the
-  whole container CPU sawtooth. pyscript AST-interprets every iteration, while native Python does
-  the same scan in 24 ms. `protect_scrub.py` now routes all seven of those walks through `_ints()`
-  (`set(map(int, re.findall(...)))`) and `_glob()` (`fnmatch.filter`) and only walks the matches:
-  main thread 28.2% -> 17.7%. pyscript exposes every builtin except six, so `map`/`set`/`int` are
-  native C — but there are still no generator expressions.
+- **Never walk a full directory listing in pyscript.** pyscript AST-interprets every iteration:
+  the old scrub job's name-classification loops over ~24k files per camera pinned the HA event
+  loop at 88-96% of a core for 15-20 s of every minute (2026-09-21), while native Python does the
+  same scan in 24 ms. Hand the listing to C (`set(map(int, re.findall(...)))`, `fnmatch.filter`)
+  and walk only the matches — or, as 3.0 did for the scrub job, don't write it in pyscript at all.
+  pyscript has no generator expressions.
 - **The per-minute cron is the RECONCILER; triggers are for latency.** `protect_thumbs_sync`
   re-queries the NVR window and rebuilds the manifest unconditionally, which is what makes a
   missed edge, a revised event, a restart mid-burst, the manifest trim and the hourly purge all
@@ -247,8 +220,8 @@ of each and editing either path edits this repo. Two consequences:
   happens instead of up to 60 s. Keep both: the follower is a pure optimisation, which is
   precisely why resolving the motion sensors by naming convention is safe.
 - **The once-a-minute run may come from Home Assistant, not the cron.** With
-  `unifi_protect_schedule: false` the built-in `@time_trigger`s no-op and an HA script calls
-  `pyscript.protect_{thumbs,scrub}_sync`, turning a returned `ok: false` into a failed run — the
+  `unifi_protect_schedule: false` the built-in `@time_trigger` no-ops and an HA script calls
+  `pyscript.protect_thumbs_sync`, turning a returned `ok: false` into a failed run — the
   only way a failure is recorded anywhere, because pyscript catches every exception raised in a run
   and only logs it. So the syncs must RETURN their outcome, never rely on raising. Overlap is
   prevented by a module-level `_RUNNING` guard that returns ok + `skipped`, NOT
@@ -275,8 +248,8 @@ of each and editing either path edits this repo. Two consequences:
      properties changes, so `updated()` never rebuilt it — and the MULTI page, unlike the
      single-camera card, deliberately keeps its drilled-in state across a re-attach (card.ts
      `connectedCallback` skips `_resetToLive` for `_isMulti`). Now `connectedCallback` sets
-     `_reattached` and `updated()` rebuilds, resuming follow at `_resumeAt` (the frame that was
-     on screen), not at the originally tapped time.
+     `_reattached` and `updated()` rebuilds, resuming at `_resumeAt` (the frame that was on
+     screen), not at the originally tapped time.
   2. The card's `disconnectedCallback` DISCARDED a pending scrub-settle commit, and the
      scrubber's cancelled its glide without closing the session → `scrubbing` stuck true, stage
      parked on the preview tile. The card now runs `_pendingScrubCommit`; the scrubber emits
@@ -324,40 +297,32 @@ of each and editing either path edits this repo. Two consequences:
   puppeteer-core from the chrome-devtools plugin's node_modules — it makes the browser's own late
   click; synthetic PointerEvents don't). Phone fullscreen is the player rotated 90° cw: player
   (px,py) -> screen (390-py, px), so its control bar runs down the screen's LEFT edge.
-- **Hidden = released, not paused (fixed 2026-09-30).** Pausing kept decoders, hls.js kept polling
-  (so HA's stream stayed up) and the follow chain could still refill slots. media-view now
-  `_suspend()`s after 3 s hidden (IntersectionObserver OR `document.hidden`): follow stopped with
-  `_resumeAt` kept, live unrendered (`_liveStream` is false while suspended), prepares dropped.
-  Showing again rebuilds via `_reattached`. Only a bounded clip stays loaded (paused).
-- **The follow failure budget must only reset on real playback.** It used to reset when a chunk
-  became READY, so a chunk that loads and then errors refilled forever: the wall tablet prepared the
-  same 11,111,907-byte chunk every 44 s for 2.5 h (195 times, 2.2 GB, seen in the HAProxy log) and
-  the problem reports had long gone silent (10 per PAGE LOAD on a kiosk that never reloads). Now:
-  reset in `_onFollowTime` past leadIn + 1 s, a hard cap of `FOLLOW_MAX_PREPARES` per chunk start
-  per run, and 10 reports per HOUR.
-- **HQ live startup is bound by HA's cold stream, not the network.** HA's master playlist waits for
-  one complete segment plus the start of the next, and segments close on keyframes (~5 s on UniFi):
-  6.1-6.3 s measured before the first playlist, ~12 s before the medium bridge handed over. A cold
-  playlist with ONE segment is also where hls.js re-downloaded that segment ~24x in 5 s. HA stops
-  an HLS output 30 s after the last SEGMENT/PART request — playlist requests do not wake it — so
-  `protect_cache/stream_warm.py` (`POST /api/protect_clip/warm`) starts the stream and calls
-  `idle_timer.awake()`; `data/stream-warm.ts` pings it every 20 s for the cameras on screen (live
-  grid: all highs; a player: its own camera) and stops when hidden. A session opened on a stream
-  kept warm >= 8 s skips the medium bridge (`_bridgeSkip`). `live_prewarm: false` turns it off.
+- **Hidden = released, not paused (fixed 2026-09-30).** Pausing kept decoders and network alive.
+  media-view `_suspend()`s after 3 s hidden (IntersectionObserver OR `document.hidden`): the
+  player's socket and MediaSource are dropped with `_resumeAt` kept; showing again rebuilds via
+  `_reattached` (a paused recording stays paused on the same frame).
+- **A failure budget must only reset on real playback.** In 2.x it reset when a chunk became
+  READY, so a chunk that loaded and then errored refilled forever: the wall tablet re-fetched the
+  same 11 MB every 44 s for 2.5 h (2.2 GB, seen in the HAProxy log). The player's budget
+  (`RETRY_DELAYS_MS`) resets only on presented frames.
 - **Diagnosing the wall tablet: read the HAProxy log** (`podman logs haproxy-pod-haproxy`, client
   192.168.1.76). A renderer crash shows as the whole frontend re-downloading (`app.*.js`,
   `/dashboard-clock2`); what it fetched just before is the evidence. Bubble closes a popup by
   DISCONNECTING its card in Chromium (verified) — hidden-but-connected is views/other hosts.
 
-- **`_checkStage` is the follow engine's last line of defence.** The follow watchdog only covers a
-  chunk that never becomes READY; after that there is one `play()`. A ready chunk that gets
-  paused or stalls behind the card's back used to park its first frame — the keyframe LEAD-IN,
-  a few seconds BEFORE the tapped time, which is the tell in a screenshot — with the playhead
-  stopped. Once a second: nudge `play()` after 2.5 s, restart from the frame on screen after
-  6 s; user pause, tap-to-play, the live-edge wait, loading, scrubbing and hidden are all
-  excluded (verified: a user Pause held 10 s is left alone).
+- **`_checkStage` is media-view's last line of defence** for recorded playback the player
+  considers settled: a video paused or stalled behind the card's back gets a `play()` nudge after
+  2.5 s and a restart from the frame on screen after 6 s; user pause, tap-to-play, the live-edge
+  wait, loading, scrubbing, hidden and the event bound are all excluded (a user Pause held 10 s is
+  left alone).
 
-## Decoder-free sprite preview — `SPRITE-PREVIEW-2026-08-04` (server side DONE, card side TODO)
+## Decoder-free sprite preview — `SPRITE-PREVIEW-2026-08-04`
+
+Since 3.0 the photos are the ONLY preview tier and `protect_cache/scrub.py` makes them straight
+from keyframes (see Architecture); the card always paints sprites (`scrub_preview_mode` and the
+`scrub_tip` video tier were removed — the video code paths in media-view only still play the
+pre-3.0 cache's mp4 units until they age out). The history below explains the format choices and
+the card-side behaviour, which are unchanged.
 
 **Why.** Measured on the Lenovo Idea Tab (Mali-G57) with `www/scrub-bench/index.html`: an MP4
 seek costs **99 ms** there (p90 122) vs 10 ms on a MacBook-class device, and a fresh `<video>`
@@ -367,8 +332,8 @@ was real, ~4x less JS) changed nothing on that device. Drawing a sprite tile on 
 costs **0.53 ms**, ~190x cheaper than a seek. Its CPU is only 5.5x slower than the dev box, so
 this is specifically the hardware video decoder, not general slowness.
 
-**Stage 1 (done): `pyscript/protect_scrub.py` also publishes JPEG mosaics.** 9 hunks tagged
-`SPRITE-PREVIEW-2026-08-04`. Set `SPRITES_ENABLED = False` to switch the whole tier off.
+**Stage 1 (2026-08, retired in 3.0): `pyscript/protect_scrub.py` published JPEG mosaics** cut
+from its timelapse mp4s.
 - `<stem>.s<i>.jpg` sheets + a `<stem>.sprite.json` sidecar, for fine blocks and overview hours.
   NOT for head/tip — the head is re-exported every minute, so sheets for it would cost ~11 files
   a minute per camera; near-live scrubbing stays on the video path.
@@ -385,18 +350,16 @@ this is specifically the hardware video decoder, not general slowness.
 **Format choices are measurements from that device, not preferences.** JPEG over WebP (decode
 55 vs 108 ms, draw 0.53 vs 0.86 ms, only ~9% more bytes). Sheets must stay at/under ~2560x1440:
 the same tiles in 5120x2880 sheets drew at 1.30 ms instead of 0.53 ms *even at MAX_TEXTURE_SIZE
-8192*, and 4096 is a common mobile cap past which the upload can fail. Hence 480x270 tiles in a
-5x5 grid = 2400x1350. Keep `COLS*TILE_W` and `ROWS*TILE_H` under 2560.
+8192*, and 4096 is a common mobile cap past which the upload can fail. Today: 640x360 tiles in a
+4x4 grid = 2560x1440 (the tile MUST be 640x360 — a smaller tile is magnified more and the
+burnt-in clock visibly changes size when a drag crosses tiers). Keep `COLS*TILE_W` and
+`ROWS*TILE_H` at or under 2560x1440.
 
-**Cost.** ~5.2 MB per unit → **~18 GB** for 3 cameras over the 7-day window (the initial ~11 GB
-estimate came from one garden-camera block; the other two cameras' scenes compress worse). Lower
-`SPRITE_QUALITY` (6 → 8) for roughly -25% if that ever matters.
+**Cost (3.0).** JPEG 60 ≈ 15 KB a photo at night; ~4 GB per camera for 7 days projected. Quality
+does not change CPU (60 encodes slightly faster than 70); the cost is decoding the keyframe.
 
-**Stage 2 (done): the card paints from sheets.** Config `scrub_preview_mode: auto|sprites|video`
-(`scrub_preview` was already taken — it's the feature on/off). **Currently defaulted to
-`sprites` on EVERY device, deliberately and temporarily**, so the 480x270 quality can be judged
-on a Mac and an iPhone; the intended long-term default is `auto`. Two words to change:
-`getStubConfig` in card.ts and the `?? 'sprites'` where the property is passed to the media-view.
+**Stage 2: the card paints from sheets.** (The `scrub_preview_mode: auto|sprites|video` switch it
+introduced is gone since 3.0 — sprites always.)
 - One `<canvas class="sprite">` replaces the two leap-frogging `<video>`s while scrubbing. No
   leap-frogging is needed — a tile draw is instant and cannot flash black, so there is nothing to
   hide behind a standby element.
@@ -448,22 +411,12 @@ comparison reads null and looks like "never changed" — that cost a false bug r
 Note WebCodecs is NOT available (the frontend is served over plain http, so it isn't a secure
 context) — don't design around it.
 
-## Scrub performance work — `PERF-SCRUB-2026-08-03` (UNRELEASED, revertible)
+## Scrub performance work — `PERF-SCRUB-2026-08-03` (released in 2.x)
 
 Three independent changes landed on 2026-08-03 to fix scrubbing being unusable on a low-end
 Android tablet (fine on iPhone/MacBook). **Every hunk is tagged `PERF-SCRUB-2026-08-03`** —
 `grep -rn "PERF-SCRUB-2026-08-03" src/` lists all of them, and each carries its own
 `Revert:` line describing the exact previous code.
-
-The tree was clean at `1f7cbd8` when this started and nothing has been committed or
-version-bumped since, so **`git checkout -- src/ && npm run build` is a total rollback.**
-Locally the dashboard Resource is pinned at `?v=2.0.0-perfscrub2` (was `?v=2.0.0`) — bump or
-restore that cache-buster whenever the bundle changes, or the browser keeps the old module.
-
-Riding along in the same uncommitted diff, but **unrelated to the perf work and independently
-revertible**: `BUGFIX-POSTER-2026-08-04` (3 hunks in `media-view.ts`) — the stale cross-camera
-held-frame poster, see the Gotchas entry below. It is a pre-existing bug, verified present in
-`1f7cbd8`; the perf changes touch none of that machinery.
 
 **The diagnosis** (measured in headless Chromium at 6x CPU throttle, scripted pointer drag,
 `/protect-timeline-test`): a scrub gesture pinned the main thread at **95%**. It is a cliff,

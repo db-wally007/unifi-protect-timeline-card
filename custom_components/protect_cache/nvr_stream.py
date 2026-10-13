@@ -185,8 +185,8 @@ def command_packet(command: str) -> bytes:
 def resolve_camera(hass: HomeAssistant, data: Any, camera_id: str) -> str | None:
     """A Protect camera id or an HA camera entity_id -> the Protect camera id.
 
-    Same resolution as clip_session.py (and core's VideoProxyView): entity ->
-    device -> MAC -> Protect device.
+    Same resolution as core's VideoProxyView: entity -> device -> MAC ->
+    Protect device.
     """
     from uiprotect.data import Camera  # noqa: PLC0415
 

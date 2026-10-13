@@ -194,41 +194,19 @@ export interface CardConfig {
   // When a manifest.json is found there, the card serves exact cached thumbnails
   // locally and only falls back to the NVR for events not yet cached.
   thumbnail_cache_dir?: string;
-  // Show low-res timelapse frames on the stage while scrubbing (default true),
-  // fed by the pyscript protect_scrub cache. Silently stays a plain black stage
-  // when the cache doesn't exist (job not installed / camera not cached).
+  // Paint photos of the footage on the stage while scrubbing (default true),
+  // from the scrub-preview cache protect_cache builds out of the NVR's
+  // keyframes (one photo per 5 s, plus one per 30 s per hour). Silently stays a
+  // plain stage when the cache doesn't exist (camera not configured there).
   scrub_preview?: boolean;
-  // Directory (served path) of the scrub-preview cache written by the pyscript
-  // protect_scrub job. Default: /protect_scrub/<camera object_id>.
+  // Directory (served path) of that cache. Default: /protect_scrub/<camera object_id>.
   scrub_preview_dir?: string;
-  // EXPERIMENTAL (default true). When a scrub starts near the live edge, ask
-  // the NVR (via pyscript.protect_scrub_tip) for a REAL-TIME clip of the newest
-  // ~60s. The cron-driven cache can only ever be 10-70s behind live and is a
-  // timelapse at one frame per ~2.4s; the tip lands in ~1.1s, reaches to ~2s
-  // behind live and scrubs at ~30fps. Costs ~0.9 MB per gesture and one short
-  // NVR export. Set false to fall back to the cron cache alone.
-  scrub_tip?: boolean;
-  // SPRITE-PREVIEW-2026-08-04. How the scrub preview paints its frames:
-  //   'video'   - seek a cached <video>. Sharpest (640x360), but a seek costs
-  //               ~10 ms on a Mac/iPhone and ~99 ms on a low-end Android, whose
-  //               hardware decoder caps the preview at ~10 updates/sec.
-  //   'sprites' - draw a tile from a cached JPEG mosaic into a <canvas>. 480x270
-  //               and ~0.5 ms per frame on that same Android. Needs the sheets
-  //               the pyscript job publishes; falls back to video per unit where
-  //               they are missing (the head/tip tiers never have them).
-  //   'auto'    - start on video and switch to sprites only if this device's own
-  //               MEASURED seek latency turns out to be slow. Deliberately NOT
-  //               user-agent sniffing: the tablet this exists for reports a
-  //               DESKTOP Linux UA, so sniffing fails on the very device that
-  //               needs it, while a fast device measures ~10 ms and can never
-  //               trip the switch.
-  // TEMPORARY DEFAULT 'sprites' (2026-08-04) so the quality can be judged on
-  // every device at once; the intended long-term default is 'auto'. One word to
-  // change, in getStubConfig and in card.ts's render().
-  scrub_preview_mode?: 'auto' | 'sprites' | 'video';
-  // Compact-atlas activation. `always` (temporary test default) uses low quality
-  // whenever the target changes on every client, then upgrades after it rests.
-  // `speed` uses the velocity threshold; `off` always prefers the fine tier.
+  // Which photos a drag shows. `speed` (default): the hour photos (one per
+  // 30 s, far fewer bytes) while the drag outruns the 10-minute ones, which
+  // take over when it slows. `always`: the hour photos during any movement.
+  // `off`: always the 10-minute ones.
+  // (`scrub_tip` and `scrub_preview_mode` were removed in 3.0: the cache has no
+  // videos any more, only photos, so both are ignored if still present.)
   scrub_fast_preview?: 'always' | 'speed' | 'off';
   // UniFi-app-style scrubber overlaid on the RIGHT edge of the FULLSCREEN
   // player (mobile + tablet), fading in and out with the video controls
