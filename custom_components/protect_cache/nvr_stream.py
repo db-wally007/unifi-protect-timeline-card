@@ -296,8 +296,12 @@ class _Relay:
                 if self.client.closed:
                     return
                 # Awaiting the send is the backpressure: a slow client stops
-                # this loop reading, and TCP slows the NVR down.
-                await self.client.send_bytes(tag + msg.data)
+                # this loop reading, and TCP slows the NVR down. A browser that
+                # went away (closed, navigated, locked) is the normal end.
+                try:
+                    await self.client.send_bytes(tag + msg.data)
+                except ConnectionError:
+                    return
             elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED,
                               aiohttp.WSMsgType.CLOSING):
                 await self.send_event({"ev": "end", "gen": gen})
@@ -319,7 +323,14 @@ class ProtectStreamView(HomeAssistantView):
         self.hass = hass
 
     async def get(self, request: web.Request) -> web.StreamResponse:
-        client = web.WebSocketResponse(heartbeat=CLIENT_HEARTBEAT_S, max_msg_size=64 * 1024)
+        # compress=False: aiohttp deflates every message by default (browsers
+        # always accept it), which here means zlib over already-compressed
+        # H.264 in HA's executor threads — measured ~9% of a core at 20 MB/s
+        # for nothing — and a compressed send still in flight when the browser
+        # goes away dies as an unretrieved "exception in shielded future".
+        client = web.WebSocketResponse(
+            heartbeat=CLIENT_HEARTBEAT_S, max_msg_size=64 * 1024, compress=False
+        )
         await client.prepare(request)
         relay = _Relay(self.hass, client)
         try:
