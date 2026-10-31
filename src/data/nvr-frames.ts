@@ -41,6 +41,8 @@ export interface NvrMedia {
   /** Wall-clock seconds of every keyframe (sync sample) in the segment. A
    * live 100 ms fragment can hold its keyframe anywhere, not just first. */
   keys: number[];
+  /** Wall-clock seconds where the segment's video ends (its last sample's end). */
+  end: number | null;
 }
 
 interface Box {
@@ -75,14 +77,20 @@ function* boxes(buf: Uint8Array, from: number, to: number): Generator<Box> {
  * codec-agnostic. `defaultFlags` is the init segment's trex default.
  */
 export function moofKeyTimes(moof: Uint8Array, timescale: number, defaultFlags = 0): number[] {
+  return moofVideo(moof, timescale, defaultFlags).keys;
+}
+
+/** The FIRST track's keyframe times and where its last sample ends (seconds). */
+export function moofVideo(moof: Uint8Array, timescale: number, defaultFlags = 0): { keys: number[]; end: number | null } {
   const dv = new DataView(moof.buffer, moof.byteOffset, moof.byteLength);
   const top = boxes(moof, 0, moof.length).next().value;
-  if (!top || top.type !== 'moof') return [];
+  if (!top || top.type !== 'moof') return { keys: [], end: null };
   for (const traf of boxes(moof, top.start, top.end)) {
     if (traf.type !== 'traf') continue;
     let defDuration = 0;
     let defFlags = defaultFlags;
     let base: number | null = null;
+    let end: number | null = null;
     const keys: number[] = [];
     for (const b of boxes(moof, traf.start, traf.end)) {
       const flags = dv.getUint32(b.start) & 0xffffff;
@@ -125,11 +133,12 @@ export function moofKeyTimes(moof: Uint8Array, timescale: number, defaultFlags =
           if (!(sf & 0x10000)) keys.push(t / timescale);
           t += dur;
         }
+        end = t / timescale;
       }
     }
-    return keys; // first track only (the video track)
+    return { keys, end }; // first track only (the video track)
   }
-  return [];
+  return { keys: [], end: null };
 }
 
 export type NvrSegment = NvrInit | NvrMedia;
@@ -266,11 +275,13 @@ export class NvrDeframer {
         // The moof frames are PIECES of one moof box (header+mfhd, video traf,
         // video trun, audio traf, audio trun), so its tfdt is in a later piece.
         const moof = concat(p[FRAME_MOOF]);
+        const video = moofVideo(moof, this._timescale, this._trexFlags);
         out.push({
           kind: 'media',
           data: concat([moof, ...p[FRAME_MDAT], ...p[FRAME_VIDEO], ...p[FRAME_AUDIO]]),
           time: moofTime(moof, this._timescale),
-          keys: moofKeyTimes(moof, this._timescale, this._trexFlags),
+          keys: video.keys,
+          end: video.end,
         });
         return;
       }

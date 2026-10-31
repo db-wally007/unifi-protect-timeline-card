@@ -5,3 +5,50 @@ scrub_sync:
     while it is dragged, and prunes the 7-day window. Returns {"ok": true, ...}
     or {"ok": false, "error": "..."}; run it from a script to have failures
     recorded.
+talk_test:
+  name: Test talkback
+  description: >-
+    Plays a short, quiet tone through a camera's speaker over the same path the
+    card's Talk button uses (Protect talkback session + FFmpeg). Only cameras
+    with a speaker (the doorbell). Returns the codec, rate and address used.
+  fields:
+    camera:
+      name: Camera
+      required: true
+      selector:
+        entity:
+          domain: camera
+    duration_ms:
+      name: Tone length (ms)
+      default: 400
+      selector:
+        number:
+          min: 100
+          max: 2000
+          unit_of_measurement: ms
+    volume:
+      name: Volume
+      description: Of full scale; 0.12 is a quiet beep.
+      default: 0.12
+      selector:
+        number:
+          min: 0.01
+          max: 0.8
+          step: 0.01
+scrub_rescan_gaps:
+  name: Rescan recording gaps
+  description: >-
+    Rebuilds the timeline's grey "no footage" spans for a window (at most one
+    hour, within the 7-day cache) from the NVR's keyframe times, one camera at a
+    time. Only needed for footage processed before gaps were recorded.
+  fields:
+    start:
+      name: Start
+      required: true
+      selector:
+        datetime:
+    end:
+      name: End
+      required: true
+      selector:
+        datetime:

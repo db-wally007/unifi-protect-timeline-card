@@ -1,216 +1,99 @@
 // Footage-availability gaps for the timeline.
 //
-// UniFi's own timeline greys out spans where the camera had no recording
-// ("Lost wired connection", NVR reboot, ...). The card talks only to Home
-// Assistant, so it finds those spans in TWO STAGES:
+// UniFi's own timeline greys out spans where the camera has no recording
+// ("Lost wired connection", NVR reboot, ...). The card gets them from the scrub
+// job (custom_components/protect_cache/scrub.py), which reads EVERY keyframe
+// the NVR holds for each camera and publishes the stretches with none as
+// `gaps` in that camera's scrub index — the NVR's own record, nothing guessed.
 //
-//   1. SUSPECT — the camera entity's `unavailable` intervals from the recorder.
-//      One cheap history round-trip, continuous coverage, no NVR load. This is
-//      a suspicion, not a verdict (see the caveat below).
-//   2. CONFIRM — ask the NVR for a still frame inside each suspected interval
-//      (verifyGaps). One frame proves the camera was recording, so the
-//      suspicion is dropped. Only intervals the NVR cannot produce a frame for
-//      are shown as gaps.
+// Two earlier sources were wrong, and must not come back:
 //
-// Stage 1 alone used to BE the answer, and that was wrong:
+//  * The camera entity's `unavailable` history. Home Assistant losing sight of
+//    the NVR is not the NVR losing footage: a restart or an integration reload
+//    flips every camera `unavailable` while recording goes on (measured
+//    2026-07-29: 15 minutes of footage that plays fine). And the other way
+//    round: on 2026-10-20 a hung UniFi console stopped recording at 22:43:06,
+//    but the entities stayed `recording` until 22:48:01.
+//  * Asking the NVR for a still inside a suspected gap. It answers 200 with the
+//    nearest EARLIER frame (asked for 22:48:30, it returned 22:43:06), so a
+//    still "exists" inside every gap. And the probing itself, re-run on every
+//    pan, flooded the NVR (~230 full-size snapshots in two minutes) and took
+//    the whole console down.
 //
-// Caveat — BIGGER THAN IT FIRST LOOKED. A Home Assistant restart flips the
-// entity to `unavailable` even though the NVR kept recording, and so does any
-// wobble in the integration's link to the NVR. Measured here 2026-07-29: two
-// cameras went `unavailable` at 10:19:17.98 and came back at 10:34:09.030 and
-// .044 — fourteen MILLISECONDS apart. Cameras do not fail and recover in
-// lockstep; that was the integration losing the NVR, and the footage for those
-// 15 minutes exists and plays fine.
-//
-// So these intervals are a HINT, not a fact: "Home Assistant could not see the
-// camera" is a different statement from "the NVR recorded nothing". They are
-// therefore DISPLAY-ONLY (the grey band + the wording of the no-footage
-// message) and must never gate a load — the NVR is the only authority on what
-// it holds, and media-view always asks it. Correlating cameras to spot
-// integration-wide blips was considered and rejected: an NVR reboot ALSO takes
-// every camera down at once, and that one really does lose footage, so the
-// correlation cannot tell the two apart.
-//
-// The whole feature stays gated by show_footage_gaps.
+// The bands are display-only (the grey strip + the wording of the no-footage
+// message) and never gate a load — media-view always asks the NVR. They also
+// decide which of the calendar's days have footage, and where on a day a jump
+// lands (2026-10-28: the calendar offered every day of `calendar_days`). For
+// that the job publishes the NVR's oldest footage too, and maps the footage
+// older than its photos once (scrub.py PROBE_*). The feature stays gated by
+// show_footage_gaps.
 
-import type { FootageGap, HomeAssistant, RawHistoryState } from './types';
-import { authFetch, buildSnapshotUrl } from './ha-urls';
+import type { FootageGap } from './types';
+import { fetchCurrentJson } from './fresh-json';
 
-// Ignore `unavailable` blips shorter than this (sub-second recorder flaps) — not
-// meaningful footage gaps, and they'd draw as zero-width slivers.
-const MIN_GAP_MS = 1_500;
+// The scrub job rewrites its index every 15 s; a copy older than this came
+// from a cache (see fresh-json.ts) — the same bound the preview loader uses.
+const INDEX_CURRENT_MS = 2 * 60_000;
 
-/** Normalize a raw history row (verbose or compressed) to { state, ts(ms) }. */
-export function normalizeState(row: RawHistoryState): { state: string; ts: number } | null {
-  const state = (row.s ?? row.state ?? '').toString();
-  let ts: number | undefined;
-  if (typeof row.lu === 'number') ts = row.lu * 1000;
-  else if (typeof row.lc === 'number') ts = row.lc * 1000;
-  else if (row.last_updated) ts = Date.parse(row.last_updated);
-  else if (row.last_changed) ts = Date.parse(row.last_changed);
-  if (ts === undefined || Number.isNaN(ts) || !state) return null;
-  return { state, ts };
-}
-
-// States that mean "no footage": the camera isn't reporting to the NVR.
-const OFFLINE = new Set(['unavailable', 'unknown']);
-
-/**
- * Turn a camera entity's history rows into [start, end] `unavailable` intervals,
- * clamped to [since, until]. An interval still open at the end of the window is
- * closed at `until`. Blips shorter than minGapMs are dropped.
- */
-export function unavailableIntervals(
-  rows: RawHistoryState[],
-  since: number,
-  until: number,
-  minGapMs = MIN_GAP_MS,
-): FootageGap[] {
-  const points = rows
-    .map(normalizeState)
-    .filter((p): p is { state: string; ts: number } => p !== null)
-    .sort((a, b) => a.ts - b.ts);
-
+/** The `gaps` of a scrub index as FootageGaps — malformed entries dropped,
+ *  an index without the field (an older job) yields none. With the NVR's
+ *  `recording_start` (the oldest footage it still holds), everything before it
+ *  is one more gap, from 0 (see footageStart). */
+export function scrubIndexGaps(index: { gaps?: unknown; recording_start?: unknown } | undefined): FootageGap[] {
+  if (!index) return [];
   const out: FootageGap[] = [];
-  let openStart: number | null = null;
-  for (const p of points) {
-    if (OFFLINE.has(p.state)) {
-      if (openStart === null) openStart = Math.max(p.ts, since);
-    } else if (openStart !== null) {
-      const end = Math.min(p.ts, until);
-      if (end - openStart >= minGapMs) out.push({ start: openStart, end });
-      openStart = null;
+  if (typeof index.recording_start === 'number' && index.recording_start > 0) {
+    out.push({ start: 0, end: index.recording_start });
+  }
+  for (const g of Array.isArray(index.gaps) ? index.gaps : []) {
+    if (!Array.isArray(g) || g.length !== 2) continue;
+    const [start, end] = g;
+    if (typeof start === 'number' && typeof end === 'number' && end > start) {
+      out.push({ start, end });
     }
   }
-  if (openStart !== null && until - openStart >= minGapMs) {
-    out.push({ start: openStart, end: until });
-  }
-  return out;
+  return out.sort((a, b) => a.start - b.start);
 }
 
-// ---- stage 2: ask the NVR whether the footage is really missing ------------
-//
-// Where in a suspected gap to sample. Middle first: one frame anywhere in the
-// window already proves the camera was recording, and the middle is the least
-// likely to sit on a ragged edge. The other two only run if the middle came
-// back empty.
-const PROBE_FRACTIONS = [0.5, 0.15, 0.85];
-
-// Verdicts are cached per camera+interval: the card re-fetches gaps whenever
-// the visible window moves, and the intervals are stable (recorder timestamps),
-// so without this the same blip would be re-probed all day.
-const verdicts = new Map<string, boolean>();
-const MAX_VERDICTS = 500;
-
-/** True = the NVR returned a frame at `t` (so it HAS footage there).
- *  null = we could not tell (network/auth failure), which is not a denial. */
-async function nvrHasFrame(
-  hass: HomeAssistant,
-  nvrId: string,
-  cameraId: string,
-  t: number,
-): Promise<boolean | null> {
-  const ac = new AbortController();
-  try {
-    const res = await authFetch(hass, buildSnapshotUrl(nvrId, cameraId, t), {
-      signal: ac.signal,
-    });
-    const ok = res.status === 200;
-    // The status is the whole answer. Measured: a hit is a 1.2 MB 4K JPEG (the
-    // endpoint ignores ?width=), so never pull the body — aborting here leaves
-    // the transfer at 0 bytes, which matters on a phone.
-    ac.abort();
-    return ok;
-  } catch {
-    return null;
-  }
+/** Where the camera's footage begins, when the gaps know (their gap from 0). */
+export function footageStart(gaps: FootageGap[]): number | undefined {
+  return gaps[0]?.start === 0 ? gaps[0].end : undefined;
 }
 
-/**
- * Second opinion on stage-1 suspicions. A camera entity going `unavailable`
- * means Home Assistant lost sight of the camera, which is NOT the same as the
- * NVR losing the recording — see the header. So before a suspected gap is shown
- * as one, ask the NVR for a still frame inside it; if it produces one, the
- * footage exists and the suspicion is dropped.
- *
- * Cost is self-limiting and falls the wrong way round in our favour: a REAL gap
- * 404s in ~20ms per probe, while a false one is dismissed by the first probe
- * that returns a frame (~900ms, the NVR generating it) and never runs the rest.
- *
- * Anything we cannot positively disprove is KEPT — an unverifiable suspicion
- * still gets its grey band, because the band is a hint and silence is not
- * evidence of footage.
- */
-export async function verifyGaps(
-  hass: HomeAssistant,
-  nvrId: string,
-  cameraId: string,
-  gaps: FootageGap[],
-  maxProbes = 24,
-): Promise<FootageGap[]> {
-  if (!nvrId || !cameraId || !gaps.length) return gaps;
-  const out: FootageGap[] = [];
-  let budget = maxProbes;
+/** The moment in [from, to] nearest `t` that has footage, preferring footage
+ *  at or after `t` (where it resumes), else the last minute before it -
+ *  undefined when the span has none. `gaps` sorted. */
+export function nearestFootage(gaps: FootageGap[], from: number, to: number, t: number): number | undefined {
+  const spans: [number, number][] = [];
+  let s = from;
   for (const g of gaps) {
-    const key = `${cameraId}|${g.start}|${g.end}`;
-    const cached = verdicts.get(key);
-    if (cached !== undefined) {
-      if (cached) out.push(g); // cached verdict: a real gap
-      continue;
-    }
-    let hasFootage = false;
-    for (const f of PROBE_FRACTIONS) {
-      if (budget <= 0) break;
-      budget--;
-      const hit = await nvrHasFrame(hass, nvrId, cameraId, g.start + (g.end - g.start) * f);
-      if (hit === null) continue; // inconclusive — try the next point
-      if (hit) {
-        hasFootage = true;
-        break;
-      }
-    }
-    if (!hasFootage) out.push(g);
-    // Only remember decided verdicts: a probe run cut short by the budget, or
-    // one that only ever errored, must be re-tried later rather than frozen in.
-    if (hasFootage || budget > 0) {
-      if (verdicts.size >= MAX_VERDICTS) verdicts.clear();
-      verdicts.set(key, !hasFootage);
-    }
+    if (g.end < s) continue;
+    if (g.start > to) break;
+    if (g.start > s) spans.push([s, g.start]);
+    s = Math.max(s, g.end);
   }
-  return out;
+  if (s < to) spans.push([s, to]);
+  const after = spans.find(([, b]) => b > t);
+  if (after) return Math.max(after[0], t);
+  const last = spans[spans.length - 1];
+  return last ? Math.max(last[0], last[1] - 60_000) : undefined;
 }
 
-/**
- * Fetch the camera entity's `unavailable` intervals over [since, until] as
- * SUSPECTED footage gaps, then confirm each one against the NVR (see
- * verifyGaps) so a Home Assistant blip doesn't grey out footage that exists.
- * Stage 1 is one cheap history WS round-trip; stage 2 only probes suspicions.
- */
-export async function fetchFootageGaps(
-  hass: HomeAssistant,
-  cameraEntityId: string,
-  since: number,
-  until: number,
-  nvrId = '',
-): Promise<FootageGap[]> {
-  if (!cameraEntityId) return [];
-  let resp: Record<string, RawHistoryState[]>;
+/** The recording gaps of the camera whose scrub cache lives at `scrubDir`
+ *  (e.g. /protect_scrub/<object_id>). [] when there is no cache or it can't be
+ *  read — no band is better than a wrong one. */
+export async function fetchFootageGaps(scrubDir: string): Promise<FootageGap[]> {
+  if (!scrubDir) return [];
   try {
-    resp = await hass.callWS<Record<string, RawHistoryState[]>>({
-      type: 'history/history_during_period',
-      start_time: new Date(since).toISOString(),
-      end_time: new Date(until).toISOString(),
-      entity_ids: [cameraEntityId],
-      minimal_response: true,
-      no_attributes: true,
-      significant_changes_only: false,
-    });
-  } catch (err) {
-    console.error('[unifi-timeline] gap history fetch failed', err);
+    const index = await fetchCurrentJson<{ generated?: number; gaps?: unknown; recording_start?: unknown }>(
+      `${scrubDir}/index.json`,
+      (d) => d.generated,
+      INDEX_CURRENT_MS,
+    );
+    return scrubIndexGaps(index);
+  } catch {
     return [];
   }
-  const suspected = unavailableIntervals(resp[cameraEntityId] ?? [], since, until);
-  return verifyGaps(hass, nvrId, cameraEntityId, suspected);
 }
 
 /** True when `t` (epoch ms) falls within any gap. */

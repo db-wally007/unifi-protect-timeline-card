@@ -91,8 +91,17 @@ Design
   ongoing=true; each later run re-fetches and finalizes them.
 - Incremental: the manifest IS the event DB. Each run queries the NVR only from
   a persisted cursor (state.json) minus a small overlap, and upserts by event id
-  — so the per-minute run asks the NVR for ~5 minutes of events, not 7 days.
+  — so the per-minute run asks the NVR for ~5 minutes of events, not 14 days.
   Bootstrap (no state / no v2 manifest) fetches the full LOOKBACK_HOURS window.
+- Gone events go: an incremental run never looks at older events again, so
+  - every run drops the events that ended before the camera's oldest footage
+    (its recording start, from the integration's bootstrap - no NVR call): the
+    edge the card's timeline and calendar end at. A format or a new disk on
+    the NVR clears them at once, normal retention as it goes;
+  - the first sync after this file loads (each Home Assistant start, or a
+    pyscript reload) re-reads the whole LOOKBACK_HOURS window and REPLACES the
+    list with it, so events deleted in the UniFi app go then too. ~1000 events
+    here: one request.
 - NVR-gentle: thumbnails are fetched strictly ONE AT A TIME with a small gap,
   newest first, and at most MAX_THUMBS_PER_RUN per run — the manifest is
   written BEFORE the thumbnail pass, so events always reach the card within a
@@ -100,8 +109,10 @@ Design
   THUMB_MAX_ATTEMPTS times (tracked in state.json), so a permanently missing
   thumb never hammers the NVR forever. Events without a thumbnail still go in
   the manifest (the card falls back to a one-off NVR snapshot for those rows).
-- Retention: thumbnail files older than RETENTION_DAYS are purged on the
-  top-of-hour run; manifest entries are trimmed to LOOKBACK_HOURS.
+- Retention: manifest entries are trimmed to LOOKBACK_HOURS, and a thumbnail
+  file lives exactly as long as its event is listed: it is deleted with it, and
+  the top-of-hour run and every full read sweep away any the manifest no longer
+  refers to.
 
 pyscript injects `hass` (hass_is_global), `log`, `task`, and the
 `@service`/`@time_trigger` decorators, and auto-awaits coroutine calls.
@@ -227,9 +238,12 @@ SCHEDULED = _schedule_conf()
 # protect_cache custom_component.
 BASE_DIR = "/config/.cache/protect_thumbs"  # served at /protect_thumbs
 THUMB_WIDTH = 320
-LOOKBACK_HOURS = 168       # depth of the manifest event list (and bootstrap window)
-RETENTION_DAYS = 90        # thumbnail files on disk (>= LOOKBACK so trims are safe)
-REQUEST_GAP_S = 0.2        # pause between NVR thumbnail fetches (serial / gentle)
+LOOKBACK_HOURS = 336       # depth of the manifest event list (and bootstrap window):
+                           # 14 days, ~ the NVR's full-quality footage here (user,
+                           # 2026-10-30: was 7). A camera whose state was built with
+                           # a shorter window is bootstrapped again once (state
+                           # `lookback_hours`), which fetches the older events.
+REQUEST_GAP_S = 0.2       # pause between NVR thumbnail fetches (serial / gentle)
 OVERLAP_S = 300            # re-query this much before the cursor each run: covers
                            # NVR write latency, clock skew, and short ongoing events
 THUMB_MAX_ATTEMPTS = 5     # per-event thumbnail retry cap (completed events only)
@@ -249,6 +263,26 @@ KIND_PRIORITY = ["person", "vehicle", "animal", "package", "license_plate"]
 def _event_types():
     from uiprotect.data import EventType
     return [EventType.MOTION, EventType.SMART_DETECT, EventType.SMART_DETECT_LINE]
+
+
+# The NVR's events in [start, end] as uiprotect Event objects. uiprotect 23 (Home
+# Assistant 2026.10) REMOVED ProtectApiClient.get_events() - every sync failed with
+# "'ProtectApiClient' object has no attribute 'get_events'" - so build the same
+# objects from get_events_raw(), skipping event types the library doesn't model.
+# An older uiprotect still gets its own get_events().
+def _fetch_events(api, start, end):
+    if hasattr(api, "get_events"):
+        return api.get_events(start=start, end=end, types=_event_types())
+    from uiprotect.data import Event, EventType, create_from_unifi_dict
+    known = EventType.values()
+    out = []
+    for raw in api.get_events_raw(start=start, end=end, types=_event_types()):
+        if raw.get("type") not in known:
+            continue
+        event = create_from_unifi_dict(raw, api=api)
+        if isinstance(event, Event):
+            out.append(event)
+    return out
 
 
 # ---- filesystem helpers -----------------------------------------------------
@@ -299,19 +333,23 @@ def _read_json(path):
         return None
 
 
-def _purge_old(dir_path, cutoff_epoch):
-    """Delete *.jpg older than cutoff; return how many were removed."""
+def _remove(path):
+    """Delete a file if it is there; True if it was."""
+    try:
+        os.remove(path)
+        return True
+    except OSError:
+        return False
+
+
+def _purge_unlisted(dir_path, listed_ids):
+    """Delete the thumbnails (<event id>.jpg) of events no longer listed;
+    return how many were removed."""
     removed = 0
     for name in task.executor(os.listdir, dir_path):
-        if not name.endswith(".jpg"):
-            continue
-        fp = os.path.join(dir_path, name)
-        try:
-            if os.path.getmtime(fp) < cutoff_epoch:
-                os.remove(fp)
+        if name.endswith(".jpg") and name[:-4] not in listed_ids:
+            if _remove(os.path.join(dir_path, name)):
                 removed += 1
-        except OSError:
-            pass
     return removed
 
 
@@ -360,6 +398,18 @@ def _padding_ms(api, cam_id):
     return (0, 0)
 
 
+def _recording_start_ms(api, cam_id):
+    """Where the NVR's footage of the camera begins (its oldest recording still
+    on disk), ms, or None while unknown - from the bootstrap the integration
+    keeps current, so no NVR call. The card's timeline and calendar end at the
+    same edge (protect_cache/scrub.py reads it the same way)."""
+    cam = api.bootstrap.cameras.get(cam_id)
+    stats = getattr(cam, "stats", None) if cam else None
+    video = getattr(stats, "video", None) if stats else None
+    start = getattr(video, "recording_start", None) if video else None
+    return int(start.timestamp() * 1000) if start else None
+
+
 def _write_manifest(cam_dir, entries, pre_ms, post_ms, now_ms):
     _write_json(os.path.join(cam_dir, "manifest.json"), {
         "version": MANIFEST_VERSION,
@@ -382,6 +432,10 @@ _RUNNING = False
 # recorded a failed run (and motion during startup logged an error).
 STARTUP_GRACE_S = 180
 _LOADED_AT = datetime.now(timezone.utc).timestamp()
+# Set once a sync has re-read the NVR's whole LOOKBACK_HOURS window since this
+# file loaded (see "Gone events go" in the docstring); a sync that fails or is
+# skipped leaves it to the next one.
+_FULL_READ_DONE = False
 
 
 @time_trigger("cron(* * * * *)")
@@ -432,6 +486,7 @@ def _sync():
     """One incremental sync. The NVR unreachable or nothing configured fails the
     run; a thumbnail the NVR does not have yet does not - those are retried up to
     THUMB_MAX_ATTEMPTS by design, and the card falls back to a snapshot."""
+    global _FULL_READ_DONE
     if not CAMERAS:
         return _failed("no cameras configured (unifi_protect_cameras)")
     api = _get_api()
@@ -449,7 +504,10 @@ def _sync():
     # Load each camera's state + previous manifest, and derive the single NVR
     # query window: from the earliest thing any camera still needs, to now.
     # A v1 (bare-array) manifest holds MERGED groups, not raw events — ignore it
-    # and rebuild the DB with a full-lookback bootstrap fetch.
+    # and rebuild the DB with a full-lookback bootstrap fetch. The first sync
+    # since this file loaded reads the whole window too, and its list REPLACES
+    # the old one: what the NVR no longer returns was deleted there.
+    full_read = not _FULL_READ_DONE
     cams = {}
     query_start_ms = None
     for cam_id, slug in CAMERAS.items():
@@ -458,8 +516,16 @@ def _sync():
         state = _read_json(os.path.join(cam_dir, "state.json")) or {}
         prev = _read_json(os.path.join(cam_dir, "manifest.json"))
         prev_events = prev.get("events") if isinstance(prev, dict) else None
-        bootstrap = not isinstance(prev_events, list) or "cursor_ms" not in state
-        if bootstrap:
+        # Every event listed so far, whatever happens to the list below: the
+        # ones that leave it take their thumbnails with them.
+        known = {e["id"] for e in prev_events} if isinstance(prev_events, list) else set()
+        ongoing = {e["id"] for e in prev_events if e.get("ongoing")} if isinstance(prev_events, list) else set()
+        bootstrap = (
+            not isinstance(prev_events, list)
+            or "cursor_ms" not in state
+            or state.get("lookback_hours", 168) < LOOKBACK_HOURS
+        )
+        if bootstrap or full_read:
             cam_start_ms = manifest_cutoff_ms
             prev_events = []
         else:
@@ -474,14 +540,17 @@ def _sync():
             "slug": slug,
             "dir": cam_dir,
             "prev": prev_events,
+            "known": known,
+            "ongoing": ongoing,
             "attempts": dict(state.get("thumb_attempts") or {}),
             "bootstrap": bootstrap,
+            "full": bootstrap or full_read,
         }
         if query_start_ms is None or cam_start_ms < query_start_ms:
             query_start_ms = cam_start_ms
 
     start_dt = datetime.fromtimestamp(query_start_ms / 1000, tz=timezone.utc)
-    events = api.get_events(start=start_dt, end=now, types=_event_types())
+    events = _fetch_events(api, start_dt, now)
     log.debug(
         "protect_thumbs: %s events since %s (window %.1f min)",
         len(events), start_dt.isoformat(), (now_ms - query_start_ms) / 60000,
@@ -490,16 +559,16 @@ def _sync():
     total_fetched = 0
     total_removed = 0
     total_new = 0
+    total_gone = 0
     for cam_id, c in cams.items():
         slug = c["slug"]
         cam_dir = c["dir"]
         by_id = {e["id"]: e for e in c["prev"]}
-        prev_ongoing = {e["id"] for e in c["prev"] if e.get("ongoing")}
+        prev_ongoing = c["ongoing"]
 
         # Upsert every fetched raw event 1:1 (re-fetched events replace their old
         # entry — that's how provisional ongoing entries get finalized).
         fetched_ids = set()
-        new_count = 0
         for e in events:
             if getattr(e, "camera_id", None) != cam_id:
                 continue
@@ -510,8 +579,6 @@ def _sync():
             start_ms = int(start.timestamp() * 1000)
             end = getattr(e, "end", None)
             fetched_ids.add(ev_id)
-            if ev_id not in by_id:
-                new_count += 1
             entry = {
                 "id": ev_id,
                 "kind": _event_kind(e),
@@ -533,8 +600,21 @@ def _sync():
                 e.pop("ongoing", None)
                 e["dur"] = e["end"] - e["start"]
 
-        entries = [e for e in by_id.values() if e["start"] >= manifest_cutoff_ms]
+        # Listed: the LOOKBACK window, less the events that ended before the
+        # camera's oldest footage - gone with it (a format, a new disk, the NVR's
+        # retention). An edge in the future is no edge.
+        edge_ms = _recording_start_ms(api, cam_id) or 0
+        if edge_ms > now_ms:
+            edge_ms = 0
+        entries = [e for e in by_id.values() if e["start"] >= manifest_cutoff_ms and e["end"] > edge_ms]
         entries.sort(key=lambda m: m["start"], reverse=True)
+        live_ids = {e["id"] for e in entries}
+        new_count = len([ev_id for ev_id in live_ids if ev_id not in c["known"]])
+        # A thumbnail goes with its event.
+        gone = [ev_id for ev_id in c["known"] if ev_id not in live_ids]
+        for ev_id in gone:
+            if _remove(os.path.join(cam_dir, f"{ev_id}.jpg")):
+                total_removed += 1
 
         # Publish the manifest IMMEDIATELY (with whatever thumbnails already
         # exist on disk) — fresh events must reach the card within a minute even
@@ -599,29 +679,36 @@ def _sync():
             cursor_ms = max(completed_ends)
         else:
             cursor_ms = now_ms
-        live_ids = {e["id"] for e in entries}
         _write_json(os.path.join(cam_dir, "state.json"), {
             "cursor_ms": cursor_ms,
             "thumb_attempts": {k: v for k, v in attempts.items() if k in live_ids},
+            "lookback_hours": LOOKBACK_HOURS,
         })
 
-        # Disk retention is a slow process — run it once an hour, not per-minute.
-        if now.minute == 0 or c["bootstrap"]:
-            total_removed += _purge_old(cam_dir, now.timestamp() - RETENTION_DAYS * 86400)
+        # Thumbnails left without an event (deleted before this sweep existed,
+        # or while a run died midway): a full listing, so only once an hour and
+        # on a full read.
+        if now.minute == 0 or c["full"]:
+            total_removed += _purge_unlisted(cam_dir, live_ids)
 
         total_new += new_count
-        if new_count or c["bootstrap"]:
+        total_gone += len(gone)
+        if new_count or gone or c["full"]:
             log.info(
-                "protect_thumbs: %s -> %s events (+%s new%s)",
-                slug, len(entries), new_count, ", bootstrap" if c["bootstrap"] else "",
+                "protect_thumbs: %s -> %s events (+%s new, -%s gone%s)",
+                slug, len(entries), new_count, len(gone),
+                ", bootstrap" if c["bootstrap"] else ", full read" if c["full"] else "",
             )
 
-    if total_fetched or total_removed or total_new:
+    if full_read:
+        _FULL_READ_DONE = True
+    if total_fetched or total_removed or total_new or total_gone:
         log.info(
-            "protect_thumbs: done new=%s thumbs=%s purged=%s",
-            total_new, total_fetched, total_removed,
+            "protect_thumbs: done new=%s gone=%s thumbs=%s purged=%s",
+            total_new, total_gone, total_fetched, total_removed,
         )
-    return {"ok": True, "new": total_new, "thumbs": total_fetched, "purged": total_removed}
+    return {"ok": True, "new": total_new, "gone": total_gone, "thumbs": total_fetched,
+            "purged": total_removed, "full_read": full_read}
 
 
 # ---- motion-driven immediacy ------------------------------------------------
@@ -787,7 +874,7 @@ def protect_thumbs_dump(hours=3):
         return
     now = datetime.now(timezone.utc)
     start_dt = datetime.fromtimestamp(now.timestamp() - int(hours) * 3600, tz=timezone.utc)
-    events = api.get_events(start=start_dt, end=now, types=_event_types())
+    events = _fetch_events(api, start_dt, now)
     log.warning("DUMP: %s raw events in last %sh (times UTC)", len(events), hours)
     for e in events:
         st = getattr(e, "start", None)

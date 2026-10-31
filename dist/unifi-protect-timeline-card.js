@@ -3,18 +3,18 @@
  * Copyright 2019 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const St = globalThis, Yt = St.ShadowRoot && (St.ShadyCSS === void 0 || St.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Xt = Symbol(), re = /* @__PURE__ */ new WeakMap();
-let Ve = class {
+const Ht = globalThis, Te = Ht.ShadowRoot && (Ht.ShadyCSS === void 0 || Ht.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Ee = Symbol(), He = /* @__PURE__ */ new WeakMap();
+let qi = class {
   constructor(t, i, s) {
-    if (this._$cssResult$ = !0, s !== Xt) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
+    if (this._$cssResult$ = !0, s !== Ee) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = t, this.t = i;
   }
   get styleSheet() {
     let t = this.o;
     const i = this.t;
-    if (Yt && t === void 0) {
+    if (Te && t === void 0) {
       const s = i !== void 0 && i.length === 1;
-      s && (t = re.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && re.set(i, t));
+      s && (t = He.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && He.set(i, t));
     }
     return t;
   }
@@ -22,33 +22,33 @@ let Ve = class {
     return this.cssText;
   }
 };
-const ai = (e) => new Ve(typeof e == "string" ? e : e + "", void 0, Xt), rt = (e, ...t) => {
-  const i = e.length === 1 ? e[0] : t.reduce((s, r, o) => s + ((n) => {
+const bs = (e) => new qi(typeof e == "string" ? e : e + "", void 0, Ee), ft = (e, ...t) => {
+  const i = e.length === 1 ? e[0] : t.reduce((s, o, r) => s + ((n) => {
     if (n._$cssResult$ === !0) return n.cssText;
     if (typeof n == "number") return n;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + n + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
-  })(r) + e[o + 1], e[0]);
-  return new Ve(i, e, Xt);
-}, hi = (e, t) => {
-  if (Yt) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
+  })(o) + e[r + 1], e[0]);
+  return new qi(i, e, Ee);
+}, ws = (e, t) => {
+  if (Te) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
   else for (const i of t) {
-    const s = document.createElement("style"), r = St.litNonce;
-    r !== void 0 && s.setAttribute("nonce", r), s.textContent = i.cssText, e.appendChild(s);
+    const s = document.createElement("style"), o = Ht.litNonce;
+    o !== void 0 && s.setAttribute("nonce", o), s.textContent = i.cssText, e.appendChild(s);
   }
-}, oe = Yt ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
+}, Ve = Te ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
   let i = "";
   for (const s of t.cssRules) i += s.cssText;
-  return ai(i);
+  return bs(i);
 })(e) : e;
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: li, defineProperty: ci, getOwnPropertyDescriptor: di, getOwnPropertyNames: pi, getOwnPropertySymbols: ui, getPrototypeOf: _i } = Object, Ct = globalThis, ne = Ct.trustedTypes, fi = ne ? ne.emptyScript : "", mi = Ct.reactiveElementPolyfillSupport, _t = (e, t) => e, Et = { toAttribute(e, t) {
+const { is: ys, defineProperty: xs, getOwnPropertyDescriptor: ks, getOwnPropertyNames: Ss, getOwnPropertySymbols: $s, getPrototypeOf: Ts } = Object, te = globalThis, We = te.trustedTypes, Es = We ? We.emptyScript : "", As = te.reactiveElementPolyfillSupport, Ct = (e, t) => e, jt = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
-      e = e ? fi : null;
+      e = e ? Es : null;
       break;
     case Object:
     case Array:
@@ -73,55 +73,55 @@ const { is: li, defineProperty: ci, getOwnPropertyDescriptor: di, getOwnProperty
       }
   }
   return i;
-} }, Kt = (e, t) => !li(e, t), ae = { attribute: !0, type: String, converter: Et, reflect: !1, useDefault: !1, hasChanged: Kt };
-Symbol.metadata ??= Symbol("metadata"), Ct.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
-let nt = class extends HTMLElement {
+} }, Ae = (e, t) => !ys(e, t), qe = { attribute: !0, type: String, converter: jt, reflect: !1, useDefault: !1, hasChanged: Ae };
+Symbol.metadata ??= Symbol("metadata"), te.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
+let wt = class extends HTMLElement {
   static addInitializer(t) {
     this._$Ei(), (this.l ??= []).push(t);
   }
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(t, i = ae) {
+  static createProperty(t, i = qe) {
     if (i.state && (i.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(t) && ((i = Object.create(i)).wrapped = !0), this.elementProperties.set(t, i), !i.noAccessor) {
-      const s = Symbol(), r = this.getPropertyDescriptor(t, s, i);
-      r !== void 0 && ci(this.prototype, t, r);
+      const s = Symbol(), o = this.getPropertyDescriptor(t, s, i);
+      o !== void 0 && xs(this.prototype, t, o);
     }
   }
   static getPropertyDescriptor(t, i, s) {
-    const { get: r, set: o } = di(this.prototype, t) ?? { get() {
+    const { get: o, set: r } = ks(this.prototype, t) ?? { get() {
       return this[i];
     }, set(n) {
       this[i] = n;
     } };
-    return { get: r, set(n) {
-      const a = r?.call(this);
-      o?.call(this, n), this.requestUpdate(t, a, s);
+    return { get: o, set(n) {
+      const a = o?.call(this);
+      r?.call(this, n), this.requestUpdate(t, a, s);
     }, configurable: !0, enumerable: !0 };
   }
   static getPropertyOptions(t) {
-    return this.elementProperties.get(t) ?? ae;
+    return this.elementProperties.get(t) ?? qe;
   }
   static _$Ei() {
-    if (this.hasOwnProperty(_t("elementProperties"))) return;
-    const t = _i(this);
+    if (this.hasOwnProperty(Ct("elementProperties"))) return;
+    const t = Ts(this);
     t.finalize(), t.l !== void 0 && (this.l = [...t.l]), this.elementProperties = new Map(t.elementProperties);
   }
   static finalize() {
-    if (this.hasOwnProperty(_t("finalized"))) return;
-    if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(_t("properties"))) {
-      const i = this.properties, s = [...pi(i), ...ui(i)];
-      for (const r of s) this.createProperty(r, i[r]);
+    if (this.hasOwnProperty(Ct("finalized"))) return;
+    if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(Ct("properties"))) {
+      const i = this.properties, s = [...Ss(i), ...$s(i)];
+      for (const o of s) this.createProperty(o, i[o]);
     }
     const t = this[Symbol.metadata];
     if (t !== null) {
       const i = litPropertyMetadata.get(t);
-      if (i !== void 0) for (const [s, r] of i) this.elementProperties.set(s, r);
+      if (i !== void 0) for (const [s, o] of i) this.elementProperties.set(s, o);
     }
     this._$Eh = /* @__PURE__ */ new Map();
     for (const [i, s] of this.elementProperties) {
-      const r = this._$Eu(i, s);
-      r !== void 0 && this._$Eh.set(r, i);
+      const o = this._$Eu(i, s);
+      o !== void 0 && this._$Eh.set(o, i);
     }
     this.elementStyles = this.finalizeStyles(this.styles);
   }
@@ -129,8 +129,8 @@ let nt = class extends HTMLElement {
     const i = [];
     if (Array.isArray(t)) {
       const s = new Set(t.flat(1 / 0).reverse());
-      for (const r of s) i.unshift(oe(r));
-    } else t !== void 0 && i.push(oe(t));
+      for (const o of s) i.unshift(Ve(o));
+    } else t !== void 0 && i.push(Ve(t));
     return i;
   }
   static _$Eu(t, i) {
@@ -156,7 +156,7 @@ let nt = class extends HTMLElement {
   }
   createRenderRoot() {
     const t = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
-    return hi(t, this.constructor.elementStyles), t;
+    return ws(t, this.constructor.elementStyles), t;
   }
   connectedCallback() {
     this.renderRoot ??= this.createRenderRoot(), this.enableUpdating(!0), this._$EO?.forEach((t) => t.hostConnected?.());
@@ -170,31 +170,31 @@ let nt = class extends HTMLElement {
     this._$AK(t, s);
   }
   _$ET(t, i) {
-    const s = this.constructor.elementProperties.get(t), r = this.constructor._$Eu(t, s);
-    if (r !== void 0 && s.reflect === !0) {
-      const o = (s.converter?.toAttribute !== void 0 ? s.converter : Et).toAttribute(i, s.type);
-      this._$Em = t, o == null ? this.removeAttribute(r) : this.setAttribute(r, o), this._$Em = null;
+    const s = this.constructor.elementProperties.get(t), o = this.constructor._$Eu(t, s);
+    if (o !== void 0 && s.reflect === !0) {
+      const r = (s.converter?.toAttribute !== void 0 ? s.converter : jt).toAttribute(i, s.type);
+      this._$Em = t, r == null ? this.removeAttribute(o) : this.setAttribute(o, r), this._$Em = null;
     }
   }
   _$AK(t, i) {
-    const s = this.constructor, r = s._$Eh.get(t);
-    if (r !== void 0 && this._$Em !== r) {
-      const o = s.getPropertyOptions(r), n = typeof o.converter == "function" ? { fromAttribute: o.converter } : o.converter?.fromAttribute !== void 0 ? o.converter : Et;
-      this._$Em = r;
-      const a = n.fromAttribute(i, o.type);
-      this[r] = a ?? this._$Ej?.get(r) ?? a, this._$Em = null;
+    const s = this.constructor, o = s._$Eh.get(t);
+    if (o !== void 0 && this._$Em !== o) {
+      const r = s.getPropertyOptions(o), n = typeof r.converter == "function" ? { fromAttribute: r.converter } : r.converter?.fromAttribute !== void 0 ? r.converter : jt;
+      this._$Em = o;
+      const a = n.fromAttribute(i, r.type);
+      this[o] = a ?? this._$Ej?.get(o) ?? a, this._$Em = null;
     }
   }
-  requestUpdate(t, i, s, r = !1, o) {
+  requestUpdate(t, i, s, o = !1, r) {
     if (t !== void 0) {
       const n = this.constructor;
-      if (r === !1 && (o = this[t]), s ??= n.getPropertyOptions(t), !((s.hasChanged ?? Kt)(o, i) || s.useDefault && s.reflect && o === this._$Ej?.get(t) && !this.hasAttribute(n._$Eu(t, s)))) return;
+      if (o === !1 && (r = this[t]), s ??= n.getPropertyOptions(t), !((s.hasChanged ?? Ae)(r, i) || s.useDefault && s.reflect && r === this._$Ej?.get(t) && !this.hasAttribute(n._$Eu(t, s)))) return;
       this.C(t, i, s);
     }
     this.isUpdatePending === !1 && (this._$ES = this._$EP());
   }
-  C(t, i, { useDefault: s, reflect: r, wrapped: o }, n) {
-    s && !(this._$Ej ??= /* @__PURE__ */ new Map()).has(t) && (this._$Ej.set(t, n ?? i ?? this[t]), o !== !0 || n !== void 0) || (this._$AL.has(t) || (this.hasUpdated || s || (i = void 0), this._$AL.set(t, i)), r === !0 && this._$Em !== t && (this._$Eq ??= /* @__PURE__ */ new Set()).add(t));
+  C(t, i, { useDefault: s, reflect: o, wrapped: r }, n) {
+    s && !(this._$Ej ??= /* @__PURE__ */ new Map()).has(t) && (this._$Ej.set(t, n ?? i ?? this[t]), r !== !0 || n !== void 0) || (this._$AL.has(t) || (this.hasUpdated || s || (i = void 0), this._$AL.set(t, i)), o === !0 && this._$Em !== t && (this._$Eq ??= /* @__PURE__ */ new Set()).add(t));
   }
   async _$EP() {
     this.isUpdatePending = !0;
@@ -213,13 +213,13 @@ let nt = class extends HTMLElement {
     if (!this.isUpdatePending) return;
     if (!this.hasUpdated) {
       if (this.renderRoot ??= this.createRenderRoot(), this._$Ep) {
-        for (const [r, o] of this._$Ep) this[r] = o;
+        for (const [o, r] of this._$Ep) this[o] = r;
         this._$Ep = void 0;
       }
       const s = this.constructor.elementProperties;
-      if (s.size > 0) for (const [r, o] of s) {
-        const { wrapped: n } = o, a = this[r];
-        n !== !0 || this._$AL.has(r) || a === void 0 || this.C(r, void 0, o, a);
+      if (s.size > 0) for (const [o, r] of s) {
+        const { wrapped: n } = r, a = this[o];
+        n !== !0 || this._$AL.has(o) || a === void 0 || this.C(o, void 0, r, a);
       }
     }
     let t = !1;
@@ -256,75 +256,75 @@ let nt = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-nt.elementStyles = [], nt.shadowRootOptions = { mode: "open" }, nt[_t("elementProperties")] = /* @__PURE__ */ new Map(), nt[_t("finalized")] = /* @__PURE__ */ new Map(), mi?.({ ReactiveElement: nt }), (Ct.reactiveElementVersions ??= []).push("2.1.2");
+wt.elementStyles = [], wt.shadowRootOptions = { mode: "open" }, wt[Ct("elementProperties")] = /* @__PURE__ */ new Map(), wt[Ct("finalized")] = /* @__PURE__ */ new Map(), As?.({ ReactiveElement: wt }), (te.reactiveElementVersions ??= []).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Zt = globalThis, he = (e) => e, Pt = Zt.trustedTypes, le = Pt ? Pt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, He = "$lit$", X = `lit$${Math.random().toFixed(9).slice(2)}$`, We = "?" + X, vi = `<${We}>`, et = document, ft = () => et.createComment(""), mt = (e) => e === null || typeof e != "object" && typeof e != "function", Jt = Array.isArray, gi = (e) => Jt(e) || typeof e?.[Symbol.iterator] == "function", Rt = `[ 	
-\f\r]`, pt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ce = /-->/g, de = />/g, Z = RegExp(`>|${Rt}(?:([^\\s"'>=/]+)(${Rt}*=${Rt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), pe = /'/g, ue = /"/g, je = /^(?:script|style|textarea|title)$/i, bi = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), p = bi(1), it = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), _e = /* @__PURE__ */ new WeakMap(), tt = et.createTreeWalker(et, 129);
-function qe(e, t) {
-  if (!Jt(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-  return le !== void 0 ? le.createHTML(t) : t;
+const Me = globalThis, je = (e) => e, Gt = Me.trustedTypes, Ge = Gt ? Gt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ji = "$lit$", ot = `lit$${Math.random().toFixed(9).slice(2)}$`, Gi = "?" + ot, Ms = `<${Gi}>`, pt = document, Pt = () => pt.createComment(""), Rt = (e) => e === null || typeof e != "object" && typeof e != "function", Ce = Array.isArray, Cs = (e) => Ce(e) || typeof e?.[Symbol.iterator] == "function", se = `[ 	
+\f\r]`, Tt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Ke = /-->/g, Ye = />/g, nt = RegExp(`>|${se}(?:([^\\s"'>=/]+)(${se}*=${se}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Xe = /'/g, Ze = /"/g, Ki = /^(?:script|style|textarea|title)$/i, Ps = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), u = Ps(1), ut = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), Je = /* @__PURE__ */ new WeakMap(), dt = pt.createTreeWalker(pt, 129);
+function Yi(e, t) {
+  if (!Ce(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+  return Ge !== void 0 ? Ge.createHTML(t) : t;
 }
-const wi = (e, t) => {
+const Rs = (e, t) => {
   const i = e.length - 1, s = [];
-  let r, o = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", n = pt;
+  let o, r = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", n = Tt;
   for (let a = 0; a < i; a++) {
     const h = e[a];
-    let u, d, l = -1, _ = 0;
-    for (; _ < h.length && (n.lastIndex = _, d = n.exec(h), d !== null); ) _ = n.lastIndex, n === pt ? d[1] === "!--" ? n = ce : d[1] !== void 0 ? n = de : d[2] !== void 0 ? (je.test(d[2]) && (r = RegExp("</" + d[2], "g")), n = Z) : d[3] !== void 0 && (n = Z) : n === Z ? d[0] === ">" ? (n = r ?? pt, l = -1) : d[1] === void 0 ? l = -2 : (l = n.lastIndex - d[2].length, u = d[1], n = d[3] === void 0 ? Z : d[3] === '"' ? ue : pe) : n === ue || n === pe ? n = Z : n === ce || n === de ? n = pt : (n = Z, r = void 0);
-    const v = n === Z && e[a + 1].startsWith("/>") ? " " : "";
-    o += n === pt ? h + vi : l >= 0 ? (s.push(u), h.slice(0, l) + He + h.slice(l) + X + v) : h + X + (l === -2 ? a : v);
+    let c, d, l = -1, _ = 0;
+    for (; _ < h.length && (n.lastIndex = _, d = n.exec(h), d !== null); ) _ = n.lastIndex, n === Tt ? d[1] === "!--" ? n = Ke : d[1] !== void 0 ? n = Ye : d[2] !== void 0 ? (Ki.test(d[2]) && (o = RegExp("</" + d[2], "g")), n = nt) : d[3] !== void 0 && (n = nt) : n === nt ? d[0] === ">" ? (n = o ?? Tt, l = -1) : d[1] === void 0 ? l = -2 : (l = n.lastIndex - d[2].length, c = d[1], n = d[3] === void 0 ? nt : d[3] === '"' ? Ze : Xe) : n === Ze || n === Xe ? n = nt : n === Ke || n === Ye ? n = Tt : (n = nt, o = void 0);
+    const v = n === nt && e[a + 1].startsWith("/>") ? " " : "";
+    r += n === Tt ? h + Ms : l >= 0 ? (s.push(c), h.slice(0, l) + ji + h.slice(l) + ot + v) : h + ot + (l === -2 ? a : v);
   }
-  return [qe(e, o + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
+  return [Yi(e, r + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
-class vt {
+class zt {
   constructor({ strings: t, _$litType$: i }, s) {
-    let r;
+    let o;
     this.parts = [];
-    let o = 0, n = 0;
-    const a = t.length - 1, h = this.parts, [u, d] = wi(t, i);
-    if (this.el = vt.createElement(u, s), tt.currentNode = this.el.content, i === 2 || i === 3) {
+    let r = 0, n = 0;
+    const a = t.length - 1, h = this.parts, [c, d] = Rs(t, i);
+    if (this.el = zt.createElement(c, s), dt.currentNode = this.el.content, i === 2 || i === 3) {
       const l = this.el.content.firstChild;
       l.replaceWith(...l.childNodes);
     }
-    for (; (r = tt.nextNode()) !== null && h.length < a; ) {
-      if (r.nodeType === 1) {
-        if (r.hasAttributes()) for (const l of r.getAttributeNames()) if (l.endsWith(He)) {
-          const _ = d[n++], v = r.getAttribute(l).split(X), y = /([.?@])?(.*)/.exec(_);
-          h.push({ type: 1, index: o, name: y[2], strings: v, ctor: y[1] === "." ? xi : y[1] === "?" ? ki : y[1] === "@" ? Si : Ft }), r.removeAttribute(l);
-        } else l.startsWith(X) && (h.push({ type: 6, index: o }), r.removeAttribute(l));
-        if (je.test(r.tagName)) {
-          const l = r.textContent.split(X), _ = l.length - 1;
+    for (; (o = dt.nextNode()) !== null && h.length < a; ) {
+      if (o.nodeType === 1) {
+        if (o.hasAttributes()) for (const l of o.getAttributeNames()) if (l.endsWith(ji)) {
+          const _ = d[n++], v = o.getAttribute(l).split(ot), w = /([.?@])?(.*)/.exec(_);
+          h.push({ type: 1, index: r, name: w[2], strings: v, ctor: w[1] === "." ? Ls : w[1] === "?" ? Fs : w[1] === "@" ? Os : ee }), o.removeAttribute(l);
+        } else l.startsWith(ot) && (h.push({ type: 6, index: r }), o.removeAttribute(l));
+        if (Ki.test(o.tagName)) {
+          const l = o.textContent.split(ot), _ = l.length - 1;
           if (_ > 0) {
-            r.textContent = Pt ? Pt.emptyScript : "";
-            for (let v = 0; v < _; v++) r.append(l[v], ft()), tt.nextNode(), h.push({ type: 2, index: ++o });
-            r.append(l[_], ft());
+            o.textContent = Gt ? Gt.emptyScript : "";
+            for (let v = 0; v < _; v++) o.append(l[v], Pt()), dt.nextNode(), h.push({ type: 2, index: ++r });
+            o.append(l[_], Pt());
           }
         }
-      } else if (r.nodeType === 8) if (r.data === We) h.push({ type: 2, index: o });
+      } else if (o.nodeType === 8) if (o.data === Gi) h.push({ type: 2, index: r });
       else {
         let l = -1;
-        for (; (l = r.data.indexOf(X, l + 1)) !== -1; ) h.push({ type: 7, index: o }), l += X.length - 1;
+        for (; (l = o.data.indexOf(ot, l + 1)) !== -1; ) h.push({ type: 7, index: r }), l += ot.length - 1;
       }
-      o++;
+      r++;
     }
   }
   static createElement(t, i) {
-    const s = et.createElement("template");
+    const s = pt.createElement("template");
     return s.innerHTML = t, s;
   }
 }
-function lt(e, t, i = e, s) {
-  if (t === it) return t;
-  let r = s !== void 0 ? i._$Co?.[s] : i._$Cl;
-  const o = mt(t) ? void 0 : t._$litDirective$;
-  return r?.constructor !== o && (r?._$AO?.(!1), o === void 0 ? r = void 0 : (r = new o(e), r._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = r : i._$Cl = r), r !== void 0 && (t = lt(e, r._$AS(e, t.values), r, s)), t;
+function kt(e, t, i = e, s) {
+  if (t === ut) return t;
+  let o = s !== void 0 ? i._$Co?.[s] : i._$Cl;
+  const r = Rt(t) ? void 0 : t._$litDirective$;
+  return o?.constructor !== r && (o?._$AO?.(!1), r === void 0 ? o = void 0 : (o = new r(e), o._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = o : i._$Cl = o), o !== void 0 && (t = kt(e, o._$AS(e, t.values), o, s)), t;
 }
-class yi {
+class zs {
   constructor(t, i) {
     this._$AV = [], this._$AN = void 0, this._$AD = t, this._$AM = i;
   }
@@ -335,29 +335,29 @@ class yi {
     return this._$AM._$AU;
   }
   u(t) {
-    const { el: { content: i }, parts: s } = this._$AD, r = (t?.creationScope ?? et).importNode(i, !0);
-    tt.currentNode = r;
-    let o = tt.nextNode(), n = 0, a = 0, h = s[0];
+    const { el: { content: i }, parts: s } = this._$AD, o = (t?.creationScope ?? pt).importNode(i, !0);
+    dt.currentNode = o;
+    let r = dt.nextNode(), n = 0, a = 0, h = s[0];
     for (; h !== void 0; ) {
       if (n === h.index) {
-        let u;
-        h.type === 2 ? u = new ct(o, o.nextSibling, this, t) : h.type === 1 ? u = new h.ctor(o, h.name, h.strings, this, t) : h.type === 6 && (u = new $i(o, this, t)), this._$AV.push(u), h = s[++a];
+        let c;
+        h.type === 2 ? c = new St(r, r.nextSibling, this, t) : h.type === 1 ? c = new h.ctor(r, h.name, h.strings, this, t) : h.type === 6 && (c = new Is(r, this, t)), this._$AV.push(c), h = s[++a];
       }
-      n !== h?.index && (o = tt.nextNode(), n++);
+      n !== h?.index && (r = dt.nextNode(), n++);
     }
-    return tt.currentNode = et, r;
+    return dt.currentNode = pt, o;
   }
   p(t) {
     let i = 0;
     for (const s of this._$AV) s !== void 0 && (s.strings !== void 0 ? (s._$AI(t, s, i), i += s.strings.length - 2) : s._$AI(t[i])), i++;
   }
 }
-class ct {
+class St {
   get _$AU() {
     return this._$AM?._$AU ?? this._$Cv;
   }
-  constructor(t, i, s, r) {
-    this.type = 2, this._$AH = b, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = r, this._$Cv = r?.isConnected ?? !0;
+  constructor(t, i, s, o) {
+    this.type = 2, this._$AH = b, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = o, this._$Cv = o?.isConnected ?? !0;
   }
   get parentNode() {
     let t = this._$AA.parentNode;
@@ -371,7 +371,7 @@ class ct {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = lt(this, t, i), mt(t) ? t === b || t == null || t === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : t !== this._$AH && t !== it && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : gi(t) ? this.k(t) : this._(t);
+    t = kt(this, t, i), Rt(t) ? t === b || t == null || t === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : t !== this._$AH && t !== ut && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : Cs(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -380,63 +380,63 @@ class ct {
     this._$AH !== t && (this._$AR(), this._$AH = this.O(t));
   }
   _(t) {
-    this._$AH !== b && mt(this._$AH) ? this._$AA.nextSibling.data = t : this.T(et.createTextNode(t)), this._$AH = t;
+    this._$AH !== b && Rt(this._$AH) ? this._$AA.nextSibling.data = t : this.T(pt.createTextNode(t)), this._$AH = t;
   }
   $(t) {
-    const { values: i, _$litType$: s } = t, r = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = vt.createElement(qe(s.h, s.h[0]), this.options)), s);
-    if (this._$AH?._$AD === r) this._$AH.p(i);
+    const { values: i, _$litType$: s } = t, o = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = zt.createElement(Yi(s.h, s.h[0]), this.options)), s);
+    if (this._$AH?._$AD === o) this._$AH.p(i);
     else {
-      const o = new yi(r, this), n = o.u(this.options);
-      o.p(i), this.T(n), this._$AH = o;
+      const r = new zs(o, this), n = r.u(this.options);
+      r.p(i), this.T(n), this._$AH = r;
     }
   }
   _$AC(t) {
-    let i = _e.get(t.strings);
-    return i === void 0 && _e.set(t.strings, i = new vt(t)), i;
+    let i = Je.get(t.strings);
+    return i === void 0 && Je.set(t.strings, i = new zt(t)), i;
   }
   k(t) {
-    Jt(this._$AH) || (this._$AH = [], this._$AR());
+    Ce(this._$AH) || (this._$AH = [], this._$AR());
     const i = this._$AH;
-    let s, r = 0;
-    for (const o of t) r === i.length ? i.push(s = new ct(this.O(ft()), this.O(ft()), this, this.options)) : s = i[r], s._$AI(o), r++;
-    r < i.length && (this._$AR(s && s._$AB.nextSibling, r), i.length = r);
+    let s, o = 0;
+    for (const r of t) o === i.length ? i.push(s = new St(this.O(Pt()), this.O(Pt()), this, this.options)) : s = i[o], s._$AI(r), o++;
+    o < i.length && (this._$AR(s && s._$AB.nextSibling, o), i.length = o);
   }
   _$AR(t = this._$AA.nextSibling, i) {
     for (this._$AP?.(!1, !0, i); t !== this._$AB; ) {
-      const s = he(t).nextSibling;
-      he(t).remove(), t = s;
+      const s = je(t).nextSibling;
+      je(t).remove(), t = s;
     }
   }
   setConnected(t) {
     this._$AM === void 0 && (this._$Cv = t, this._$AP?.(t));
   }
 }
-class Ft {
+class ee {
   get tagName() {
     return this.element.tagName;
   }
   get _$AU() {
     return this._$AM._$AU;
   }
-  constructor(t, i, s, r, o) {
-    this.type = 1, this._$AH = b, this._$AN = void 0, this.element = t, this.name = i, this._$AM = r, this.options = o, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = b;
+  constructor(t, i, s, o, r) {
+    this.type = 1, this._$AH = b, this._$AN = void 0, this.element = t, this.name = i, this._$AM = o, this.options = r, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = b;
   }
-  _$AI(t, i = this, s, r) {
-    const o = this.strings;
+  _$AI(t, i = this, s, o) {
+    const r = this.strings;
     let n = !1;
-    if (o === void 0) t = lt(this, t, i, 0), n = !mt(t) || t !== this._$AH && t !== it, n && (this._$AH = t);
+    if (r === void 0) t = kt(this, t, i, 0), n = !Rt(t) || t !== this._$AH && t !== ut, n && (this._$AH = t);
     else {
       const a = t;
-      let h, u;
-      for (t = o[0], h = 0; h < o.length - 1; h++) u = lt(this, a[s + h], i, h), u === it && (u = this._$AH[h]), n ||= !mt(u) || u !== this._$AH[h], u === b ? t = b : t !== b && (t += (u ?? "") + o[h + 1]), this._$AH[h] = u;
+      let h, c;
+      for (t = r[0], h = 0; h < r.length - 1; h++) c = kt(this, a[s + h], i, h), c === ut && (c = this._$AH[h]), n ||= !Rt(c) || c !== this._$AH[h], c === b ? t = b : t !== b && (t += (c ?? "") + r[h + 1]), this._$AH[h] = c;
     }
-    n && !r && this.j(t);
+    n && !o && this.j(t);
   }
   j(t) {
     t === b ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
-class xi extends Ft {
+class Ls extends ee {
   constructor() {
     super(...arguments), this.type = 3;
   }
@@ -444,7 +444,7 @@ class xi extends Ft {
     this.element[this.name] = t === b ? void 0 : t;
   }
 }
-class ki extends Ft {
+class Fs extends ee {
   constructor() {
     super(...arguments), this.type = 4;
   }
@@ -452,20 +452,20 @@ class ki extends Ft {
     this.element.toggleAttribute(this.name, !!t && t !== b);
   }
 }
-class Si extends Ft {
-  constructor(t, i, s, r, o) {
-    super(t, i, s, r, o), this.type = 5;
+class Os extends ee {
+  constructor(t, i, s, o, r) {
+    super(t, i, s, o, r), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = lt(this, t, i, 0) ?? b) === it) return;
-    const s = this._$AH, r = t === b && s !== b || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, o = t !== b && (s === b || r);
-    r && this.element.removeEventListener(this.name, this, s), o && this.element.addEventListener(this.name, this, t), this._$AH = t;
+    if ((t = kt(this, t, i, 0) ?? b) === ut) return;
+    const s = this._$AH, o = t === b && s !== b || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, r = t !== b && (s === b || o);
+    o && this.element.removeEventListener(this.name, this, s), r && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
   handleEvent(t) {
     typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, t) : this._$AH.handleEvent(t);
   }
 }
-class $i {
+class Is {
   constructor(t, i, s) {
     this.element = t, this.type = 6, this._$AN = void 0, this._$AM = i, this.options = s;
   }
@@ -473,27 +473,27 @@ class $i {
     return this._$AM._$AU;
   }
   _$AI(t) {
-    lt(this, t);
+    kt(this, t);
   }
 }
-const Ti = { I: ct }, Ei = Zt.litHtmlPolyfillSupport;
-Ei?.(vt, ct), (Zt.litHtmlVersions ??= []).push("3.3.3");
-const Ge = (e, t, i) => {
+const Ds = { I: St }, Bs = Me.litHtmlPolyfillSupport;
+Bs?.(zt, St), (Me.litHtmlVersions ??= []).push("3.3.3");
+const Xi = (e, t, i) => {
   const s = i?.renderBefore ?? t;
-  let r = s._$litPart$;
-  if (r === void 0) {
-    const o = i?.renderBefore ?? null;
-    s._$litPart$ = r = new ct(t.insertBefore(ft(), o), o, void 0, i ?? {});
+  let o = s._$litPart$;
+  if (o === void 0) {
+    const r = i?.renderBefore ?? null;
+    s._$litPart$ = o = new St(t.insertBefore(Pt(), r), r, void 0, i ?? {});
   }
-  return r._$AI(e), r;
+  return o._$AI(e), o;
 };
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Qt = globalThis;
-let j = class extends nt {
+const Pe = globalThis;
+let Z = class extends wt {
   constructor() {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
@@ -503,7 +503,7 @@ let j = class extends nt {
   }
   update(t) {
     const i = this.render();
-    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = Ge(i, this.renderRoot, this.renderOptions);
+    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = Xi(i, this.renderRoot, this.renderOptions);
   }
   connectedCallback() {
     super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -512,19 +512,19 @@ let j = class extends nt {
     super.disconnectedCallback(), this._$Do?.setConnected(!1);
   }
   render() {
-    return it;
+    return ut;
   }
 };
-j._$litElement$ = !0, j.finalized = !0, Qt.litElementHydrateSupport?.({ LitElement: j });
-const Pi = Qt.litElementPolyfillSupport;
-Pi?.({ LitElement: j });
-(Qt.litElementVersions ??= []).push("4.2.2");
+Z._$litElement$ = !0, Z.finalized = !0, Pe.litElementHydrateSupport?.({ LitElement: Z });
+const Us = Pe.litElementPolyfillSupport;
+Us?.({ LitElement: Z });
+(Pe.litElementVersions ??= []).push("4.2.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ot = (e) => (t, i) => {
+const mt = (e) => (t, i) => {
   i !== void 0 ? i.addInitializer(() => {
     customElements.define(e, t);
   }) : customElements.define(e, t);
@@ -534,10 +534,10 @@ const ot = (e) => (t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Mi = { attribute: !0, type: String, converter: Et, reflect: !1, hasChanged: Kt }, Ai = (e = Mi, t, i) => {
-  const { kind: s, metadata: r } = i;
-  let o = globalThis.litPropertyMetadata.get(r);
-  if (o === void 0 && globalThis.litPropertyMetadata.set(r, o = /* @__PURE__ */ new Map()), s === "setter" && ((e = Object.create(e)).wrapped = !0), o.set(i.name, e), s === "accessor") {
+const Ns = { attribute: !0, type: String, converter: jt, reflect: !1, hasChanged: Ae }, Hs = (e = Ns, t, i) => {
+  const { kind: s, metadata: o } = i;
+  let r = globalThis.litPropertyMetadata.get(o);
+  if (r === void 0 && globalThis.litPropertyMetadata.set(o, r = /* @__PURE__ */ new Map()), s === "setter" && ((e = Object.create(e)).wrapped = !0), r.set(i.name, e), s === "accessor") {
     const { name: n } = i;
     return { set(a) {
       const h = t.get.call(this);
@@ -555,10 +555,10 @@ const Mi = { attribute: !0, type: String, converter: Et, reflect: !1, hasChanged
   }
   throw Error("Unsupported decorator location: " + s);
 };
-function c(e) {
-  return (t, i) => typeof i == "object" ? Ai(e, t, i) : ((s, r, o) => {
-    const n = r.hasOwnProperty(o);
-    return r.constructor.createProperty(o, s), n ? Object.getOwnPropertyDescriptor(r, o) : void 0;
+function p(e) {
+  return (t, i) => typeof i == "object" ? Hs(e, t, i) : ((s, o, r) => {
+    const n = o.hasOwnProperty(r);
+    return o.constructor.createProperty(r, s), n ? Object.getOwnPropertyDescriptor(o, r) : void 0;
   })(e, t, i);
 }
 /**
@@ -567,24 +567,24 @@ function c(e) {
  * SPDX-License-Identifier: BSD-3-Clause
  */
 function m(e) {
-  return c({ ...e, state: !0, attribute: !1 });
+  return p({ ...e, state: !0, attribute: !1 });
 }
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ye = (e, t, i) => (i.configurable = !0, i.enumerable = !0, Reflect.decorate && typeof t != "object" && Object.defineProperty(e, t, i), i);
+const Zi = (e, t, i) => (i.configurable = !0, i.enumerable = !0, Reflect.decorate && typeof t != "object" && Object.defineProperty(e, t, i), i);
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function G(e, t) {
-  return (i, s, r) => {
-    const o = (n) => n.renderRoot?.querySelector(e) ?? null;
-    return Ye(i, s, { get() {
-      return o(this);
+function tt(e, t) {
+  return (i, s, o) => {
+    const r = (n) => n.renderRoot?.querySelector(e) ?? null;
+    return Zi(i, s, { get() {
+      return r(this);
     } });
   };
 }
@@ -593,10 +593,10 @@ function G(e, t) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-let Ci;
-function Fi(e) {
-  return (t, i) => Ye(t, i, { get() {
-    return (this.renderRoot ?? (Ci ??= document.createDocumentFragment())).querySelectorAll(e);
+let Vs;
+function Ws(e) {
+  return (t, i) => Zi(t, i, { get() {
+    return (this.renderRoot ?? (Vs ??= document.createDocumentFragment())).querySelectorAll(e);
   } });
 }
 /**
@@ -604,8 +604,8 @@ function Fi(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const zi = { CHILD: 2 }, te = (e) => (...t) => ({ _$litDirective$: e, values: t });
-let ee = class {
+const qs = { CHILD: 2 }, Re = (e) => (...t) => ({ _$litDirective$: e, values: t });
+let ze = class {
   constructor(t) {
   }
   get _$AU() {
@@ -626,29 +626,29 @@ let ee = class {
  * Copyright 2020 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { I: Ri } = Ti, fe = (e) => e, me = (e, t) => e?._$litType$ !== void 0, Li = (e) => e?._$litType$?.h != null, ve = () => document.createComment(""), Q = (e, t, i) => {
-  const s = e._$AA.parentNode, r = t === void 0 ? e._$AB : t._$AA;
+const { I: js } = Ds, Qe = (e) => e, ti = (e, t) => e?._$litType$ !== void 0, Gs = (e) => e?._$litType$?.h != null, ei = () => document.createComment(""), ht = (e, t, i) => {
+  const s = e._$AA.parentNode, o = t === void 0 ? e._$AB : t._$AA;
   if (i === void 0) {
-    const o = s.insertBefore(ve(), r), n = s.insertBefore(ve(), r);
-    i = new Ri(o, n, e, e.options);
+    const r = s.insertBefore(ei(), o), n = s.insertBefore(ei(), o);
+    i = new js(r, n, e, e.options);
   } else {
-    const o = i._$AB.nextSibling, n = i._$AM, a = n !== e;
+    const r = i._$AB.nextSibling, n = i._$AM, a = n !== e;
     if (a) {
       let h;
       i._$AQ?.(e), i._$AM = e, i._$AP !== void 0 && (h = e._$AU) !== n._$AU && i._$AP(h);
     }
-    if (o !== r || a) {
+    if (r !== o || a) {
       let h = i._$AA;
-      for (; h !== o; ) {
-        const u = fe(h).nextSibling;
-        fe(s).insertBefore(h, r), h = u;
+      for (; h !== r; ) {
+        const c = Qe(h).nextSibling;
+        Qe(s).insertBefore(h, o), h = c;
       }
     }
   }
   return i;
-}, J = (e, t, i = e) => (e._$AI(t, i), e), Di = {}, Mt = (e, t = Di) => e._$AH = t, Wt = (e) => e._$AH, Lt = (e) => {
+}, at = (e, t, i = e) => (e._$AI(t, i), e), Ks = {}, Kt = (e, t = Ks) => e._$AH = t, ve = (e) => e._$AH, oe = (e) => {
   e._$AR(), e._$AA.remove();
-}, Oi = (e) => {
+}, Ys = (e) => {
   e._$AR();
 };
 /**
@@ -656,7 +656,7 @@ const { I: Ri } = Ti, fe = (e) => e, me = (e, t) => e?._$litType$ !== void 0, Li
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ge = (e) => Li(e) ? e._$litType$.h : e.strings, Ii = te(class extends ee {
+const ii = (e) => Gs(e) ? e._$litType$.h : e.strings, Xs = Re(class extends ze {
   constructor(e) {
     super(e), this.et = /* @__PURE__ */ new WeakMap();
   }
@@ -664,51 +664,62 @@ const ge = (e) => Li(e) ? e._$litType$.h : e.strings, Ii = te(class extends ee {
     return [e];
   }
   update(e, [t]) {
-    const i = me(this.it) ? ge(this.it) : null, s = me(t) ? ge(t) : null;
+    const i = ti(this.it) ? ii(this.it) : null, s = ti(t) ? ii(t) : null;
     if (i !== null && (s === null || i !== s)) {
-      const r = Wt(e).pop();
-      let o = this.et.get(i);
-      if (o === void 0) {
+      const o = ve(e).pop();
+      let r = this.et.get(i);
+      if (r === void 0) {
         const n = document.createDocumentFragment();
-        o = Ge(b, n), o.setConnected(!1), this.et.set(i, o);
+        r = Xi(b, n), r.setConnected(!1), this.et.set(i, r);
       }
-      Mt(o, [r]), Q(o, void 0, r);
+      Kt(r, [o]), ht(r, void 0, o);
     }
     if (s !== null) {
       if (i === null || i !== s) {
-        const r = this.et.get(s);
-        if (r !== void 0) {
-          const o = Wt(r).pop();
-          Oi(e), Q(e, void 0, o), Mt(e, [o]);
+        const o = this.et.get(s);
+        if (o !== void 0) {
+          const r = ve(o).pop();
+          Ys(e), ht(e, void 0, r), Kt(e, [r]);
         }
       }
       this.it = t;
     } else this.it = void 0;
     return this.render(t);
   }
-}), Bi = "/protect_scrub", ie = "/protect_thumbs", be = "/local/protect_thumbs";
-function Ni(e) {
-  return e.startsWith(`${be}/`) ? ie + e.slice(be.length) : e;
+}), Zs = 5 * 6e4, si = /* @__PURE__ */ new Map();
+async function Le(e, t, i, s = fetch) {
+  const o = async (h) => {
+    const c = await s(h, { cache: "no-cache" });
+    return c.ok ? await c.json() : void 0;
+  }, r = await o(e);
+  if (r === void 0) return;
+  const n = t(r);
+  if (n === void 0 || Date.now() - n <= i) return r;
+  const a = Date.now();
+  if (a - (si.get(e) ?? 0) < Zs) return r;
+  si.set(e, a);
+  try {
+    const h = await o(`${e}${e.includes("?") ? "&" : "?"}fresh=${a}`);
+    if (h !== void 0 && (t(h) ?? 0) > n) return h;
+  } catch {
+  }
+  return r;
 }
-function Ui(e) {
+const Js = "/protect_scrub", Fe = "/protect_thumbs", oi = "/local/protect_thumbs";
+function Qs(e) {
+  return e.startsWith(`${oi}/`) ? Fe + e.slice(oi.length) : e;
+}
+function to(e) {
   return (e instanceof Date ? e : new Date(e)).toISOString();
 }
-function Xe(e, t, i, s) {
-  let r = `/api/unifiprotect/snapshot/${encodeURIComponent(e)}/${encodeURIComponent(
+function eo(e, t, i, s) {
+  let o = `/api/unifiprotect/snapshot/${encodeURIComponent(e)}/${encodeURIComponent(
     t
-  )}/${encodeURIComponent(Ui(i))}`;
-  const o = [];
-  return s?.width && o.push(`width=${Math.round(s.width)}`), s?.height && o.push(`height=${Math.round(s.height)}`), o.length && (r += `?${o.join("&")}`), r;
+  )}/${encodeURIComponent(to(i))}`;
+  const r = [];
+  return r.push(`width=${Math.round(s.width)}`), s?.height && r.push(`height=${Math.round(s.height)}`), r.length && (o += `?${r.join("&")}`), o;
 }
-function Vi(e, t, i) {
-  if (e.fetchWithAuth) return e.fetchWithAuth(t, i);
-  const s = e.auth?.accessToken;
-  return fetch(t, {
-    ...i,
-    headers: { ...i.headers, ...s ? { Authorization: `Bearer ${s}` } : {} }
-  });
-}
-async function Ke(e, t, i = 300) {
+async function Yt(e, t, i = 300) {
   try {
     return (await e.callWS({
       type: "auth/sign_path",
@@ -719,14 +730,14 @@ async function Ke(e, t, i = 300) {
     return console.warn("[unifi-timeline] auth/sign_path failed, using raw path", s), t;
   }
 }
-const Hi = 3 * 6e4, Wi = {
+const ri = 3 * 6e4, io = {
   motion: { label: "Motion", color: "#5c8aff" },
   person: { label: "Person", color: "#3ddc84" },
   vehicle: { label: "Vehicle", color: "#ffb300" },
   animal: { label: "Animal", color: "#ab47bc" }
 };
-function Ze(e) {
-  const t = Wi[e.kind] ?? {
+function Ji(e) {
+  const t = io[e.kind] ?? {
     label: e.kind ? e.kind[0].toUpperCase() + e.kind.slice(1) : "Event",
     color: "#5c8aff"
   };
@@ -739,160 +750,394 @@ function Ze(e) {
     id: e.id,
     // Entries written before the cache moved out of www/ carry an absolute
     // /local/... URL — rewrite them onto the current base.
-    file: e.file ? Ni(e.file) : void 0,
+    file: e.file ? Qs(e.file) : void 0,
     durMs: e.dur,
     ongoing: e.ongoing
   };
 }
-async function Je(e) {
+async function Qi(e) {
   try {
-    const t = await fetch(`${e}/manifest.json`, { cache: "no-cache" });
-    if (!t.ok) return;
-    const i = await t.json();
-    if (Array.isArray(i))
-      return { entries: i, preMs: 0, postMs: 0, stale: !0 };
-    if (i && Array.isArray(i.events))
+    const t = await Le(
+      `${e}/manifest.json`,
+      (i) => Array.isArray(i) ? void 0 : i?.generated,
+      ri
+    );
+    if (!t) return;
+    if (Array.isArray(t))
+      return { entries: t, preMs: 0, postMs: 0, stale: !0 };
+    if (t && Array.isArray(t.events))
       return {
-        entries: i.events,
-        preMs: i.pre_ms ?? 0,
-        postMs: i.post_ms ?? 0,
-        stale: Date.now() - (i.generated ?? 0) > Hi
+        entries: t.events,
+        preMs: t.pre_ms ?? 0,
+        postMs: t.post_ms ?? 0,
+        stale: Date.now() - (t.generated ?? 0) > ri
       };
   } catch {
   }
 }
-const Qe = 1e3, st = 60 * Qe, ji = 60 * st, jt = 4 * st, ti = 60 * st, V = (() => {
-  const t = Math.pow(ti / jt, 0.034482758620689655);
-  return Array.from({ length: 30 }, (i, s) => Math.round(jt * Math.pow(t, s)));
-})(), zt = 0.15, qi = 0.179;
-function M(e) {
+const ts = 1e3, $t = 60 * ts, so = 60 * $t, ge = 4 * $t, es = 60 * $t, q = (() => {
+  const t = Math.pow(es / ge, 0.034482758620689655);
+  return Array.from({ length: 30 }, (i, s) => Math.round(ge * Math.pow(t, s)));
+})(), ie = 0.15, oo = 0.179;
+function L(e) {
   return e.end - e.start;
 }
-function Gi(e) {
-  return Math.min(ti, Math.max(jt, e));
+function ro(e) {
+  return Math.min(es, Math.max(ge, e));
 }
-function P(e, t = zt) {
-  return e.end - M(e) * t;
+function A(e, t = ie) {
+  return e.end - L(e) * t;
 }
-const Yi = st, Xi = 6 * ji;
-function U(e, t, i = zt) {
-  const s = Math.min(Xi, Math.max(Yi, t)), r = e + s * i;
-  return { start: r - s, end: r };
+const no = $t, ao = 6 * so;
+function j(e, t, i = ie) {
+  const s = Math.min(ao, Math.max(no, t)), o = e + s * i;
+  return { start: o - s, end: o };
 }
-function Ki(e, t) {
+function ho(e, t) {
   let i = 0, s = 1 / 0;
-  for (let o = 0; o < V.length; o++) {
-    const n = Math.abs(V[o] - e);
-    n < s && (s = n, i = o);
+  for (let r = 0; r < q.length; r++) {
+    const n = Math.abs(q[r] - e);
+    n < s && (s = n, i = r);
   }
-  const r = Math.min(V.length - 1, Math.max(0, i + t));
-  return V[r];
+  const o = Math.min(q.length - 1, Math.max(0, i + t));
+  return q[o];
 }
-function we(e, t) {
-  const i = -new Date(e.start).getTimezoneOffset() * 6e4, s = Math.ceil((e.start + i) / t) * t - i, r = [];
-  for (let o = s; o <= e.end; o += t) r.push(o);
-  return r;
-}
-const Zi = 1500;
-function Ji(e) {
-  const t = (e.s ?? e.state ?? "").toString();
-  let i;
-  return typeof e.lu == "number" ? i = e.lu * 1e3 : typeof e.lc == "number" ? i = e.lc * 1e3 : e.last_updated ? i = Date.parse(e.last_updated) : e.last_changed && (i = Date.parse(e.last_changed)), i === void 0 || Number.isNaN(i) || !t ? null : { state: t, ts: i };
-}
-const Qi = /* @__PURE__ */ new Set(["unavailable", "unknown"]);
-function ts(e, t, i, s = Zi) {
-  const r = e.map(Ji).filter((a) => a !== null).sort((a, h) => a.ts - h.ts), o = [];
-  let n = null;
-  for (const a of r)
-    if (Qi.has(a.state))
-      n === null && (n = Math.max(a.ts, t));
-    else if (n !== null) {
-      const h = Math.min(a.ts, i);
-      h - n >= s && o.push({ start: n, end: h }), n = null;
-    }
-  return n !== null && i - n >= s && o.push({ start: n, end: i }), o;
-}
-const es = [0.5, 0.15, 0.85], wt = /* @__PURE__ */ new Map(), is = 500;
-async function ss(e, t, i, s) {
-  const r = new AbortController();
-  try {
-    const n = (await Vi(e, Xe(t, i, s), {
-      signal: r.signal
-    })).status === 200;
-    return r.abort(), n;
-  } catch {
-    return null;
-  }
-}
-async function rs(e, t, i, s, r = 24) {
-  if (!t || !i || !s.length) return s;
-  const o = [];
-  let n = r;
-  for (const a of s) {
-    const h = `${i}|${a.start}|${a.end}`, u = wt.get(h);
-    if (u !== void 0) {
-      u && o.push(a);
-      continue;
-    }
-    let d = !1;
-    for (const l of es) {
-      if (n <= 0) break;
-      n--;
-      const _ = await ss(e, t, i, a.start + (a.end - a.start) * l);
-      if (_ !== null && _) {
-        d = !0;
-        break;
-      }
-    }
-    d || o.push(a), (d || n > 0) && (wt.size >= is && wt.clear(), wt.set(h, !d));
-  }
+function ni(e, t) {
+  const i = -new Date(e.start).getTimezoneOffset() * 6e4, s = Math.ceil((e.start + i) / t) * t - i, o = [];
+  for (let r = s; r <= e.end; r += t) o.push(r);
   return o;
 }
-async function os(e, t, i, s, r = "") {
-  if (!t) return [];
-  let o;
-  try {
-    o = await e.callWS({
-      type: "history/history_during_period",
-      start_time: new Date(i).toISOString(),
-      end_time: new Date(s).toISOString(),
-      entity_ids: [t],
-      minimal_response: !0,
-      no_attributes: !0,
-      significant_changes_only: !1
-    });
-  } catch (a) {
-    return console.error("[unifi-timeline] gap history fetch failed", a), [];
+const lo = 2 * 6e4;
+function co(e) {
+  if (!e) return [];
+  const t = [];
+  typeof e.recording_start == "number" && e.recording_start > 0 && t.push({ start: 0, end: e.recording_start });
+  for (const i of Array.isArray(e.gaps) ? e.gaps : []) {
+    if (!Array.isArray(i) || i.length !== 2) continue;
+    const [s, o] = i;
+    typeof s == "number" && typeof o == "number" && o > s && t.push({ start: s, end: o });
   }
-  const n = ts(o[t] ?? [], i, s);
-  return rs(e, r, t, n);
+  return t.sort((i, s) => i.start - s.start);
 }
-function ei(e, t) {
+function ai(e) {
+  return e[0]?.start === 0 ? e[0].end : void 0;
+}
+function hi(e, t, i, s) {
+  const o = [];
+  let r = t;
+  for (const h of e)
+    if (!(h.end < r)) {
+      if (h.start > i) break;
+      h.start > r && o.push([r, h.start]), r = Math.max(r, h.end);
+    }
+  r < i && o.push([r, i]);
+  const n = o.find(([, h]) => h > s);
+  if (n) return Math.max(n[0], s);
+  const a = o[o.length - 1];
+  return a ? Math.max(a[0], a[1] - 6e4) : void 0;
+}
+async function po(e) {
+  if (!e) return [];
+  try {
+    const t = await Le(
+      `${e}/index.json`,
+      (i) => i.generated,
+      lo
+    );
+    return co(t);
+  } catch {
+    return [];
+  }
+}
+function is(e, t) {
   for (const i of e) if (t >= i.start && t <= i.end) return !0;
   return !1;
 }
-function $t(e) {
+const uo = 2e3, be = 3e3;
+let _t = null, it = [], re = !1, At = null;
+const li = /* @__PURE__ */ new Set();
+function st() {
+  return _t != null;
+}
+function _o() {
+  if (_t)
+    return yt || (yt = ss()), yt;
+}
+function P(e, t = {}) {
+  _t && (it.push({ t: Date.now(), ev: e, ...t }), it.length > be && it.splice(0, it.length - be));
+}
+function fo(e) {
+  const t = !_t;
+  _t = e, t && (At = vo(), P("page", { path: location.pathname + location.hash, visible: document.visibilityState }), window.setInterval(() => void ne(), uo), document.addEventListener("visibilitychange", () => {
+    P("page:visibility", { state: document.visibilityState }), document.visibilityState === "hidden" && ne();
+  }), window.addEventListener("pagehide", () => {
+    P("page:hide"), ne();
+  }));
+}
+function mo(e, t, i, s) {
+  if (!_t || !t) return;
+  const o = `${t}|${i}x${s}`;
+  if (li.has(o)) return;
+  li.add(o);
+  const r = navigator.mediaCapabilities;
+  if (!r?.decodingInfo) {
+    P("decode", { cam: e, codecs: t, width: i, height: s, api: !1 });
+    return;
+  }
+  const n = t.split(",").find((a) => /^(avc|hvc|hev|av01|vp)/.test(a.trim()))?.trim() ?? t;
+  r.decodingInfo({
+    type: "media-source",
+    video: { contentType: `video/mp4; codecs="${n}"`, width: i, height: s, bitrate: 6e6, framerate: 30 }
+  }).then(
+    (a) => P("decode", { cam: e, codecs: t, width: i, height: s, supported: a.supported, smooth: a.smooth, powerEfficient: a.powerEfficient }),
+    (a) => P("decode", { cam: e, codecs: t, width: i, height: s, error: String(a?.message ?? a) })
+  );
+}
+function ss() {
+  const e = "upc_debug_client";
+  try {
+    const o = localStorage.getItem(e);
+    if (o) return o;
+  } catch {
+  }
+  const t = navigator.userAgent, s = `${/iPhone/.test(t) ? "iphone" : /iPad/.test(t) ? "ipad" : /Android/.test(t) ? "android" : /Mac/.test(t) ? "mac" : /Linux/.test(t) ? "linux" : "other"}-${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    localStorage.setItem(e, s);
+  } catch {
+  }
+  return s;
+}
+function vo() {
+  const e = navigator, t = window;
+  return {
+    ua: navigator.userAgent,
+    screen: `${screen.width}x${screen.height}@${devicePixelRatio}`,
+    viewport: `${innerWidth}x${innerHeight}`,
+    cores: navigator.hardwareConcurrency,
+    memory: e.deviceMemory,
+    net: e.connection ? `${e.connection.effectiveType ?? ""} ${e.connection.downlink ?? ""}` : void 0,
+    mms: !!t.ManagedMediaSource,
+    mse: !!t.MediaSource,
+    secure: window.isSecureContext
+  };
+}
+let yt = "";
+async function ne() {
+  const e = _t?.();
+  if (re || !e || !it.length) return;
+  re = !0;
+  const t = it;
+  it = [], yt || (yt = ss());
+  const i = { client: yt, sent: Date.now(), events: t };
+  At && (i.device = At, At = null);
+  try {
+    if (e.callApi)
+      await e.callApi("POST", "protect_cache/debug", i);
+    else if (e.fetchWithAuth) {
+      const s = await e.fetchWithAuth("/api/protect_cache/debug", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(i)
+      });
+      if (!s.ok) throw new Error(`HTTP ${s.status}`);
+    }
+  } catch {
+    it = [...t, ...it].slice(-be), i.device && (At = i.device);
+  } finally {
+    re = !1;
+  }
+}
+const go = 50, bo = "/api/protect_talk/ws", ci = 1e4, wo = `
+class UpcTalk extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.n = Math.round(sampleRate / 50);
+    this.buf = new Int16Array(this.n);
+    this.i = 0;
+  }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (ch) {
+      for (let k = 0; k < ch.length; k++) {
+        const s = Math.max(-1, Math.min(1, ch[k]));
+        this.buf[this.i++] = s < 0 ? s * 32768 : s * 32767;
+        if (this.i === this.n) {
+          this.port.postMessage(this.buf.buffer, [this.buf.buffer]);
+          this.buf = new Int16Array(this.n);
+          this.i = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('upc-talk', UpcTalk);
+`;
+function yo(e, t) {
+  const i = e?.entities, s = i?.[t]?.device_id;
+  if (!i || !s) return !1;
+  for (const o in i) {
+    const r = i[o];
+    if (r.device_id === s && r.platform === "unifiprotect" && o.startsWith("media_player."))
+      return !0;
+  }
+  return !1;
+}
+class xo {
+  /** `onEnd` runs once when talking stops for any reason; `error` is a
+   *  message for the user when it stopped by itself. */
+  constructor(t, i, s, o) {
+    this._hass = t, this._nvrId = i, this._cameraId = s, this._onEnd = o, this._ended = !1, this._levels = [], this._levelsAt = 0;
+  }
+  /** Microphone on, session open, audio flowing. Rejects with a message for
+   *  the user (and has already cleaned up) if any step fails. */
+  async start() {
+    const t = performance.now();
+    P("talk:start", { cam: this._cameraId });
+    try {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+        throw new Error("Talking needs Home Assistant opened over https");
+      const i = new AudioContext();
+      this._ctx = i, i.resume();
+      let s;
+      try {
+        s = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: !0,
+            noiseSuppression: !0,
+            autoGainControl: !0,
+            channelCount: 1
+          }
+        });
+      } catch (h) {
+        const c = h.name;
+        throw new Error(
+          c === "NotAllowedError" ? "Microphone access was not allowed" : c === "NotFoundError" ? "No microphone found" : "Could not open the microphone"
+        );
+      }
+      if (this._stream = s, st()) {
+        const h = s.getAudioTracks()[0], c = i;
+        P("talk:mic", {
+          cam: this._cameraId,
+          ms: Math.round(performance.now() - t),
+          settings: h?.getSettings?.(),
+          label: h?.label,
+          ctxRate: i.sampleRate,
+          baseLatency: i.baseLatency,
+          outputLatency: c.outputLatency,
+          state: i.state
+        });
+      }
+      if (this._ended) throw new Error("stopped");
+      const o = URL.createObjectURL(new Blob([wo], { type: "application/javascript" }));
+      try {
+        await i.audioWorklet.addModule(o);
+      } finally {
+        URL.revokeObjectURL(o);
+      }
+      const r = await this._open();
+      if (r.send(
+        JSON.stringify({
+          op: "start",
+          nvr_id: this._nvrId,
+          camera_id: this._cameraId,
+          rate: i.sampleRate,
+          debug: _o()
+          // telemetry: the server logs its side under this id
+        })
+      ), await this._ready(r), P("talk:ready", { cam: this._cameraId, ms: Math.round(performance.now() - t) }), this._ended) throw new Error("stopped");
+      const n = new AudioWorkletNode(i, "upc-talk", { numberOfInputs: 1, numberOfOutputs: 1 }), a = i.createGain();
+      a.gain.value = 0, i.createMediaStreamSource(s).connect(n), n.connect(a).connect(i.destination), n.port.onmessage = (h) => {
+        if (st()) {
+          this._levels.length || (this._levelsAt = Date.now() - 20);
+          const c = new Int16Array(h.data);
+          let d = 0;
+          for (let _ = 0; _ < c.length; _++) d += c[_] * c[_];
+          const l = Math.sqrt(d / Math.max(1, c.length)) / 32768;
+          this._levels.push(Math.max(-99, Math.round(20 * Math.log10(l + 1e-9)))), this._levels.length >= go && this._flushLevels(r.bufferedAmount);
+        }
+        r.readyState === WebSocket.OPEN && r.send(h.data);
+      }, this._node = n, r.onmessage = (h) => {
+        const c = typeof h.data == "string" ? JSON.parse(h.data) : {};
+        c.ev === "error" ? this.stop(c.message || "Talking failed") : c.ev === "ended" && this.stop(c.reason === "time limit" ? "Talk time limit reached" : void 0);
+      }, r.onclose = () => this.stop();
+    } catch (i) {
+      const s = i.message;
+      throw P("talk:failed", { cam: this._cameraId, message: s, ms: Math.round(performance.now() - t) }), this._teardown(), this._ended ? i : (this._ended = !0, new Error(s));
+    }
+  }
+  /** Stop talking (idempotent). */
+  stop(t) {
+    this._ended || (this._flushLevels(), P("talk:stop", { cam: this._cameraId, error: t }), this._ended = !0, this._teardown(), this._onEnd(t));
+  }
+  _flushLevels(t) {
+    this._levels.length && P("talk:lv", { cam: this._cameraId, at: this._levelsAt, ms: 20, lv: this._levels.splice(0), wsBuf: t });
+  }
+  _teardown() {
+    const t = this._ws;
+    if (this._ws = void 0, t) {
+      if (t.onclose = null, t.onmessage = null, t.readyState === WebSocket.OPEN)
+        try {
+          t.send(JSON.stringify({ op: "stop" }));
+        } catch {
+        }
+      try {
+        t.close();
+      } catch {
+      }
+    }
+    this._node?.port.close(), this._node?.disconnect(), this._node = void 0, this._stream?.getTracks().forEach((i) => i.stop()), this._stream = void 0, this._ctx?.close().catch(() => {
+    }), this._ctx = void 0;
+  }
+  async _open() {
+    const t = await Yt(this._hass, bo, 30), i = this._hass.auth?.data?.hassUrl || window.location.origin, s = new URL(t, i);
+    s.protocol = s.protocol === "https:" ? "wss:" : "ws:";
+    const o = new WebSocket(s.toString());
+    return o.binaryType = "arraybuffer", this._ws = o, await new Promise((r, n) => {
+      const a = window.setTimeout(() => n(new Error("Talk connection timed out")), ci);
+      o.onopen = () => {
+        clearTimeout(a), r();
+      }, o.onclose = () => {
+        clearTimeout(a), n(new Error("Talk is not available (is protect_cache up to date?)"));
+      };
+    }), o;
+  }
+  /** The server's answer to "start": ready (session open) or an error. */
+  _ready(t) {
+    return new Promise((i, s) => {
+      const o = window.setTimeout(() => s(new Error("The camera did not answer")), ci);
+      t.onmessage = (r) => {
+        if (typeof r.data != "string") return;
+        const n = JSON.parse(r.data);
+        n.ev === "ready" ? (clearTimeout(o), i()) : (n.ev === "error" || n.ev === "ended") && (clearTimeout(o), s(new Error(n.message || "Talking failed")));
+      }, t.onclose = () => {
+        clearTimeout(o), s(new Error("Talk connection closed"));
+      };
+    });
+  }
+}
+function Vt(e) {
   history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 }
-const ye = ["person", "vehicle", "animal", "package", "license plate"];
-function xe(e) {
-  const t = ye.indexOf(e.label.toLowerCase());
-  return t === -1 ? ye.length : t;
+const di = ["person", "vehicle", "animal", "package", "license plate"];
+function pi(e) {
+  const t = di.indexOf(e.label.toLowerCase());
+  return t === -1 ? di.length : t;
 }
-function ii(e, t) {
+function os(e, t) {
   if (t <= 0 || e.length === 0) return e;
   const i = [...e].sort((n, a) => n.start - a.start), s = [];
-  let r = [i[0]], o = i[0].end;
+  let o = [i[0]], r = i[0].end;
   for (let n = 1; n < i.length; n++) {
     const a = i[n];
-    a.start - o <= t ? (r.push(a), o = Math.max(o, a.end)) : (s.push(r), r = [a], o = a.end);
+    a.start - r <= t ? (o.push(a), r = Math.max(r, a.end)) : (s.push(o), o = [a], r = a.end);
   }
-  return s.push(r), s.map(ns).sort((n, a) => a.start - n.start);
+  return s.push(o), s.map(ko).sort((n, a) => a.start - n.start);
 }
-function ns(e) {
+function ko(e) {
   const t = e[0];
   if (e.length === 1) return { ...t, members: e };
-  const i = e.reduce((n, a) => Math.max(n, a.end), t.end), s = e.reduce((n, a) => xe(a) < xe(n) ? a : n, t), r = e.find((n) => n.file), o = e.some((n) => n.ongoing);
+  const i = e.reduce((n, a) => Math.max(n, a.end), t.end), s = e.reduce((n, a) => pi(a) < pi(n) ? a : n, t), o = e.find((n) => n.file), r = e.some((n) => n.ongoing);
   return {
     type: t.type,
     label: s.label,
@@ -900,21 +1145,21 @@ function ns(e) {
     start: t.start,
     end: i,
     id: t.id,
-    file: r?.file,
+    file: o?.file,
     durMs: i - t.start,
-    ongoing: o || void 0,
+    ongoing: r || void 0,
     members: e
   };
 }
-const as = 6e4, hs = 15e3;
-class si {
+const So = 6e4, $o = 15e3;
+class rs {
   // in-flight fetches (cancelable)
   /** @param onLoaded called after each thumbnail resolves, to trigger a redraw. */
   constructor(t, i) {
     this._maxConcurrent = t, this._onLoaded = i, this._cache = /* @__PURE__ */ new Map(), this._loading = /* @__PURE__ */ new Set(), this._queue = [], this._active = 0, this._nvrId = "", this._cameraId = "", this._maxCache = 600, this._failed = /* @__PURE__ */ new Map(), this._gaps = [], this._controllers = /* @__PURE__ */ new Set();
   }
-  configure(t, i, s, r) {
-    this._hass = t, this._nvrId = i, this._cameraId = s, r && r > 0 && (this._maxConcurrent = r);
+  configure(t, i, s, o) {
+    this._hass = t, this._nvrId = i, this._cameraId = s, o && o > 0 && (this._maxConcurrent = o);
   }
   /** Camera-offline spans: snapshots inside them have no footage, so we never
    *  probe the NVR there (it would just 404/500 and re-fire every render). */
@@ -938,16 +1183,16 @@ class si {
     if (t.file) return t.file;
     const i = this._key(t), s = this._cache.get(i);
     if (s) return s;
-    if (ei(this._gaps, t.start)) return;
-    const r = this._failed.get(i);
-    r !== void 0 && Date.now() - r < as || !this._loading.has(i) && this._hass && this._nvrId && this._cameraId && (this._loading.add(i), this._queue.push(t), this._drain());
+    if (is(this._gaps, t.start)) return;
+    const o = this._failed.get(i);
+    o !== void 0 && Date.now() - o < So || !this._loading.has(i) && this._hass && this._nvrId && this._cameraId && (this._loading.add(i), this._queue.push(t), this._drain());
   }
   _store(t, i) {
     if (this._cache.set(t, i), this._cache.size > this._maxCache) {
       const s = this._cache.keys().next().value;
       if (s !== void 0) {
-        const r = this._cache.get(s);
-        this._cache.delete(s), r && URL.revokeObjectURL(r);
+        const o = this._cache.get(s);
+        this._cache.delete(s), o && URL.revokeObjectURL(o);
       }
     }
   }
@@ -955,31 +1200,31 @@ class si {
     for (; this._active < this._maxConcurrent && this._queue.length; ) {
       const t = this._queue.shift(), i = this._key(t);
       this._active++;
-      const s = t.camera ?? this._cameraId, r = Xe(this._nvrId, s, t.start, { width: 320 }), o = new AbortController();
-      this._controllers.add(o);
-      const n = setTimeout(() => o.abort(), hs);
-      Ke(this._hass, r, 600).then((a) => fetch(a, { signal: o.signal })).then((a) => a.ok ? a.blob() : Promise.reject(new Error(`HTTP ${a.status}`))).then((a) => {
+      const s = t.camera ?? this._cameraId, o = eo(this._nvrId, s, t.start, { width: 320 }), r = new AbortController();
+      this._controllers.add(r);
+      const n = setTimeout(() => r.abort(), $o);
+      Yt(this._hass, o, 600).then((a) => fetch(a, { signal: r.signal })).then((a) => a.ok ? a.blob() : Promise.reject(new Error(`HTTP ${a.status}`))).then((a) => {
         this._store(i, URL.createObjectURL(a)), this._failed.delete(i);
       }).catch(() => {
         this._failed.set(i, Date.now());
       }).finally(() => {
-        clearTimeout(n), this._controllers.delete(o), this._active--, this._loading.delete(i), this._drain(), this._onLoaded();
+        clearTimeout(n), this._controllers.delete(r), this._active--, this._loading.delete(i), this._drain(), this._onLoaded();
       });
     }
   }
 }
-const ke = /* @__PURE__ */ new Map();
-function Tt(e) {
+const ui = /* @__PURE__ */ new Map();
+function Wt(e) {
   const t = JSON.stringify(e);
-  let i = ke.get(t);
-  return i || (i = new Intl.DateTimeFormat(void 0, e), ke.set(t, i)), i;
+  let i = ui.get(t);
+  return i || (i = new Intl.DateTimeFormat(void 0, e), ui.set(t, i)), i;
 }
-function ht(e, t) {
-  return Tt(t).format(new Date(e));
+function xt(e, t) {
+  return Wt(t).format(new Date(e));
 }
-class ls {
-  constructor(t, i, s = () => performance.now(), r = (n, a) => setTimeout(n, a), o = (n) => clearTimeout(n)) {
-    this._intervalMs = t, this._emit = i, this._now = s, this._schedule = r, this._cancel = o, this._hasPending = !1, this._lastEmitAt = Number.NEGATIVE_INFINITY;
+class To {
+  constructor(t, i, s = () => performance.now(), o = (n, a) => setTimeout(n, a), r = (n) => clearTimeout(n)) {
+    this._intervalMs = t, this._emit = i, this._now = s, this._schedule = o, this._cancel = r, this._hasPending = !1, this._lastEmitAt = Number.NEGATIVE_INFINITY;
   }
   push(t) {
     this._pending = t, this._hasPending = !0;
@@ -1005,66 +1250,66 @@ class ls {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Se = (e, t, i) => {
+const _i = (e, t, i) => {
   const s = /* @__PURE__ */ new Map();
-  for (let r = t; r <= i; r++) s.set(e[r], r);
+  for (let o = t; o <= i; o++) s.set(e[o], o);
   return s;
-}, se = te(class extends ee {
+}, Oe = Re(class extends ze {
   constructor(e) {
-    if (super(e), e.type !== zi.CHILD) throw Error("repeat() can only be used in text expressions");
+    if (super(e), e.type !== qs.CHILD) throw Error("repeat() can only be used in text expressions");
   }
   dt(e, t, i) {
     let s;
     i === void 0 ? i = t : t !== void 0 && (s = t);
-    const r = [], o = [];
+    const o = [], r = [];
     let n = 0;
-    for (const a of e) r[n] = s ? s(a, n) : n, o[n] = i(a, n), n++;
-    return { values: o, keys: r };
+    for (const a of e) o[n] = s ? s(a, n) : n, r[n] = i(a, n), n++;
+    return { values: r, keys: o };
   }
   render(e, t, i) {
     return this.dt(e, t, i).values;
   }
   update(e, [t, i, s]) {
-    const r = Wt(e), { values: o, keys: n } = this.dt(t, i, s);
-    if (!Array.isArray(r)) return this.ut = n, o;
+    const o = ve(e), { values: r, keys: n } = this.dt(t, i, s);
+    if (!Array.isArray(o)) return this.ut = n, r;
     const a = this.ut ??= [], h = [];
-    let u, d, l = 0, _ = r.length - 1, v = 0, y = o.length - 1;
-    for (; l <= _ && v <= y; ) if (r[l] === null) l++;
-    else if (r[_] === null) _--;
-    else if (a[l] === n[v]) h[v] = J(r[l], o[v]), l++, v++;
-    else if (a[_] === n[y]) h[y] = J(r[_], o[y]), _--, y--;
-    else if (a[l] === n[y]) h[y] = J(r[l], o[y]), Q(e, h[y + 1], r[l]), l++, y--;
-    else if (a[_] === n[v]) h[v] = J(r[_], o[v]), Q(e, r[l], r[_]), _--, v++;
-    else if (u === void 0 && (u = Se(n, v, y), d = Se(a, l, _)), u.has(a[l])) if (u.has(a[_])) {
-      const z = d.get(n[v]), O = z !== void 0 ? r[z] : null;
-      if (O === null) {
-        const N = Q(e, r[l]);
-        J(N, o[v]), h[v] = N;
-      } else h[v] = J(O, o[v]), Q(e, r[l], O), r[z] = null;
+    let c, d, l = 0, _ = o.length - 1, v = 0, w = r.length - 1;
+    for (; l <= _ && v <= w; ) if (o[l] === null) l++;
+    else if (o[_] === null) _--;
+    else if (a[l] === n[v]) h[v] = at(o[l], r[v]), l++, v++;
+    else if (a[_] === n[w]) h[w] = at(o[_], r[w]), _--, w--;
+    else if (a[l] === n[w]) h[w] = at(o[l], r[w]), ht(e, h[w + 1], o[l]), l++, w--;
+    else if (a[_] === n[v]) h[v] = at(o[_], r[v]), ht(e, o[l], o[_]), _--, v++;
+    else if (c === void 0 && (c = _i(n, v, w), d = _i(a, l, _)), c.has(a[l])) if (c.has(a[_])) {
+      const T = d.get(n[v]), z = T !== void 0 ? o[T] : null;
+      if (z === null) {
+        const O = ht(e, o[l]);
+        at(O, r[v]), h[v] = O;
+      } else h[v] = at(z, r[v]), ht(e, o[l], z), o[T] = null;
       v++;
-    } else Lt(r[_]), _--;
-    else Lt(r[l]), l++;
-    for (; v <= y; ) {
-      const z = Q(e, h[y + 1]);
-      J(z, o[v]), h[v++] = z;
+    } else oe(o[_]), _--;
+    else oe(o[l]), l++;
+    for (; v <= w; ) {
+      const T = ht(e, h[w + 1]);
+      at(T, r[v]), h[v++] = T;
     }
     for (; l <= _; ) {
-      const z = r[l++];
-      z !== null && Lt(z);
+      const T = o[l++];
+      T !== null && oe(T);
     }
-    return this.ut = n, Mt(e, h), it;
+    return this.ut = n, Kt(e, h), ut;
   }
 });
-var cs = Object.defineProperty, ds = Object.getOwnPropertyDescriptor, x = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? ds(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && cs(t, i, r), r;
+var Eo = Object.defineProperty, Ao = Object.getOwnPropertyDescriptor, k = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? Ao(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && Eo(t, i, o), o;
 };
-const ps = 62, us = 80, $e = 86, Te = 98, at = 104, _s = 2, fs = 6, ms = 8, vs = 8, gs = 20, bs = 12, Dt = 5, ws = 24, ys = 5e3, xs = 80, ks = 0.325, Ss = 20, Ee = 4e3, $s = 120, Pe = 4, Ts = 3, Me = 48, yt = 520;
-function Ot(e) {
+const Mo = 62, Co = 80, fi = 86, mi = 98, lt = 104, Po = 2, Ro = 6, zo = 8, Lo = 8, ae = 20, Fo = 12, Oo = 8, Io = 400, Mt = 16, Do = 180, Bo = 400, he = 5, Uo = 24, No = 5e3, Ho = 80, Vo = 0.325, Wo = 20, vi = 4e3, qo = 120, gi = 4, jo = 3, bi = 48, Ot = 520;
+function le(e) {
   return e.id ?? `${e.type}@${e.start}`;
 }
-function ri() {
+function we() {
   const e = (t) => {
     t.stopPropagation(), t.preventDefault();
   };
@@ -1072,19 +1317,19 @@ function ri() {
     window.removeEventListener("pointerup", e, !0), window.removeEventListener("click", e, !0);
   }, 700);
 }
-function Es(e, t) {
+function Ie(e, t) {
   const i = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(e.trim());
   if (!i) return "";
-  const s = i[1].length === 3 ? i[1].split("").map((n) => n + n).join("") : i[1], r = parseInt(s, 16), o = [r >> 16 & 255, r >> 8 & 255, r & 255].map((n) => Math.round(n * t));
-  return `rgb(${o[0]}, ${o[1]}, ${o[2]})`;
+  const s = i[1].length === 3 ? i[1].split("").map((n) => n + n).join("") : i[1], o = parseInt(s, 16), r = [o >> 16 & 255, o >> 8 & 255, o & 255].map((n) => Math.round(n * t));
+  return `rgb(${r[0]}, ${r[1]}, ${r[2]})`;
 }
-function Ps(e) {
-  const t = st, i = Qe;
+function Go(e) {
+  const t = $t, i = ts;
   return e <= 5 * t ? { major: 1 * t, minor: 15 * i } : e <= 10 * t ? { major: 1 * t, minor: 30 * i } : e <= 20 * t ? { major: 2 * t, minor: 30 * i } : e <= 40 * t ? { major: 5 * t, minor: 1 * t } : e <= 80 * t ? { major: 10 * t, minor: 1 * t } : { major: 10 * t, minor: 1 * t };
 }
-let w = class extends j {
+let x = class extends Z {
   constructor() {
-    super(...arguments), this.bands = [], this.gaps = [], this.gapColor = "", this.now = Date.now(), this.nvrId = "", this.cameraId = "", this.fontSize = 11, this.fontColor = "", this.accentColor = "", this.tickColor = "", this.tickSize = 7, this.recordedColor = "", this.futureColor = "", this.thumbSize = 79, this.thumbSizeActive = 95, this.thumbVersion = 0, this.live = !1, this.livePaused = !1, this.indent = 0, this.pillIndent = 0, this.mirror = !1, this.zoomUi = !0, this.rotated = !1, this.liveArrow = !1, this.compact = !1, this.playheadFrac = zt, this.gutter = 0, this._zoomOpen = !1, this._dpr = 1, this._width = 0, this._height = 0, this._setupTs = 0, this._frame = 0, this._evtAnchor = at, this._hits = [], this._gapHits = [], this._animRaf = 0, this._pointers = /* @__PURE__ */ new Map(), this._dragStartY = 0, this._dragSlop = Pe, this._moved = !1, this._gestureStarted = !1, this._gestureScrubbed = !1, this._velSamples = [], this._scrubOpen = !1, this._pillBig = !1, this._glideBig = !1, this._momentumRaf = 0, this._momentumV = 0, this._momentumLast = 0, this._seekRaf = 0, this._onLostCapture = (e) => {
+    super(...arguments), this.bands = [], this.gaps = [], this.gapColor = "", this.now = Date.now(), this.nvrId = "", this.cameraId = "", this.fontSize = 11, this.fontColor = "", this.accentColor = "", this.tickColor = "", this.tickSize = 7, this.recordedColor = "", this.futureColor = "", this.thumbSize = 79, this.thumbSizeActive = 95, this.thumbVersion = 0, this.live = !1, this.livePaused = !1, this.indent = 0, this.pillIndent = 0, this.mirror = !1, this.zoomUi = !0, this.rotated = !1, this.liveArrow = !1, this.compact = !1, this.playheadFrac = ie, this.gutter = 0, this._zoomOpen = !1, this._dpr = 1, this._width = 0, this._height = 0, this._pillW = 0, this._setupTs = 0, this._frame = 0, this._evtAnchor = lt, this._hits = [], this._gapHits = [], this._animRaf = 0, this._pointers = /* @__PURE__ */ new Map(), this._dragStartY = 0, this._dragSlop = gi, this._moved = !1, this._gestureStarted = !1, this._gestureScrubbed = !1, this._velSamples = [], this._scrubOpen = !1, this._pillBig = !1, this._glideBig = !1, this._momentumRaf = 0, this._momentumV = 0, this._momentumLast = 0, this._seekRaf = 0, this._reachAnchor = -1, this._onLostCapture = (e) => {
       this._pointers.has(e.pointerId) && (this._pointers.delete(e.pointerId), !this._pointers.size && (this._dragStartDomain = void 0, this._scrubOpen && this._emitScrubEnd()));
     }, this._onPointerDown = (e) => {
       const t = this._scrubEl;
@@ -1093,13 +1338,19 @@ let w = class extends j {
         t.setPointerCapture(e.pointerId);
       } catch {
       }
-      this._refreshRect(), this._cancelMomentum(), this._cancelSeek(), this._velSamples = [], this._gestureScrubbed = !1, this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._moved = !1, this._hoverBand = void 0, this._hoverGap = void 0, this._pointers.size === 1 && (this._dragStartY = this._localY(e), this._dragStartDomain = { ...this.domain }, this._gestureStarted = !1, this._dragSlop = e.pointerType === "mouse" ? Ts : Pe);
+      this._refreshRect(), this._cancelMomentum(), this._cancelSeek(), this._velSamples = [], this._gestureScrubbed = !1, this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._moved = !1, this._hoverBand = void 0, this._hoverGap = void 0, this._pointers.size === 2 && (this._moved = !0, this._pinch = { dist: Math.max(1, this._pinchDist()), span: L(this.domain) }, this.dispatchEvent(new CustomEvent("zoom-change", { bubbles: !0, composed: !0 }))), this._pointers.size === 1 && (this._dragStartY = this._localY(e), this._dragStartDomain = { ...this.domain }, this._gestureStarted = !1, this._dragSlop = e.pointerType === "mouse" ? jo : gi);
     }, this._onPointerMove = (e) => {
       if (this._pointers.size === 0) {
         this._updateHover(e);
         return;
       }
-      if (!this._pointers.has(e.pointerId) || (this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._pointers.size !== 1 || !this._dragStartDomain)) return;
+      if (!this._pointers.has(e.pointerId)) return;
+      if (this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }), this._pointers.size === 2 && this._pinch) {
+        const c = this._pinch.span * this._pinch.dist / Math.max(1, this._pinchDist()), d = Math.min(q[q.length - 1], Math.max(q[0], c));
+        this._cancelMomentum(), this._cancelSeek(), this._setDomain(j(A(this.domain, this.playheadFrac), d, this.playheadFrac));
+        return;
+      }
+      if (this._pointers.size !== 1 || !this._dragStartDomain) return;
       const t = this._localY(e);
       if (!this._moved) {
         if (Math.abs(t - this._dragStartY) <= this._dragSlop) return;
@@ -1108,22 +1359,22 @@ let w = class extends j {
       const i = t - this._dragStartY;
       this._moved && !this._gestureStarted && (this._gestureStarted = !0, this._scrubOpen = !0, this._syncPillBig(), this.dispatchEvent(new CustomEvent("scrub-start", { bubbles: !0, composed: !0 })));
       const s = performance.now();
-      for (this._velSamples.push({ t: s, y: t }); this._velSamples.length > 1 && s - this._velSamples[0].t > $s; )
+      for (this._velSamples.push({ t: s, y: t }); this._velSamples.length > 1 && s - this._velSamples[0].t > qo; )
         this._velSamples.shift();
-      const r = M(this._dragStartDomain), o = i / (this._height || 1) * r;
+      const o = L(this._dragStartDomain), r = i / (this._height || 1) * o;
       let n = {
-        start: this._dragStartDomain.start + o,
-        end: this._dragStartDomain.end + o
+        start: this._dragStartDomain.start + r,
+        end: this._dragStartDomain.end + r
       };
-      const a = this._height || 1, h = P(n, this.playheadFrac) - this.now;
+      const a = this._height || 1, h = A(n, this.playheadFrac) - this.now;
       if (h > 0) {
-        const u = h / r * a, l = Me * u / (u + Me) / a * r, _ = h - l;
+        const c = h / o * a, l = bi * c / (c + bi) / a * o, _ = h - l;
         if (n = { start: n.start - _, end: n.end - _ }, this._setDomain(n, l), !this._gestureScrubbed) return;
       } else
         this._setDomain(n), this._gestureScrubbed = !0;
       this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(A(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
@@ -1131,7 +1382,7 @@ let w = class extends j {
     }, this._onPointerUp = (e) => {
       if (!this._pointers.has(e.pointerId)) return;
       const t = this._pointers.size >= 2;
-      this._pointers.delete(e.pointerId);
+      this._pointers.delete(e.pointerId), this._pointers.size < 2 && (this._pinch = void 0);
       try {
         this._scrubEl.releasePointerCapture(e.pointerId);
       } catch {
@@ -1151,12 +1402,12 @@ let w = class extends j {
           this._scrubOpen && this._emitScrubEnd(), this.dispatchEvent(new CustomEvent("tap-through", { bubbles: !0, composed: !0 }));
           return;
         }
-        if (P(this.domain, this.playheadFrac) > this.now && this._animateFrom({ ...this.domain }, this._applyDomain(U(this.now, M(this.domain), this.playheadFrac))), !this._gestureScrubbed) {
+        if (A(this.domain, this.playheadFrac) > this.now && this._animateFrom({ ...this.domain }, this._applyDomain(j(this.now, L(this.domain), this.playheadFrac))), !this._gestureScrubbed) {
           this._velSamples = [], this._scrubOpen = !1, this._syncPillBig(), this.dispatchEvent(new CustomEvent("scrub-cancel", { bubbles: !0, composed: !0 }));
           return;
         }
         const i = this._releaseVelocity();
-        if (!t && Math.abs(i) >= xs) {
+        if (!t && Math.abs(i) >= Ho) {
           this._startMomentum(i);
           return;
         }
@@ -1166,10 +1417,10 @@ let w = class extends j {
       this._pointers.size === 0 && (this._clearHover(), this._hoverGap = void 0);
     }, this._onWheel = (e) => {
       e.preventDefault(), this._cancelMomentum(), this._cancelSeek();
-      const t = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY, i = P(this.domain, this.playheadFrac);
+      const t = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY, i = A(this.domain, this.playheadFrac);
       this._panByPixels(-t), !(t < 0 && i >= this.now - 50 && !this._scrubEndTimer) && (this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(A(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
@@ -1180,10 +1431,10 @@ let w = class extends j {
       this._hoverBand = void 0;
     }, this._zoomIn = () => this._zoomStep(-1), this._zoomOut = () => this._zoomStep(1), this._outsideZoomClose = (e) => {
       const t = this.renderRoot.querySelector(".zoom-panel");
-      t && e.composedPath().includes(t) || (e.preventDefault(), e.stopPropagation(), ri(), this._closeZoom());
+      t && e.composedPath().includes(t) || (e.preventDefault(), e.stopPropagation(), we(), this._closeZoom());
     }, this._openZoom = () => {
-      this._zoomOpen || (this._zoomOpen = !0, window.addEventListener("pointerdown", this._outsideZoomClose, !0));
-    }, this._zoomDragging = !1, this._onZoomSliderDown = (e) => {
+      this._zoomOpen || (this._zoomOpen = !0, this._emitZoomPanel(), window.addEventListener("pointerdown", this._outsideZoomClose, !0));
+    }, this._zoomCloseToken = 0, this._zoomDragging = !1, this._onZoomSliderDown = (e) => {
       e.stopPropagation();
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -1206,13 +1457,13 @@ let w = class extends j {
    *  gesture behind it — a skip-button glide, or a wheel/trackpad scroll (which
    *  emits `scrub` without ever opening a session). Re-armable: each new wheel
    *  notch pushes the release back, so a long scroll stays big throughout. */
-  _holdPillBig(e = yt) {
+  _holdPillBig(e = Ot) {
     this._glideBig = !0, this._syncPillBig(), clearTimeout(this._pillBigTimer), this._pillBigTimer = setTimeout(() => {
       this._pillBigTimer = void 0, this._glideBig = !1, this._syncPillBig();
     }, e);
   }
   connectedCallback() {
-    super.connectedCallback(), this.hasUpdated && this._setup();
+    super.connectedCallback(), this.hasUpdated && this._setup(), this._emitZoomPanel();
   }
   firstUpdated() {
     this._setup();
@@ -1222,10 +1473,25 @@ let w = class extends j {
     this._canvas && (this._setupTs = performance.now(), this._dpr = window.devicePixelRatio || 1, this._ro?.disconnect(), this._ro = new ResizeObserver(() => this._resize()), this._ro.observe(this._canvas), this._bindPointer(), this._resize(), requestAnimationFrame(() => requestAnimationFrame(() => this._resize())));
   }
   updated(e) {
-    w._redrawProps.some((t) => e.has(t)) && this._scheduleDraw();
+    if (x._redrawProps.some((t) => e.has(t)) && this._scheduleDraw(), this.mirror && this._width > 0 && this._width < Io) {
+      const t = this.renderRoot.querySelector(".live-pill")?.offsetWidth ?? 0;
+      t && t !== this._pillW && (this._pillW = t, this.requestUpdate());
+    } else
+      this._pillW = 0;
+    if (this.mirror && this._evtAnchor !== this._reachAnchor) {
+      const t = this.renderRoot.querySelector(".tl-foot > .live-pill"), i = t?.textContent?.trim() ? t.offsetWidth : 0;
+      i && (this._reachAnchor = this._evtAnchor, this.dispatchEvent(
+        new CustomEvent("timeline-reach", {
+          detail: { px: this._evtAnchor + ae + i },
+          bubbles: !0,
+          composed: !0
+        })
+      ));
+    }
   }
+  // _evtAnchor the last timeline-reach was sent for
   disconnectedCallback() {
-    super.disconnectedCallback();
+    super.disconnectedCallback(), this._zoomOpen = !1, this._zoomCloseToken++, window.removeEventListener("pointerdown", this._outsideZoomClose, !0);
     const e = this._scrubEl;
     e && (e.removeEventListener("pointerdown", this._onPointerDown), e.removeEventListener("pointermove", this._onPointerMove), e.removeEventListener("pointerup", this._onPointerUp), e.removeEventListener("pointercancel", this._onPointerUp), e.removeEventListener("pointerleave", this._onPointerLeave), e.removeEventListener("wheel", this._onWheel), e.removeEventListener("lostpointercapture", this._onLostCapture)), this._ro?.disconnect(), cancelAnimationFrame(this._frame), cancelAnimationFrame(this._animRaf), this._cancelMomentum(), this._cancelSeek(), this._pointers.clear(), this._dragStartDomain = void 0, this._scrubOpen && this._emitScrubEnd(), window.removeEventListener("pointerdown", this._outsideZoomClose, !0);
   }
@@ -1236,11 +1502,11 @@ let w = class extends j {
     return this._animDomain ?? this.domain;
   }
   _timeToY(e) {
-    const t = M(this._dd) || 1;
+    const t = L(this._dd) || 1;
     return (this._dd.end - e) / t * this._height;
   }
   _yToTime(e) {
-    const t = M(this._dd) || 1;
+    const t = L(this._dd) || 1;
     return this._dd.end - e / (this._height || 1) * t;
   }
   get _playheadY() {
@@ -1275,15 +1541,15 @@ let w = class extends j {
     for (const i of t) {
       const s = i.getBoundingClientRect();
       if (e.clientX < s.left || e.clientX > s.right || e.clientY < s.top || e.clientY > s.bottom) continue;
-      const r = i.dataset.key, o = this._kept.find((n) => Ot(n.m) === r);
-      if (o) return o;
+      const o = i.dataset.key, r = this._kept.find((n) => le(n.m) === o);
+      if (r) return r;
     }
   }
   _nearestEvent(e) {
     let t, i = 1 / 0;
     for (const s of this._hits) {
-      const r = e < s.yTop ? s.yTop - e : e > s.yBot ? e - s.yBot : 0;
-      r < i && (i = r, t = s);
+      const o = e < s.yTop ? s.yTop - e : e > s.yBot ? e - s.yBot : 0;
+      o < i && (i = o, t = s);
     }
     return t ? { hit: t, dist: i } : void 0;
   }
@@ -1293,6 +1559,10 @@ let w = class extends j {
    *  had started on the ruler. */
   beginDrag(e) {
     this._onPointerDown(e);
+  }
+  _pinchDist() {
+    const [e, t] = [...this._pointers.values()];
+    return e && t ? Math.hypot(e.x - t.x, e.y - t.y) : 1;
   }
   // ---- flick momentum -------------------------------------------------------
   /** Average pointer velocity (px/s, clientY direction) over the trailing
@@ -1307,18 +1577,18 @@ let w = class extends j {
    *  exponentially (tau ~325ms), emitting `scrub` per frame. Ends (and emits
    *  `scrub-end`) when slow enough or when the playhead hits the live edge. */
   _startMomentum(e) {
-    this._momentumV = Math.max(-Ee, Math.min(Ee, e)), this._momentumLast = performance.now();
+    this._momentumV = Math.max(-vi, Math.min(vi, e)), this._momentumLast = performance.now();
     const t = (i) => {
       const s = Math.min(0.1, (i - this._momentumLast) / 1e3);
       this._momentumLast = i, this._panByPixels(this._momentumV * s), this._draw(), this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: P(this.domain, this.playheadFrac) },
+          detail: { time: A(this.domain, this.playheadFrac) },
           bubbles: !0,
           composed: !0
         })
-      ), this._momentumV *= Math.exp(-s / ks);
-      const r = this._momentumV > 0 && P(this.domain, this.playheadFrac) >= this.now - 250;
-      if (Math.abs(this._momentumV) < Ss || r) {
+      ), this._momentumV *= Math.exp(-s / Vo);
+      const o = this._momentumV > 0 && A(this.domain, this.playheadFrac) >= this.now - 250;
+      if (Math.abs(this._momentumV) < Wo || o) {
         this._momentumRaf = 0, this._emitScrubEnd();
         return;
       }
@@ -1342,30 +1612,30 @@ let w = class extends j {
    *  momentum glide). */
   _seekTo(e) {
     this._cancelMomentum(), this._cancelSeek(), cancelAnimationFrame(this._animRaf), this._animDomain = void 0;
-    const t = P(this.domain, this.playheadFrac), i = Math.min(e, this.now);
+    const t = A(this.domain, this.playheadFrac), i = Math.min(e, this.now);
     this._scrubOpen = !0, this._syncPillBig(), this.dispatchEvent(new CustomEvent("scrub-start", { bubbles: !0, composed: !0 }));
-    const s = performance.now(), r = (o) => {
-      const n = Math.min(1, (o - s) / yt), a = 1 - Math.pow(1 - n, 3);
-      if (this._applyDomain(U(t + (i - t) * a, M(this.domain), this.playheadFrac)), this._draw(), this.dispatchEvent(
+    const s = performance.now(), o = (r) => {
+      const n = Math.min(1, (r - s) / Ot), a = 1 - Math.pow(1 - n, 3);
+      if (this._applyDomain(j(t + (i - t) * a, L(this.domain), this.playheadFrac)), this._draw(), this.dispatchEvent(
         new CustomEvent("scrub", {
-          detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+          detail: { time: Math.min(A(this.domain, this.playheadFrac), this.now) },
           bubbles: !0,
           composed: !0
         })
       ), n < 1) {
-        this._seekRaf = requestAnimationFrame(r);
+        this._seekRaf = requestAnimationFrame(o);
         return;
       }
       this._seekRaf = 0, this._emitScrubEnd();
     };
-    this._seekRaf = requestAnimationFrame(r);
+    this._seekRaf = requestAnimationFrame(o);
   }
   /** Drop an in-flight seek glide (a new gesture always wins over it). */
   _cancelSeek() {
     this._seekRaf && (cancelAnimationFrame(this._seekRaf), this._seekRaf = 0);
   }
   _panByPixels(e) {
-    const t = M(this.domain), i = e / (this._height || 1) * t;
+    const t = L(this.domain), i = e / (this._height || 1) * t;
     this._setDomain({ start: this.domain.start + i, end: this.domain.end + i });
   }
   _debouncedScrubEnd() {
@@ -1375,9 +1645,9 @@ let w = class extends j {
   }
   _updateHover(e) {
     this._refreshRect();
-    const t = this._localY(e), i = this._nearestEvent(t), s = i && i.dist <= ws ? i.hit.band : void 0, r = s ? this._nearestKeptMember(s, this._yToTime(t)) : void 0;
-    if (r) {
-      this._setHover(r), this._hoverGap && (this._hoverGap = void 0);
+    const t = this._localY(e), i = this._nearestEvent(t), s = i && i.dist <= Uo ? i.hit.band : void 0, o = s ? this._nearestKeptMember(s, this._yToTime(t)) : void 0;
+    if (o) {
+      this._setHover(o), this._hoverGap && (this._hoverGap = void 0);
       return;
     }
     this._hoverBand && this._clearHover(), this._updateGapHover(t);
@@ -1385,10 +1655,10 @@ let w = class extends j {
   /** The group's kept (visible) member nearest to time t, if any. */
   _nearestKeptMember(e, t) {
     let i, s = 1 / 0;
-    for (const r of this._kept) {
-      if (r.g !== e) continue;
-      const o = t < r.m.start ? r.m.start - t : t > r.m.end ? t - r.m.end : 0;
-      o < s && (s = o, i = r.m);
+    for (const o of this._kept) {
+      if (o.g !== e) continue;
+      const r = t < o.m.start ? o.m.start - t : t > o.m.end ? t - o.m.end : 0;
+      r < s && (s = r, i = o.m);
     }
     return i;
   }
@@ -1403,12 +1673,12 @@ let w = class extends j {
     t ? this._hoverGap?.gap !== t.gap && (this._hoverGap = { gap: t.gap, y: (t.yTop + t.yBot) / 2 }) : this._hoverGap && (this._hoverGap = void 0);
   }
   _zoomStep(e) {
-    const t = Ki(M(this.domain), e);
+    const t = ho(L(this.domain), e);
     this._setSpan(t);
   }
   _setSpan(e) {
     this.dispatchEvent(new CustomEvent("zoom-change", { bubbles: !0, composed: !0 })), this._cancelMomentum(), this._cancelSeek();
-    const t = this._animDomain ?? { ...this.domain }, i = this._applyDomain(U(P(this.domain, this.playheadFrac), e, this.playheadFrac));
+    const t = this._animDomain ?? { ...this.domain }, i = this._applyDomain(j(A(this.domain, this.playheadFrac), e, this.playheadFrac));
     this._animateFrom(t, i);
   }
   /** Glide the ruler between two domains without touching the scrub stream —
@@ -1416,31 +1686,55 @@ let w = class extends j {
    *  (the 15s skip buttons), so the ruler scrolls to the new time the same way
    *  tapping an event thumbnail does instead of teleporting. Declined while a
    *  gesture owns the ruler: the finger, a glide or a seek must always win. */
-  glideDomain(e, t, i = yt) {
-    this._scrubOpen || this._seekRaf || this._momentumRaf || (this._holdPillBig(i), this._animateFrom(e, t, yt));
+  glideDomain(e, t, i = Ot) {
+    this._scrubOpen || this._seekRaf || this._momentumRaf || (this._holdPillBig(i), this._animateFrom(e, t, Ot));
   }
   _animateFrom(e, t, i = 170) {
     cancelAnimationFrame(this._animRaf);
-    const s = performance.now(), r = (o) => {
-      const n = Math.min(1, (o - s) / i), a = 1 - Math.pow(1 - n, 3);
+    const s = performance.now(), o = (r) => {
+      const n = Math.min(1, (r - s) / i), a = 1 - Math.pow(1 - n, 3);
       this._animDomain = {
         start: e.start + (t.start - e.start) * a,
         end: e.end + (t.end - e.end) * a
-      }, this._draw(), this.requestUpdate(), n < 1 ? this._animRaf = requestAnimationFrame(r) : (this._animDomain = void 0, this._draw(), this.requestUpdate());
+      }, this._draw(), this.requestUpdate(), n < 1 ? this._animRaf = requestAnimationFrame(o) : (this._animDomain = void 0, this._draw(), this.requestUpdate());
     };
-    this._animRaf = requestAnimationFrame(r);
+    this._animRaf = requestAnimationFrame(o);
   }
   // Slider value 0..N-1 maps 0=zoomed-out (widest span) -> N-1=zoomed-in.
   get _sliderValue() {
-    const e = M(this.domain);
+    const e = L(this.domain);
     let t = 0, i = 1 / 0;
-    return V.forEach((s, r) => {
-      const o = Math.abs(s - e);
-      o < i && (i = o, t = r);
-    }), V.length - 1 - t;
+    return q.forEach((s, o) => {
+      const r = Math.abs(s - e);
+      r < i && (i = r, t = o);
+    }), q.length - 1 - t;
   }
+  /** Close the flyout: it shrinks back into the magnifier first (the reverse
+   *  of upc-zoom-open), then the magnifier comes back in its place. */
   _closeZoom() {
-    this._zoomOpen = !1, window.removeEventListener("pointerdown", this._outsideZoomClose, !0);
+    if (!this._zoomOpen) return;
+    window.removeEventListener("pointerdown", this._outsideZoomClose, !0);
+    const e = ++this._zoomCloseToken, t = this.renderRoot.querySelector(".zoom-panel"), i = () => {
+      e === this._zoomCloseToken && (this._zoomOpen = !1, this._zoomDragging = !1, this._emitZoomPanel());
+    };
+    if (!t) return i();
+    t.style.pointerEvents = "none";
+    const s = this._zoomPanelGeom();
+    t.animate(
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: `scale(${s.fab / 52}, ${s.fab / s.h})` }
+      ],
+      { duration: Do, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" }
+    ).finished.catch(() => {
+    }).then(i);
+  }
+  /** The zoom slider opened or closed (`zoom-panel`, {open}): the host keeps
+   *  what sits beside it out of its way (the phone's events chevron). */
+  _emitZoomPanel() {
+    this.dispatchEvent(
+      new CustomEvent("zoom-panel", { detail: { open: this._zoomOpen }, bubbles: !0, composed: !0 })
+    );
   }
   /** Map a pointer y on the .zslider to a SPAN_STEPS index and apply it.
    *  Top = most zoomed in (narrowest span), bottom = most zoomed out.
@@ -1451,13 +1745,13 @@ let w = class extends j {
   _zoomSliderFromEvent(e) {
     const t = this.renderRoot.querySelector(".zslider");
     if (!t) return;
-    const i = t.getBoundingClientRect(), s = 8, r = this.rotated ? i.width : i.height, o = this.rotated ? i.right - e.clientX : e.clientY - i.top, n = Math.max(1, r - s * 2), a = Math.min(1, Math.max(0, (o - s) / n)), h = Math.round((1 - a) * (V.length - 1));
-    h !== this._sliderValue && this._setSpan(V[V.length - 1 - h]);
+    const i = t.getBoundingClientRect(), s = Mt, o = this.rotated ? i.width : i.height, r = this.rotated ? i.right - e.clientX : e.clientY - i.top, n = Math.max(1, o - s * 2), a = Math.min(1, Math.max(0, (r - s) / n)), h = Math.round((1 - a) * (q.length - 1));
+    h !== this._sliderValue && this._setSpan(q[q.length - 1 - h]);
   }
   /** Commit a domain (clamped so the playhead can't pass `now` — plus an
    *  optional allowance for the rubber-band overshoot); no redraw. */
   _applyDomain(e, t = 0) {
-    const i = P(e, this.playheadFrac);
+    const i = A(e, this.playheadFrac);
     if (i > this.now + t) {
       const s = i - (this.now + t);
       e = { start: e.start - s, end: e.end - s };
@@ -1473,7 +1767,7 @@ let w = class extends j {
   _emitScrubEnd() {
     this._scrubOpen = !1, this._syncPillBig(), this.dispatchEvent(
       new CustomEvent("scrub-end", {
-        detail: { time: Math.min(P(this.domain, this.playheadFrac), this.now) },
+        detail: { time: Math.min(A(this.domain, this.playheadFrac), this.now) },
         bubbles: !0,
         composed: !0
       })
@@ -1485,12 +1779,12 @@ let w = class extends j {
     if (!e) return;
     const t = e.getBoundingClientRect(), i = e.clientWidth, s = e.clientHeight;
     if (i < 1 || s < 1) return;
-    const r = this._height;
-    if (this._width = i, this._height = s, this._rect = t, this._dpr = window.devicePixelRatio || 1, performance.now() - this._setupTs > 500 && r > 0 && this.domain && Math.abs(s - r) > 0.5) {
-      const n = M(this.domain) * (s / r), h = P(this.domain, this.playheadFrac) + n * this.playheadFrac;
+    const o = this._height;
+    if (this._width = i, this._height = s, this._rect = t, this._dpr = window.devicePixelRatio || 1, performance.now() - this._setupTs > 500 && o > 0 && this.domain && Math.abs(s - o) > 0.5) {
+      const n = L(this.domain) * (s / o), h = A(this.domain, this.playheadFrac) + n * this.playheadFrac;
       this._applyDomain({ start: h - n, end: h });
     }
-    e.width = Math.max(1, Math.round(i * this._dpr)), e.height = Math.max(1, Math.round(s * this._dpr)), this._draw(), r !== this._height && this.requestUpdate();
+    e.width = Math.max(1, Math.round(i * this._dpr)), e.height = Math.max(1, Math.round(s * this._dpr)), this._draw(), o !== this._height && this.requestUpdate();
   }
   _scheduleDraw() {
     cancelAnimationFrame(this._frame), this._frame = requestAnimationFrame(() => this._draw());
@@ -1502,14 +1796,14 @@ let w = class extends j {
   _geo(e) {
     if (!this.mirror)
       return {
-        labelRight: ps,
-        tickRight: us,
-        trackX0: $e,
-        trackX1: Te,
-        evtAnchor: at
+        labelRight: Mo,
+        tickRight: Co,
+        trackX0: fi,
+        trackX1: mi,
+        evtAnchor: lt
       };
-    const t = this._width || 1, i = Math.max(2, Math.min(this.tickSize + 5, 18)), s = t - _s, r = s - i - fs, o = Te - $e, n = Math.max(o, r - e - ms), a = n - o;
-    return { labelRight: r, tickRight: s, trackX0: a, trackX1: n, evtAnchor: t - a + vs };
+    const t = this._width || 1, i = Math.max(2, Math.min(this.tickSize + 5, 18)), s = t - Po, o = s - i - Ro, r = mi - fi, n = Math.max(r, o - e - zo), a = n - r;
+    return { labelRight: o, tickRight: s, trackX0: a, trackX1: n, evtAnchor: t - a + Lo };
   }
   _draw() {
     const e = this._canvas;
@@ -1518,59 +1812,59 @@ let w = class extends j {
     if (!t) return;
     const i = this._width, s = this._height;
     t.setTransform(this._dpr, 0, 0, this._dpr, 0, 0), t.clearRect(0, 0, i, s), this.indent && t.translate(this.indent, 0);
-    const r = getComputedStyle(this), o = r.getPropertyValue("--secondary-text-color").trim() || "#9aa0a6", n = r.getPropertyValue("--divider-color").trim() || "rgba(255,255,255,0.12)", a = this.accentColor || r.getPropertyValue("--primary-color").trim() || "#03a9f4", h = this.fontSize || 11, u = r.fontFamily || "sans-serif";
-    t.font = `${h}px ${u}`;
+    const o = getComputedStyle(this), r = o.getPropertyValue("--secondary-text-color").trim() || "#9aa0a6", n = o.getPropertyValue("--divider-color").trim() || "rgba(255,255,255,0.12)", a = this.accentColor || o.getPropertyValue("--primary-color").trim() || "#03a9f4", h = this.fontSize || 11, c = o.fontFamily || "sans-serif";
+    t.font = `${h}px ${c}`;
     const d = this._geo(
       this.mirror ? t.measureText(this._fmt(this._dd.end, { hour: "2-digit", minute: "2-digit" })).width : 0
     );
     this._evtAnchor !== d.evtAnchor && (this._evtAnchor = d.evtAnchor, this.requestUpdate());
     const l = this.recordedColor || n, _ = Math.max(0, Math.min(this._timeToY(this.now), s)), v = d.trackX1 - d.trackX0;
     if (_ > 0 && (this._roundRect(t, d.trackX0, 0, v, _, 3), this.futureColor ? (t.fillStyle = this.futureColor, t.globalAlpha = 1) : (t.fillStyle = l, t.globalAlpha = 0.7), t.fill(), t.globalAlpha = 1), _ < s && (this._roundRect(t, d.trackX0, _, v, s - _, 3), t.fillStyle = l, t.fill()), this._gapHits = [], this.gaps && this.gaps.length) {
-      const W = this.gapColor || "#4a4a52";
-      t.fillStyle = W, t.globalAlpha = 1;
-      for (const $ of this.gaps) {
-        let R = this._timeToY($.end), q = this._timeToY($.start);
-        if (!(q < 0 || R > s)) {
-          if (q - R < 3) {
-            const K = (R + q) / 2;
-            R = K - 1.5, q = K + 1.5;
+      const I = this.gapColor || "#4a4a52";
+      t.fillStyle = I, t.globalAlpha = 1;
+      for (const y of this.gaps) {
+        let S = this._timeToY(y.end), V = this._timeToY(y.start);
+        if (!(V < 0 || S > s)) {
+          if (V - S < 3) {
+            const rt = (S + V) / 2;
+            S = rt - 1.5, V = rt + 1.5;
           }
-          this._roundRect(t, d.trackX0, R, v, q - R, 3), t.fill(), this._gapHits.push({ gap: $, yTop: R, yBot: q });
+          this._roundRect(t, d.trackX0, S, v, V - S, 3), t.fill(), this._gapHits.push({ gap: y, yTop: S, yBot: V });
         }
       }
     }
-    const { major: y, minor: z } = Ps(M(this._dd)), O = this.tickColor || o, N = Math.max(2, Math.min(this.tickSize, 16)), k = Math.max(2, Math.min(this.tickSize + 5, 18)), H = Math.max(1, Math.min(this.tickSize / 5, 2.5));
-    t.strokeStyle = O, t.lineWidth = H, t.globalAlpha = 0.7;
-    for (const W of we(this._dd, z)) {
-      const $ = this._timeToY(W);
-      $ < 4 || $ > s - 4 || (t.beginPath(), t.moveTo(d.tickRight - N, $), t.lineTo(d.tickRight, $), t.stroke());
+    const { major: w, minor: T } = Go(L(this._dd)), z = this.tickColor || r, O = Math.max(2, Math.min(this.tickSize, 16)), C = Math.max(2, Math.min(this.tickSize + 5, 18)), W = Math.max(1, Math.min(this.tickSize / 5, 2.5));
+    t.strokeStyle = z, t.lineWidth = W, t.globalAlpha = 0.7;
+    for (const I of ni(this._dd, T)) {
+      const y = this._timeToY(I);
+      y < 4 || y > s - 4 || (t.beginPath(), t.moveTo(d.tickRight - O, y), t.lineTo(d.tickRight, y), t.stroke());
     }
     t.globalAlpha = 1, t.lineWidth = 1, t.textBaseline = "middle", t.textAlign = "right";
-    const Y = h * 0.55;
-    for (const W of we(this._dd, y)) {
-      const $ = this._timeToY(W);
-      $ < Y || $ > s - Y || (t.strokeStyle = O, t.lineWidth = Math.max(H, 1.5), t.globalAlpha = 0.95, t.beginPath(), t.moveTo(d.tickRight - k, $), t.lineTo(d.tickRight, $), t.stroke(), t.globalAlpha = 1, t.lineWidth = 1, t.fillStyle = this.fontColor || o, t.fillText(this._fmt(W, { hour: "2-digit", minute: "2-digit" }), d.labelRight, $));
+    const G = h * 0.55;
+    for (const I of ni(this._dd, w)) {
+      const y = this._timeToY(I);
+      y < G || y > s - G || (t.strokeStyle = z, t.lineWidth = Math.max(W, 1.5), t.globalAlpha = 0.95, t.beginPath(), t.moveTo(d.tickRight - C, y), t.lineTo(d.tickRight, y), t.stroke(), t.globalAlpha = 1, t.lineWidth = 1, t.fillStyle = this.fontColor || r, t.fillText(this._fmt(I, { hour: "2-digit", minute: "2-digit" }), d.labelRight, y));
     }
     this._hits = [];
-    const gt = v;
-    for (const W of this.bands) {
-      let $ = this._timeToY(W.end), R = this._timeToY(W.start);
-      if (R < 0 || $ > s) continue;
-      if (R - $ < Dt) {
-        const K = ($ + R) / 2;
-        $ = K - Dt / 2, R = K + Dt / 2;
+    const H = v;
+    for (const I of this.bands) {
+      let y = this._timeToY(I.end), S = this._timeToY(I.start);
+      if (S < 0 || y > s) continue;
+      if (S - y < he) {
+        const rt = (y + S) / 2;
+        y = rt - he / 2, S = rt + he / 2;
       }
-      this._hits.push({ band: W, colX: d.trackX1, yTop: $, yBot: R }), t.fillStyle = a;
-      const q = Math.min(gt / 2, (R - $) / 2);
-      t.beginPath(), t.roundRect(d.trackX0, $, gt, R - $, q), t.fill();
+      this._hits.push({ band: I, colX: d.trackX1, yTop: y, yBot: S }), t.fillStyle = a;
+      const V = Math.min(H / 2, (S - y) / 2);
+      t.beginPath(), t.roundRect(d.trackX0, y, H, S - y, V), t.fill();
     }
     t.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
-    const bt = this._playheadY, dt = this.mirror ? Math.max(0, d.trackX0 - 6) : 0;
-    t.fillStyle = a, t.globalAlpha = 0.18, t.fillRect(dt, bt - 6, i - dt, 12), t.globalAlpha = 1, t.strokeStyle = a, t.lineWidth = 3, t.beginPath(), t.moveTo(dt, bt), t.lineTo(i, bt), t.stroke(), t.lineWidth = 1;
+    const et = this._playheadY, Y = this.mirror ? Math.max(0, d.trackX0 - 6) : 0;
+    t.fillStyle = a, t.globalAlpha = 0.18, t.fillRect(Y, et - 6, i - Y, 12), t.globalAlpha = 1, t.strokeStyle = a, t.lineWidth = 3, t.beginPath(), t.moveTo(Y, et), t.lineTo(i, et), t.stroke(), t.lineWidth = 1;
   }
-  _roundRect(e, t, i, s, r, o) {
-    const n = Math.max(0, Math.min(o, s / 2, r / 2));
-    e.beginPath(), e.moveTo(t + n, i), e.arcTo(t + s, i, t + s, i + r, n), e.arcTo(t + s, i + r, t, i + r, n), e.arcTo(t, i + r, t, i, n), e.arcTo(t, i, t + s, i, n), e.closePath();
+  _roundRect(e, t, i, s, o, r) {
+    const n = Math.max(0, Math.min(r, s / 2, o / 2));
+    e.beginPath(), e.moveTo(t + n, i), e.arcTo(t + s, i, t + s, i + o, n), e.arcTo(t + s, i + o, t, i + o, n), e.arcTo(t, i + o, t, i, n), e.arcTo(t, i, t + s, i, n), e.closePath();
   }
   // PERF-SCRUB-2026-08-03: was `new Intl.DateTimeFormat(undefined, opts)` on
   // every call — i.e. once per major tick label per canvas frame, once per frame
@@ -1578,29 +1872,36 @@ let w = class extends j {
   // playhead pill. See data/fmt.ts for the measurements.
   // Revert: `return new Intl.DateTimeFormat(undefined, opts).format(new Date(t));`
   _fmt(e, t) {
-    return ht(e, t);
+    return xt(e, t);
   }
   render() {
-    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = Es(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - P(this.domain, this.playheadFrac) < ys, r = !s && this.domain ? this._fmt(Math.min(P(this.domain, this.playheadFrac), this.now), {
+    const e = this.accentColor || "var(--primary-color, #03a9f4)", t = Ie(this.accentColor, 0.58), i = this.gutter ? -(this.gutter / 2 + (this.compact ? 19 : 22)) : 8, s = this.live && !this.livePaused && this.domain && this.now - A(this.domain, this.playheadFrac) < No, o = !s && this.domain ? this._fmt(Math.min(A(this.domain, this.playheadFrac), this.now), {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
-    }) : "", o = this._height > 0 && (s || !!r), n = `--upc-thumb-w:${this.thumbSize}px;--upc-thumb-w-lg:${this.thumbSizeActive}px;`, a = 1 - this._sliderValue / (V.length - 1), h = this._renderThumbs(), u = this._evtAnchor + gs + (this._pillDodge() ? this.thumbSizeActive + bs : 0);
-    return p`
+    }) : "", r = this._height > 0 && (s || !!o), n = `--upc-thumb-w:${this.thumbSize}px;--upc-thumb-w-lg:${this.thumbSizeActive}px;`, a = 1 - this._sliderValue / (q.length - 1), h = this._renderThumbs();
+    let c = this._evtAnchor + ae + (this._pillDodge() ? this.thumbSizeActive + Fo : 0);
+    this.mirror && this._pillW > 0 && this._width > 0 && (c = Math.min(c, this._width - this._pillW - Oo));
+    const d = this.mirror && this.domain ? this._fmt(Math.min(A(this.domain, this.playheadFrac), this.now), {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }) : "";
+    return u`
       <div
         class="col"
-        style="--upc-accent:${e};${t ? `--upc-accent-deep:${t};` : ""}--upc-indent:${this.indent}px;--upc-pill-left:${this.pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${u}px;--upc-fab-right:${i}px;--upc-ph-y:${this._height * this.playheadFrac}px;${n}"
+        style="--upc-accent:${e};${t ? `--upc-accent-deep:${t};` : ""}--upc-indent:${this.indent}px;--upc-pill-left:${this.pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${c}px;--upc-pill-base-right:${this._evtAnchor + ae}px;--upc-fab-right:${i}px;--upc-ph-y:${this._height * this.playheadFrac}px;${n}"
       >
         <div class="scrub">
           <canvas></canvas>
           <div class="evt-layer">${h}</div>
-          ${o ? p`<div
+          ${r ? u`<div
                 class="live-pill ${s ? "" : "at-time"} ${this._pillBig ? "big" : ""}"
                 style="top:${this._height * this.playheadFrac}px"
               >
-                ${s ? "LIVE" : r}
+                ${s ? "LIVE" : o}
               </div>` : b}
-          ${this._hoverGap ? p`<div class="gap-tip" style="top:${this._hoverGap.y}px">
+          ${this._hoverGap ? u`<div class="gap-tip" style="top:${this._hoverGap.y}px">
                 Camera offline
                 <div class="gap-sub">
                   ${this._fmt(this._hoverGap.gap.start, { hour: "2-digit", minute: "2-digit" })} –
@@ -1608,10 +1909,14 @@ let w = class extends j {
                 </div>
               </div>` : b}
           ${this.zoomUi ? this._renderZoom(a) : b}
-          ${this.liveArrow && !this.live ? p`<button
-                class="live-arrow"
+          ${this.mirror ? u`<div class="tl-foot" @pointerdown=${(l) => l.stopPropagation()}>
+                <span class="live-pill at-time">${d}</span>
+                <slot name="foot"></slot>
+              </div>` : b}
+          ${this.liveArrow && !this.live ? u`<button
+                class="live-arrow ${this._zoomOpen && this._zoomPanelGeom().long ? "under-zoom" : ""}"
                 title="Jump to live"
-                @pointerdown=${(d) => d.stopPropagation()}
+                @pointerdown=${(l) => l.stopPropagation()}
                 @click=${this._goLive}
               >
                 ↑
@@ -1629,39 +1934,55 @@ let w = class extends j {
     const e = this._playheadY, t = this.thumbSizeActive * 0.75 / 2 + 25;
     return this._kept.some((i) => Math.abs(i.y - e) < t);
   }
+  /** The zoom flyout's length and how it grows out of the magnifier: on the
+   *  phone's full-screen ruler (mirror + compact) longer than elsewhere (user,
+   *  2026-10-31: "substantially longer") - from the magnifier down to the
+   *  strip's foot on a short strip (sideways), half that on a tall one
+   *  (upright: the whole length was "a bit extreme"); elsewhere its fixed
+   *  length. `fab`: the magnifier's size (the panel's top lines up with its
+   *  top); `long`: it reaches the strip's foot, where the live arrow is. */
+  _zoomPanelGeom() {
+    const e = this.compact && this.mirror ? 38 : 44, t = this.compact ? 206 : 236;
+    if (!(this.mirror && this.compact) || !this._height) return { h: t, fab: e, long: !1 };
+    const i = this._height * this.playheadFrac - e / 2, s = Math.round(this._height - i - 12), o = Math.max(t, s > Bo ? Math.round(s / 2) : s);
+    return { h: o, fab: e, long: i + o > this._height - 50 };
+  }
   /** The collapsible zoom control (magnifier fab -> vertical slider flyout).
    *  Dropped entirely in the fullscreen overlay, which has no zoom. */
   _renderZoom(e) {
-    return p`
-      ${this._zoomOpen ? p`<div class="zoom-panel">
+    const t = this._zoomPanelGeom(), i = `height:${t.h}px;--zoy:${t.fab / 2}px;--zsx:${(t.fab / 52).toFixed(3)};--zsy:${(t.fab / t.h).toFixed(3)}`;
+    return u`
+      ${this._zoomOpen ? u`<div class="zoom-panel" style=${i}>
             <button
               class="zpbtn"
-              @pointerdown=${(t) => t.stopPropagation()}
+              @pointerdown=${(s) => s.stopPropagation()}
               @click=${this._zoomIn}
               title="Zoom in"
             >
               +
             </button>
             <div
-              class="zslider"
+              class="zslider ${this._zoomDragging ? "drag" : ""}"
+              style="--zpos:${e * 100}%;--zfill:${1 - e}"
               @pointerdown=${this._onZoomSliderDown}
               @pointermove=${this._onZoomSliderMove}
               @pointerup=${this._onZoomSliderUp}
               @pointercancel=${this._onZoomSliderUp}
             >
-              <div class="zthumb" style="top:calc(8px + ${e} * (100% - 16px))"></div>
+              <div class="zrail"><div class="zfill"></div></div>
+              <div class="zcarrier"><div class="zthumb"></div></div>
             </div>
             <button
               class="zpbtn"
-              @pointerdown=${(t) => t.stopPropagation()}
+              @pointerdown=${(s) => s.stopPropagation()}
               @click=${this._zoomOut}
               title="Zoom out"
             >
               −
             </button>
-          </div>` : p`<button
+          </div>` : u`<button
             class="zoom-fab"
-            @pointerdown=${(t) => t.stopPropagation()}
+            @pointerdown=${(s) => s.stopPropagation()}
             @click=${this._openZoom}
             title="Zoom"
           >
@@ -1693,18 +2014,18 @@ let w = class extends j {
    *  winds the timeline to that event from _onPointerUp instead. */
   _renderThumbs() {
     if (!this._height || !this.domain) return b;
-    const e = P(this.domain, this.playheadFrac), t = this.thumbSizeActive * 0.75 / 2, i = this.thumbSize * 0.75 / 2, s = t + i + 6, r = M(this._dd), o = this._keptSel;
+    const e = A(this.domain, this.playheadFrac), t = this.thumbSizeActive * 0.75 / 2, i = this.thumbSize * 0.75 / 2, s = t + i + 6, o = L(this._dd), r = this._keptSel;
     let n;
-    if (o && o.bands === this.bands && o.span === r && o.height === this._height && o.spacing === s)
-      n = o.sel;
+    if (r && r.bands === this.bands && r.span === o && r.height === this._height && r.spacing === s)
+      n = r.sel;
     else {
       n = [];
       let l = 1 / 0;
       for (const { m: _, g: v } of this._members()) {
-        const y = (this._timeToY(_.end) + this._timeToY(_.start)) / 2;
-        l - y < s || (l = y, n.push({ m: _, g: v }));
+        const w = (this._timeToY(_.end) + this._timeToY(_.start)) / 2;
+        l - w < s || (l = w, n.push({ m: _, g: v }));
       }
-      this._keptSel = { bands: this.bands, span: r, height: this._height, spacing: s, sel: n };
+      this._keptSel = { bands: this.bands, span: o, height: this._height, spacing: s, sel: n };
     }
     const a = n.map(({ m: l, g: _ }) => ({
       m: l,
@@ -1712,40 +2033,40 @@ let w = class extends j {
       y: (this._timeToY(l.end) + this._timeToY(l.start)) / 2
     }));
     this._kept = a;
-    let h, u = 1 / 0;
+    let h, c = 1 / 0;
     for (const l of a) {
       if (e < l.g.start || e > l.g.end) continue;
       const _ = e < l.m.start ? l.m.start - e : e > l.m.end ? e - l.m.end : 0;
-      _ < u && (u = _, h = l);
+      _ < c && (c = _, h = l);
     }
     const d = a.filter((l) => {
       const _ = l === h || this._hoverBand === l.m ? t : i;
       return l.y + _ >= 0 && l.y - _ <= this._height;
     });
-    return se(
+    return Oe(
       d,
-      (l) => Ot(l.m),
+      (l) => le(l.m),
       (l) => {
-        const _ = l === h, v = this._hoverBand === l.m, y = this.loader?.get(l.m);
-        return p`<div
+        const _ = l === h, v = this._hoverBand === l.m, w = this.loader?.get(l.m);
+        return u`<div
           class="evt ${_ ? "active" : ""} ${v ? "hovered" : ""}"
           style="top:${l.y}px"
         >
           <span class="evt-line"></span>
           <div
             class="evt-wrap"
-            data-key=${Ot(l.m)}
+            data-key=${le(l.m)}
             @mouseenter=${() => this._setHover(l.m)}
             @mouseleave=${this._clearHover}
           >
-            ${y ? p`<img class="evt-thumb" .src=${y} alt=${l.g.label} />` : p`<span class="evt-thumb evt-ph"></span>`}
+            ${w ? u`<img class="evt-thumb" .src=${w} alt=${l.g.label} />` : u`<span class="evt-thumb evt-ph"></span>`}
           </div>
         </div>`;
       }
     );
   }
 };
-w.styles = rt`
+x.styles = ft`
     :host {
       display: block;
       height: 100%;
@@ -1788,33 +2109,62 @@ w.styles = rt`
     }
     /* Expanded zoom flyout: vertical slider pill, + on top, − at the bottom
        (UniFi mobile; plain glyphs — the loupe icons read too small). Fully
-       custom slider — native vertical range inputs are unreliable on iOS. */
+       custom slider — native vertical range inputs are unreliable on iOS.
+       iOS-style since 2026-10-30 (user: the knob was "too small, not
+       animated and hard to control using a finger"): it grows out of the
+       magnifier and shrinks back into it (_closeZoom), a thick track fills
+       with the accent up to a big white knob that springs from step to step
+       and swells while held, and the buttons give under the finger. */
     .zoom-panel {
       position: absolute;
       top: 14px;
       right: 8px;
-      width: 44px;
+      margin-right: -4px; /* centred on the magnifier, which is 8px narrower */
+      width: 52px;
       /* A FIXED length, not a percentage of the ruler: this is one control and
          it must be the same size wherever it appears, but the card column's
          ruler and the fullscreen one are wildly different heights, so a
          percentage made the in-card flyout markedly the smaller of the two.
          224px is what 35% used to resolve to on a tablet's fullscreen ruler,
-         so the overlay there is unchanged and the card column now matches it. */
-      height: 224px;
+         so the overlay there is unchanged and the card column now matches it.
+         (Set inline by _zoomPanelGeom - the phone's full screen runs it the
+         ruler's length; this is the fallback.) */
+      height: 236px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 0;
+      padding: 4px 0;
       box-sizing: border-box;
-      border-radius: 22px;
+      border-radius: 26px;
       background: rgba(0, 0, 0, 0.6);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
       z-index: 9;
+      /* It grows out of the magnifier (its top lines up with the panel's):
+         from the magnifier's centre and size - set per placement, see
+         _zoomPanelGeom. */
+      transform-origin: 50% var(--zoy, 22px);
+      animation: upc-zoom-open 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes upc-zoom-open {
+      from {
+        opacity: 0;
+        transform: scale(var(--zsx, 0.85), var(--zsy, 0.19));
+      }
+    }
+    /* The magnifier coming back as the flyout shrinks into it. */
+    .zoom-fab {
+      animation: upc-zoom-fab-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes upc-zoom-fab-in {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
     }
     .zpbtn {
       flex: 0 0 auto;
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border: none;
       border-radius: 50%;
       background: transparent;
@@ -1823,11 +2173,21 @@ w.styles = rt`
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 400;
       line-height: 1;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      transition:
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background 0.25s ease;
+    }
+    .zpbtn:active {
+      transform: scale(0.86);
+      background: rgba(255, 255, 255, 0.14);
+      transition:
+        transform 0.08s ease-out,
+        background 0.08s ease-out;
     }
     .zslider {
       position: relative;
@@ -1837,28 +2197,67 @@ w.styles = rt`
       cursor: pointer;
       touch-action: none;
     }
-    .zslider::before {
-      /* the thin track line */
-      content: '';
+    /* The track (inset so the knob fits at either end), filled with the
+       accent from the bottom up to the knob: how far in it is zoomed. */
+    .zrail {
       position: absolute;
       left: 50%;
-      top: 8px;
-      bottom: 8px;
-      width: 4px;
-      transform: translateX(-50%);
-      border-radius: 2px;
-      background: rgba(255, 255, 255, 0.25);
+      top: ${Mt}px;
+      bottom: ${Mt}px;
+      width: 6px;
+      margin-left: -3px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.22);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .zfill {
+      position: absolute;
+      inset: 0;
+      background: var(--upc-accent, var(--primary-color, #03a9f4));
+      transform-origin: 50% 100%;
+      transform: scaleY(var(--zfill, 0));
+    }
+    /* The knob rides a carrier as tall as the track: translateY in % of the
+       carrier is then exactly the knob's place on it (transform only). */
+    .zcarrier {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: ${Mt}px;
+      bottom: ${Mt}px;
+      transform: translateY(var(--zpos, 0%));
+      pointer-events: none;
     }
     .zthumb {
       position: absolute;
       left: 50%;
-      transform: translate(-50%, -50%);
-      width: 22px;
-      height: 16px;
-      border-radius: 5px;
-      background: var(--upc-accent, var(--primary-color, #03a9f4));
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
-      pointer-events: none;
+      top: 0;
+      width: 30px;
+      height: 30px;
+      margin: -15px 0 0 -15px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 0 0.5px rgba(0, 0, 0, 0.12);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    /* A step taken by a tap or a button springs there; while dragged the
+       knob keeps up with the finger, swollen, the track thicker. */
+    .zcarrier,
+    .zfill {
+      transition: transform 0.38s cubic-bezier(0.34, 1.3, 0.64, 1);
+    }
+    .zslider.drag .zcarrier,
+    .zslider.drag .zfill {
+      transition: transform 0.12s ease-out;
+    }
+    .zslider.drag .zthumb {
+      transform: scale(1.2);
+    }
+    .zslider.drag .zrail {
+      transform: scaleX(1.5);
     }
     .scrub {
       position: relative;
@@ -2011,7 +2410,7 @@ w.styles = rt`
        the gap's vertical center. */
     .gap-tip {
       position: absolute;
-      left: calc(${at}px + var(--upc-indent, 0px));
+      left: calc(${lt}px + var(--upc-indent, 0px));
       transform: translateY(-50%);
       background: rgba(0, 0, 0, 0.82);
       color: #fff;
@@ -2052,7 +2451,7 @@ w.styles = rt`
        so scrolling over a thumbnail still pans the timeline. */
     .evt {
       position: absolute;
-      left: calc(${at}px + var(--upc-indent, 0px));
+      left: calc(${lt}px + var(--upc-indent, 0px));
       transform: translateY(-50%);
       display: flex;
       align-items: center;
@@ -2111,7 +2510,7 @@ w.styles = rt`
     :host([mirror]) .evt,
     :host([mirror]) .gap-tip {
       left: auto;
-      right: var(--upc-evt-right, ${at}px);
+      right: var(--upc-evt-right, ${lt}px);
     }
     :host([mirror]) .evt {
       flex-direction: row-reverse;
@@ -2121,7 +2520,7 @@ w.styles = rt`
        steps further left when a thumbnail shares its row (see _pillDodge). */
     :host([mirror]) .live-pill {
       left: auto;
-      right: var(--upc-pill-right, ${at}px);
+      right: var(--upc-pill-right, ${lt}px);
       font-size: 15px;
       padding: 5px 14px;
       border-radius: 9px;
@@ -2209,8 +2608,54 @@ w.styles = rt`
     :host([mirror][compact]) .zoom-panel {
       top: calc(var(--upc-ph-y, 33px) - 19px);
     }
+    /* (Centred on the phone's smaller magnifier; its length: _zoomPanelGeom.) */
+    :host([mirror][compact]) .zoom-panel {
+      margin-right: -7px;
+    }
+    /* The jump-to-live arrow shares the lane, at its foot: it steps aside
+       while the slider runs down over it. */
+    .live-arrow {
+      transition: opacity 0.2s ease;
+    }
+    .live-arrow.under-zoom {
+      opacity: 0;
+      pointer-events: none;
+    }
     :host([mirror]) .zoom-fab {
       background: var(--upc-accent-deep, var(--upc-accent, var(--primary-color, #03a9f4)));
+    }
+    /* The host's slot at the foot of the overlay ruler (the card's date pill):
+       level with the jump-to-live arrow across the strip, and centred under
+       the playhead pill. The pill is right-anchored with a content width, so
+       the foot stacks the slotted element on an invisible copy of it — the
+       same box, at the pill's resting spot (not its dodge or its swell) —
+       and centres it there. */
+    .tl-foot {
+      position: absolute;
+      right: var(--upc-pill-base-right, ${lt}px);
+      bottom: 8px;
+      height: 44px; /* the live arrow's row */
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      z-index: 9;
+      pointer-events: none;
+    }
+    .tl-foot > .live-pill,
+    slot[name='foot']::slotted(*) {
+      grid-area: 1 / 1;
+    }
+    .tl-foot > .live-pill {
+      position: static;
+      transform: none;
+      animation: none;
+      visibility: hidden;
+    }
+    .tl-foot > .live-pill::after {
+      display: none;
+    }
+    slot[name='foot']::slotted(*) {
+      pointer-events: auto;
     }
     :host([mirror]) .live-arrow {
       position: absolute;
@@ -2235,7 +2680,7 @@ w.styles = rt`
       -webkit-tap-highlight-color: transparent;
     }
   `;
-w._redrawProps = [
+x._redrawProps = [
   "domain",
   "bands",
   "gaps",
@@ -2250,123 +2695,845 @@ w._redrawProps = [
   "futureColor",
   "indent"
 ];
-x([
-  c({ attribute: !1 })
-], w.prototype, "domain", 2);
-x([
-  c({ attribute: !1 })
-], w.prototype, "bands", 2);
-x([
-  c({ attribute: !1 })
-], w.prototype, "gaps", 2);
-x([
-  c()
-], w.prototype, "gapColor", 2);
-x([
-  c({ attribute: !1 })
-], w.prototype, "now", 2);
-x([
-  c({ attribute: !1 })
-], w.prototype, "hass", 2);
-x([
-  c()
-], w.prototype, "nvrId", 2);
-x([
-  c()
-], w.prototype, "cameraId", 2);
-x([
-  c({ type: Number })
-], w.prototype, "fontSize", 2);
-x([
-  c()
-], w.prototype, "fontColor", 2);
-x([
-  c()
-], w.prototype, "accentColor", 2);
-x([
-  c()
-], w.prototype, "tickColor", 2);
-x([
-  c({ type: Number })
-], w.prototype, "tickSize", 2);
-x([
-  c()
-], w.prototype, "recordedColor", 2);
-x([
-  c()
-], w.prototype, "futureColor", 2);
-x([
-  c({ type: Number })
-], w.prototype, "thumbSize", 2);
-x([
-  c({ type: Number })
-], w.prototype, "thumbSizeActive", 2);
-x([
-  c({ attribute: !1 })
-], w.prototype, "loader", 2);
-x([
-  c({ type: Number })
-], w.prototype, "thumbVersion", 2);
-x([
-  c({ type: Boolean })
-], w.prototype, "live", 2);
-x([
-  c({ type: Boolean })
-], w.prototype, "livePaused", 2);
-x([
-  c({ type: Number })
-], w.prototype, "indent", 2);
-x([
-  c({ type: Number })
-], w.prototype, "pillIndent", 2);
-x([
-  c({ type: Boolean, reflect: !0 })
-], w.prototype, "mirror", 2);
-x([
-  c({ type: Boolean })
-], w.prototype, "zoomUi", 2);
-x([
-  c({ type: Boolean })
-], w.prototype, "rotated", 2);
-x([
-  c({ type: Boolean })
-], w.prototype, "liveArrow", 2);
-x([
-  c({ type: Boolean, reflect: !0 })
-], w.prototype, "compact", 2);
-x([
-  c({ type: Number })
-], w.prototype, "playheadFrac", 2);
-x([
-  c({ type: Number })
-], w.prototype, "gutter", 2);
-x([
+k([
+  p({ attribute: !1 })
+], x.prototype, "domain", 2);
+k([
+  p({ attribute: !1 })
+], x.prototype, "bands", 2);
+k([
+  p({ attribute: !1 })
+], x.prototype, "gaps", 2);
+k([
+  p()
+], x.prototype, "gapColor", 2);
+k([
+  p({ attribute: !1 })
+], x.prototype, "now", 2);
+k([
+  p({ attribute: !1 })
+], x.prototype, "hass", 2);
+k([
+  p()
+], x.prototype, "nvrId", 2);
+k([
+  p()
+], x.prototype, "cameraId", 2);
+k([
+  p({ type: Number })
+], x.prototype, "fontSize", 2);
+k([
+  p()
+], x.prototype, "fontColor", 2);
+k([
+  p()
+], x.prototype, "accentColor", 2);
+k([
+  p()
+], x.prototype, "tickColor", 2);
+k([
+  p({ type: Number })
+], x.prototype, "tickSize", 2);
+k([
+  p()
+], x.prototype, "recordedColor", 2);
+k([
+  p()
+], x.prototype, "futureColor", 2);
+k([
+  p({ type: Number })
+], x.prototype, "thumbSize", 2);
+k([
+  p({ type: Number })
+], x.prototype, "thumbSizeActive", 2);
+k([
+  p({ attribute: !1 })
+], x.prototype, "loader", 2);
+k([
+  p({ type: Number })
+], x.prototype, "thumbVersion", 2);
+k([
+  p({ type: Boolean })
+], x.prototype, "live", 2);
+k([
+  p({ type: Boolean })
+], x.prototype, "livePaused", 2);
+k([
+  p({ type: Number })
+], x.prototype, "indent", 2);
+k([
+  p({ type: Number })
+], x.prototype, "pillIndent", 2);
+k([
+  p({ type: Boolean, reflect: !0 })
+], x.prototype, "mirror", 2);
+k([
+  p({ type: Boolean })
+], x.prototype, "zoomUi", 2);
+k([
+  p({ type: Boolean })
+], x.prototype, "rotated", 2);
+k([
+  p({ type: Boolean })
+], x.prototype, "liveArrow", 2);
+k([
+  p({ type: Boolean, reflect: !0 })
+], x.prototype, "compact", 2);
+k([
+  p({ type: Number })
+], x.prototype, "playheadFrac", 2);
+k([
+  p({ type: Number })
+], x.prototype, "gutter", 2);
+k([
   m()
-], w.prototype, "_hoverBand", 2);
-x([
+], x.prototype, "_hoverBand", 2);
+k([
   m()
-], w.prototype, "_hoverGap", 2);
-x([
+], x.prototype, "_hoverGap", 2);
+k([
   m()
-], w.prototype, "_zoomOpen", 2);
-x([
-  G("canvas")
-], w.prototype, "_canvas", 2);
-x([
-  G(".scrub")
-], w.prototype, "_scrubEl", 2);
-x([
+], x.prototype, "_zoomOpen", 2);
+k([
+  tt("canvas")
+], x.prototype, "_canvas", 2);
+k([
+  tt(".scrub")
+], x.prototype, "_scrubEl", 2);
+k([
   m()
-], w.prototype, "_pillBig", 2);
-w = x([
-  ot("upc-scrubber-timeline")
-], w);
-var Ms = Object.defineProperty, As = Object.getOwnPropertyDescriptor, C = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? As(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && Ms(t, i, r), r;
+], x.prototype, "_pillBig", 2);
+k([
+  m()
+], x.prototype, "_zoomDragging", 2);
+x = k([
+  mt("upc-scrubber-timeline")
+], x);
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+const It = Re(class extends ze {
+  constructor() {
+    super(...arguments), this.key = b;
+  }
+  render(e, t) {
+    return this.key = e, t;
+  }
+  update(e, [t, i]) {
+    return t !== this.key && (Kt(e), this.key = t), i;
+  }
+});
+function ns(e, t, i) {
+  return e.map((s) => ({ ...s, camera: t, cameraName: i }));
+}
+function Ko(e) {
+  return e.flat().sort((t, i) => i.start - t.start);
+}
+function Yo(e, t) {
+  const i = Math.max(0, Math.floor((t - e) / 1e3));
+  if (i < 60) return "just now";
+  const s = Math.floor(i / 60);
+  if (s < 60) return s === 1 ? "1 minute ago" : `${s} minutes ago`;
+  const o = Math.floor(s / 60);
+  if (o < 24) return o === 1 ? "1 hour ago" : `${o} hours ago`;
+  const r = Math.floor(o / 24);
+  return r === 1 ? "1 day ago" : `${r} days ago`;
+}
+const De = typeof navigator < "u" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent), U = 500, Lt = 240;
+function as(e, t = 0.45) {
+  const i = 2 * Math.PI / t, s = [], o = 24;
+  for (let r = 0; r <= o; r++) {
+    const n = r / o * e / 1e3, a = r === o ? 1 : 1 - (1 + i * n) * Math.exp(-i * n);
+    s.push(`${a.toFixed(4)} ${(r / o * 100).toFixed(1)}%`);
+  }
+  return `linear(${s.join(", ")})`;
+}
+const ye = as(U), hs = "cubic-bezier(0.25, 0.8, 0.3, 1)";
+let xe;
+function X() {
+  return xe ??= typeof CSS < "u" && CSS.supports?.("animation-timing-function", ye) === !0, xe ? ye : hs;
+}
+const Xt = 460, Zt = 300;
+function Xo(e, t, i) {
+  const s = 2 * Math.PI / t, o = s * Math.sqrt(1 - i * i), r = [], n = 40;
+  for (let a = 0; a <= n; a++) {
+    const h = a / n * e / 1e3, c = a === n ? 1 : 1 - Math.exp(-i * s * h) * (Math.cos(o * h) + i * s / o * Math.sin(o * h));
+    r.push(`${c.toFixed(4)} ${(a / n * 100).toFixed(1)}%`);
+  }
+  return `linear(${r.join(", ")})`;
+}
+const Zo = Xo(Xt, 0.36, 0.75), Jo = as(Zt, 0.27), Qo = 0.6;
+function tr(e, t, i, s, o) {
+  const r = xe ?? X() === ye, n = { transformOrigin: "0 0", transform: cs(t, i, s) }, a = { transformOrigin: "0 0", transform: "none" };
+  return o ? (e.animate([{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1 }], { duration: Xt }), e.animate([n, a], {
+    duration: Xt,
+    easing: r ? Zo : "cubic-bezier(0.34, 1.3, 0.64, 1)"
+  })) : (e.animate([{ opacity: 1 }, { opacity: 1, offset: 0.1 }, { opacity: 0, offset: Qo }, { opacity: 0 }], {
+    duration: Zt,
+    fill: "forwards"
+  }), e.animate([a, n], {
+    duration: Zt,
+    easing: r ? Jo : hs,
+    fill: "forwards"
+  }));
+}
+function er(e, t) {
+  const i = ct(e.el, t), s = e.content;
+  return { x: i.x + s.x, y: i.y + s.y, w: s.w, h: s.h };
+}
+function wi(e) {
+  return { x: e.left, y: e.top, w: e.width, h: e.height };
+}
+function ct(e, t) {
+  const i = e.getBoundingClientRect(), s = t.getBoundingClientRect();
+  return { x: i.left - s.left, y: i.top - s.top, w: i.width, h: i.height };
+}
+function ls(e, t) {
+  const i = e.getBoundingClientRect();
+  if (!i.width || !i.height || i.top < -1 || i.bottom > window.innerHeight + 1) return !1;
+  if (!t) return !0;
+  const s = t.getBoundingClientRect();
+  return i.top >= s.top - 1 && i.bottom <= s.bottom + 1 && i.left >= s.left - 1 && i.right <= s.right + 1;
+}
+function yi(e, t) {
+  const i = Math.max(e.x, t.x), s = Math.max(e.y, t.y), o = Math.min(e.x + e.w, t.x + t.w), r = Math.min(e.y + e.h, t.y + t.h);
+  return o - i < 1 || r - s < 1 ? null : { x: i, y: s, w: o - i, h: r - s };
+}
+function ir(e, t) {
+  if (!(t > 0) || !e.w || !e.h) return e;
+  if (e.w / e.h > t) {
+    const s = e.h * t;
+    return { x: e.x + (e.w - s) / 2, y: e.y, w: s, h: e.h };
+  }
+  const i = e.w / t;
+  return { x: e.x, y: e.y + (e.h - i) / 2, w: e.w, h: i };
+}
+function cs(e, t, i) {
+  const s = Math.min(e.w / Math.max(1, i.w), e.h / Math.max(1, i.h)), o = e.x + e.w / 2 - t.x - s * (i.x + i.w / 2), r = e.y + e.h / 2 - t.y - s * (i.y + i.h / 2);
+  return `translate(${o}px, ${r}px) scale(${s})`;
+}
+function ke(e, t, i, s, o = {}) {
+  const r = [
+    { transformOrigin: "0 0", transform: cs(t, i, s) },
+    { transformOrigin: "0 0", transform: "none" }
+  ];
+  return o.out && r.reverse(), e.animate(
+    o.out ? [{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }],
+    { duration: U, fill: o.out ? "forwards" : "none" }
+  ), e.animate(r, { duration: U, easing: X(), fill: o.out ? "forwards" : "none" });
+}
+function sr(e, t, i, s) {
+  const o = e.getBoundingClientRect(), r = e.offsetWidth, n = e.offsetHeight, a = Math.min(t.w / Math.max(1, i.w), t.h / Math.max(1, i.h)), h = t.x + t.w / 2 - (o.left + o.width / 2) - a * (i.x + i.w / 2 - r / 2), c = t.y + t.h / 2 - (o.top + o.height / 2) - a * (i.y + i.h / 2 - n / 2);
+  return [
+    { transformOrigin: "50% 50%", transform: `translate(${h}px, ${c}px) rotate(0deg) scale(${a})` },
+    { transformOrigin: "50% 50%", transform: `translate(0px, 0px) rotate(${s}deg) scale(1)` }
+  ];
+}
+function xi(e, t, i, s, o = {}) {
+  const r = sr(e, t, i, s);
+  return o.out && r.reverse(), e.animate(
+    o.out ? [{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }],
+    { duration: U, fill: o.out ? "forwards" : "none" }
+  ), e.animate(r, { duration: U, easing: X(), fill: o.out ? "forwards" : "none" });
+}
+function or(e, t, i, s) {
+  const o = "left" in e ? e.left : e.x, r = "top" in e ? e.top : e.y, n = "width" in e ? e.width : e.w, a = "height" in e ? e.height : e.h, h = t.left + t.width / 2, c = t.top + t.height / 2;
+  return { x: i / 2 + (r - c), y: s / 2 - (o + n - h), w: a, h: n };
+}
+function Dt(e, t, i = Lt, s = 0) {
+  return e.animate([{ opacity: t ? 0 : 1 }, { opacity: t ? 1 : 0 }], {
+    duration: i,
+    delay: s,
+    easing: t ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease-in",
+    fill: t ? "backwards" : "forwards"
+  });
+}
+function rr(e) {
+  if (De || !e || e.readyState < 2 || !e.videoWidth) return null;
+  const t = document.createElement("canvas"), i = Math.min(1, 960 / e.videoWidth);
+  t.width = Math.round(e.videoWidth * i), t.height = Math.round(e.videoHeight * i);
+  try {
+    t.getContext("2d")?.drawImage(e, 0, 0, t.width, t.height);
+  } catch {
+    return null;
+  }
+  return t;
+}
+var nr = Object.defineProperty, ar = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? ar(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && nr(t, i, o), o;
 };
-let E = class extends j {
+const ki = 1200;
+let M = class extends Z {
+  constructor() {
+    super(...arguments), this.bands = [], this.thumbVersion = 0, this.headerText = "Events", this.thumbSize = 0, this.timeSize = 12, this.playingKey = "", this.lastPlayedKey = "", this.keepLastPlayed = !1, this.expanded = !1, this.gridColumns = 2, this.accent = "#fc9df3", this.hideHead = !1, this.gridThumbWidth = 120, this.dateFontSize = 13, this.itemTextSize = 12, this.captions = !1, this.gridCaptions = !1, this.loaded = !0, this.fsPalette = !1, this._imgReady = /* @__PURE__ */ new Set(), this._askedAt = /* @__PURE__ */ new Map(), this._ioRoot = null, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map(), this._toggle = () => {
+      this.dispatchEvent(new CustomEvent("toggle-expand", { bubbles: !0, composed: !0 }));
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback(), this.hasUpdated && !this._io && this._setupObserver();
+  }
+  firstUpdated() {
+    this._setupObserver();
+  }
+  _setupObserver() {
+    this._ioRoot = this._stripEl ?? null, this._io = new IntersectionObserver((e) => this._onIntersect(e), {
+      root: this._ioRoot,
+      rootMargin: "300px 300px"
+    }), this._observeThumbs();
+  }
+  updated() {
+    this._io && (this._stripEl ?? null) !== this._ioRoot && (this._io.disconnect(), this._setupObserver()), this._observeThumbs();
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback(), this._io?.disconnect(), this._io = void 0, clearTimeout(this._lateTimer);
+  }
+  /** Ask for a thumbnail (once): it loads, and the item shows when it is in. */
+  _request(e) {
+    if (this._requested.has(e)) return;
+    this._requested.add(e), this._askedAt.set(e, performance.now());
+    const t = this._bandByKey.get(e);
+    t && this.loader?.get(t), clearTimeout(this._lateTimer), this._lateTimer = setTimeout(() => this.requestUpdate(), ki + 20);
+  }
+  /** Is an item's picture in (or has it waited long enough to show without)? */
+  _shown(e) {
+    if (this._imgReady.has(e)) return !0;
+    const t = this._askedAt.get(e);
+    return t !== void 0 && performance.now() - t >= ki;
+  }
+  _onImg(e) {
+    this._imgReady.has(e) || (this._imgReady.add(e), this.requestUpdate());
+  }
+  /** Before the grid opens: ask for its first `n` pictures now, so they are
+   *  loading - and mostly in - by the time it shows. */
+  preload(e) {
+    for (const t of this.bands.slice(0, e)) {
+      const i = `${t.type}@${t.start}`;
+      this._bandByKey.set(i, t), this._request(i);
+    }
+  }
+  /** Resolves once every item in view has its picture in and decoded (or
+   *  `maxMs` passed): the page shows the grid then, rather than a grid of
+   *  pictures arriving. An item still waiting fades in on its own later. */
+  async firstScreenReady(e) {
+    const t = performance.now() + e, i = (r) => new Promise((n) => setTimeout(n, r));
+    let s = [];
+    for (; await this.updateComplete, s = Array.from(this.renderRoot.querySelectorAll(".clip")).filter((n) => {
+      const a = n.getBoundingClientRect();
+      return a.bottom > 0 && a.top < window.innerHeight;
+    }), !(!s.some((n) => {
+      const a = n.querySelector(".thumb")?.dataset.key;
+      return !!a && !this._imgReady.has(a);
+    }) || performance.now() >= t); )
+      await i(40);
+    this.toggleAttribute("instant", !0), this.requestUpdate(), await this.updateComplete;
+    const o = s.flatMap((r) => Array.from(r.querySelectorAll("img")));
+    await Promise.race([Promise.all(o.map((r) => r.decode().catch(() => {
+    }))), i(150)]), this.getBoundingClientRect(), this.toggleAttribute("instant", !1);
+  }
+  /** A thumb scrolled into view -> request its thumbnail (once). */
+  _onIntersect(e) {
+    let t = !1;
+    for (const i of e) {
+      if (!i.isIntersecting) continue;
+      const s = i.target.dataset.key;
+      !s || this._requested.has(s) || (this._request(s), this._io?.unobserve(i.target), t = !0);
+    }
+    t && this.requestUpdate();
+  }
+  _observeThumbs() {
+    this._io && this.renderRoot.querySelectorAll("[data-key]").forEach((e) => {
+      const t = e.dataset.key;
+      this._requested.has(t) || this._io.observe(e);
+    });
+  }
+  // PERF-SCRUB-2026-08-03: memoised formatters — these run once per rendered
+  // ROW, so a strip re-render used to build dozens. Revert: inline
+  // `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
+  _fmtTime(e) {
+    return xt(e, {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+  /* Day-divider helpers — same formats as the timeline view's events list. */
+  _fmtDay(e) {
+    return xt(e, {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    });
+  }
+  _sameDay(e, t) {
+    const i = new Date(e), s = new Date(t);
+    return i.getFullYear() === s.getFullYear() && i.getMonth() === s.getMonth() && i.getDate() === s.getDate();
+  }
+  /* Expanded-grid item texts: long time (matches the collapsed list) + duration. */
+  _fmtTimeLong(e) {
+    return xt(e, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  }
+  _fmtDur(e) {
+    const t = Math.max(1, Math.round(e / 1e3));
+    if (t < 60) return `${t}s`;
+    const i = Math.floor(t / 60), s = t % 60;
+    return s ? `${i}m ${s}s` : `${i}m`;
+  }
+  _select(e) {
+    this.dispatchEvent(
+      new CustomEvent("strip-select", { detail: e, bubbles: !0, composed: !0 })
+    );
+  }
+  /** Bring one clip into view — centred in whatever scrolls it (the grid, the
+   *  tablet column, the phone carousel, or the page itself). Returns false when
+   *  this strip does not hold that clip. */
+  revealKey(e) {
+    if (!e) return !1;
+    const i = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(e)}"]`)?.closest("button");
+    return i ? (i.scrollIntoView({ block: "center", inline: "center" }), !0) : !1;
+  }
+  /** One clip's thumbnail, when it is on screen (a zoom transition flies to
+   *  and from it). */
+  thumbOf(e) {
+    if (!e) return null;
+    const t = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(e)}"]`), i = this.renderRoot.querySelector(".gridlist") ?? this.renderRoot.querySelector(".strip");
+    return t && ls(t, i) ? t : null;
+  }
+  /** One event item — identical in both presentations (the expanded grid only
+   *  changes the layout around it, never the item itself). */
+  _renderClip(e, t, i) {
+    const s = this.playingKey === t || (this.expanded || this.keepLastPlayed) && this.lastPlayedKey === t, o = this.gridCaptions || this._shown(t);
+    return u`
+      <button
+        class="clip ${s ? "playing" : ""} ${o ? "shown" : ""}"
+        @click=${() => this._select(e)}
+      >
+        <div class="thumb" data-key=${t}>
+          ${i ? u`<img
+                src=${i}
+                alt=${e.label}
+                @load=${() => this._onImg(t)}
+                @error=${() => this._onImg(t)}
+              />` : u`<span class="ph"></span>`}
+          <!-- Caption mode moves the time to the line below (with the
+               duration); the compact mode overlays it on the footage. -->
+          ${this.captions ? b : u`<span class="time">${this._fmtTime(e.start)}</span>`}
+        </div>
+        <span class="cam">${e.cameraName}</span>
+        ${this.captions ? u`<span class="sub"
+              >${this._fmtTimeLong(e.start)} ·
+              ${e.ongoing ? "In progress" : this._fmtDur(e.durMs ?? e.end - e.start)}</span
+            >` : b}
+      </button>
+    `;
+  }
+  render() {
+    this._bandByKey.clear();
+    const t = `--upc-strip-thumb:${this.thumbSize > 0 ? `${this.thumbSize}px` : "calc((100% - 12px) / 2)"};--upc-strip-time:${this.timeSize}px;--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(1, this.itemTextSize - 1)}px`;
+    if (!this.loaded && !this.expanded) {
+      const s = u`<button class="clip hold" tabindex="-1" aria-hidden="true">
+        <div class="thumb"></div>
+        <span class="cam">&nbsp;</span>
+        ${this.captions ? u`<span class="sub">&nbsp;</span>` : b}
+      </button>`;
+      return u`<div class="strip" style=${t}>${s}${s}</div>`;
+    }
+    const i = Oe(
+      this.bands,
+      (s) => `${s.type}@${s.start}`,
+      (s, o) => {
+        const r = `${s.type}@${s.start}`;
+        this._bandByKey.set(r, s);
+        const n = this._requested.has(r) ? this.loader?.get(s) : void 0, a = this.expanded && (o === 0 || !this._sameDay(this.bands[o - 1].start, s.start));
+        return u`
+          ${a ? u`<div class="day-divider">
+                <span class="day-label">${this._fmtDay(s.start)}</span>
+              </div>` : b}
+          ${this._renderClip(s, r, n)}
+        `;
+      }
+    );
+    return u`
+      ${this.hideHead ? b : u`<div class="head">
+            <span>${this.headerText}</span>
+            <span class="head-count">${this.bands.length}</span>
+            <button
+              class="expand"
+              title=${this.expanded ? "Show cameras" : "Browse all events"}
+              @click=${this._toggle}
+            >
+              <!-- ONE static icon; :host([expanded]) rotates it 180° (swapping to
+                   chevron-up here would cancel the rotation out = always-down). -->
+              <ha-icon icon="mdi:chevron-down"></ha-icon>
+            </button>
+          </div>`}
+      ${this.bands.length === 0 ? u`<div class="empty">No events</div>` : this.expanded ? u`<div
+              class="gridlist"
+              style="--upc-egrid-cols:${this.gridColumns};--upc-egrid-w:${this.gridThumbWidth}px;--upc-egrid-date:${this.dateFontSize}px;--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(1, this.itemTextSize - 1)}px;--upc-strip-time:${this.timeSize}px;--upc-strip-divider:${this.accent}"
+            >
+              ${i}
+            </div>` : u`<div class="strip" style=${t}>${i}</div>`}
+      ${b}
+    `;
+  }
+};
+M.styles = ft`
+    :host {
+      display: block;
+    }
+    /* Header type matches the camera-name captions/overlays (14px/700). */
+    .head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 2px 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--secondary-text-color);
+    }
+    .head-count {
+      color: var(--primary-text-color);
+    }
+    /* Carousel <-> grid-list toggle chevron, right after the count. The
+       chevron ROTATES on toggle (one icon + transform) instead of swapping
+       icons — the smooth turn is half the iOS feel. */
+    .expand {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      color: var(--secondary-text-color);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .expand ha-icon {
+      --mdc-icon-size: 22px;
+      display: block;
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    :host([expanded]) .expand ha-icon {
+      transform: rotate(180deg);
+    }
+    /* iOS-native carousel feel: the SCROLLER runs edge to edge (negative
+       margins escape the ha-card's 12px side padding — matches the padding
+       constant in card.ts styles) while a leading content inset keeps the
+       first thumb 12px off the edge AT REST and scrolls away WITH the content.
+       At rest the thumbs bleed under the right screen edge (shows there's
+       more); fully scrolled, the last thumb settles 12px from the edge. */
+    .strip {
+      display: flex;
+      gap: 12px; /* same as the edge insets — uniform rhythm, and it makes the
+                    auto fit-2 layout symmetric (see thumbW derivation) */
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* hide scrollbar, keep scrolling */
+      -ms-overflow-style: none;
+      margin: 0 -12px;
+      padding: 0 12px 2px;
+    }
+    .strip::-webkit-scrollbar {
+      display: none;
+    }
+    .empty {
+      color: var(--secondary-text-color);
+      font-size: 13px;
+      padding: 8px 2px;
+    }
+    .clip {
+      flex: 0 0 auto;
+      position: relative;
+      width: var(--upc-strip-thumb, 104px);
+      box-sizing: border-box; /* the active card's padding insets inward */
+      border: none;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .thumb {
+      position: relative; /* anchors the .time overlay to the image */
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+      border: 2px solid transparent;
+      box-sizing: border-box;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    }
+    .clip.playing .thumb {
+      border-color: #fff;
+    }
+    .thumb img,
+    .thumb .ph {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .thumb img {
+      object-fit: cover;
+    }
+    .thumb .ph {
+      background: var(--divider-color, rgba(255, 255, 255, 0.1));
+    }
+    /* Phone (not the tablet's grid): an item waits invisible until its picture
+       has loaded, then fades in whole - no black boxes, no pictures popping
+       into them (see _shown). Its playing frame comes and goes softly too. */
+    :host(:not([gridcaptions])) .clip {
+      opacity: 0;
+      transition:
+        opacity 0.35s ease-out,
+        background-color 0.25s ease-out,
+        padding 0.25s ease-out;
+    }
+    :host(:not([gridcaptions])) .clip.shown {
+      opacity: 1;
+    }
+    :host([instant]) .clip {
+      transition: none;
+    }
+    :host(:not([gridcaptions])) .clip .thumb {
+      transition: border-radius 0.25s ease-out;
+    }
+    :host(:not([gridcaptions])) .clip .cam,
+    :host(:not([gridcaptions])) .clip .sub {
+      transition: color 0.25s ease-out;
+    }
+    /* Before the events are in (see loaded): the carousel's place, held by
+       items that never show - nothing below it moves when they arrive. */
+    .clip.hold {
+      visibility: hidden;
+    }
+    /* Time overlay reads on any footage thanks to the text shadow (UniFi-style).
+       Anchored to the IMAGE (.thumb is position:relative), not the whole clip
+       button, so it stays on the footage above the caption. */
+    .time {
+      position: absolute;
+      left: 7px;
+      bottom: 6px;
+      font-size: var(--upc-strip-time, 12px);
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+    }
+    /* Camera name BELOW the thumbnail — same type as the live tiles' name
+       overlay (14px/700 white, normal case), so the strip and the grid read
+       as one family. */
+    .cam {
+      display: block;
+      margin-top: 5px;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: left;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+    /* ---- expanded grid list: the SAME items as the carousel, just laid out
+       vertically — 2 columns match the carousel's fit-2 width, so the first
+       row doesn't change size when toggling, only the orientation. ---- */
+    :host([expanded]) {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    :host([expanded]) .head {
+      flex: 0 0 auto;
+    }
+    .gridlist {
+      display: grid;
+      grid-template-columns: repeat(var(--upc-egrid-cols, 2), 1fr);
+      gap: 12px;
+      align-content: start;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto; /* no-op when unconstrained (stacked: the page scrolls) */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .gridlist::-webkit-scrollbar {
+      display: none;
+    }
+    .gridlist .clip {
+      width: 100%; /* the grid column defines the width */
+      display: flex;
+      flex-direction: column; /* thumb on top, camera (+ caption) below */
+    }
+    /* Tablet grid: FIXED-width cells (not 1fr) so the thumb width is exactly
+       --upc-egrid-w — matching the collapsed list thumbnails — instead of
+       stretching to fill (which ignored width changes). The columns are
+       CENTRED in the pane (packed left, the width they don't fill was a dead
+       strip down the right; the day dividers span the columns, so they centre
+       with them). */
+    :host([gridcaptions]) .gridlist {
+      grid-template-columns: repeat(auto-fill, var(--upc-egrid-w, 132px));
+      justify-content: center;
+      gap: 14px 20px;
+    }
+    /* Caption mode item texts BELOW the thumb: camera on line 1, time +
+       duration on line 2 — same size across tablet grid and mobile. */
+    :host([captions]) .cam {
+      font-size: var(--upc-egrid-item, 12px);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .sub {
+      display: block;
+      margin-top: 1px;
+      font-size: var(--upc-egrid-sub, 11px); /* 1px under the camera name */
+      color: #d0d0d0; /* light inactive grey (lighter than theme secondary ~#b0) */
+      text-align: left; /* align with the (left-aligned) camera name above */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+    /* Caption mode: the PLAYING / last-played clip becomes a white FRAMED card
+       (same look as the timeline camera gallery) — the thumbnail is inset by
+       the clip's padding so the white mats it on ALL sides (not just a thin
+       border), and the caption goes dark on the white. Applies to both the
+       tablet grid and the mobile carousel/grid. */
+    :host([captions]) .clip.playing {
+      background: #fff;
+      border-radius: 11px;
+      padding: 5px;
+    }
+    :host([captions]) .clip.playing .thumb {
+      border-color: transparent; /* the frame is the padding now, not a border */
+      border-radius: 7px; /* concentric inside the 11px card */
+      box-shadow: none;
+    }
+    :host([captions]) .clip.playing .cam {
+      color: #000; /* line 1: black on the white card */
+    }
+    :host([captions]) .clip.playing .sub {
+      color: #444; /* line 2: dark-ish grey (was light grey) */
+    }
+    /* The camera screen's panel (fs): the same card in the overlay's colours,
+       and room under the last item. */
+    :host([fs][captions]) .clip.playing {
+      background: var(--upc-accent-deep, var(--upc-accent, #6a4266));
+    }
+    :host([fs][captions]) .clip.playing .cam {
+      color: #fff;
+    }
+    :host([fs][captions]) .clip.playing .sub {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    :host([fs]) .gridlist {
+      /* (Room the host's panel can set: what its edges' fades cover, or the
+         gap kept at the top of a list that scrolls on to the screen's edge.) */
+      padding-top: var(--upc-fs-list-pad-top, 0px);
+      padding-bottom: var(--upc-fs-list-pad-bottom, 16px);
+    }
+    /* Day separator between events from different days — same look as the
+       timeline view's events list (accent rule, white centered date). */
+    .day-divider {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 4px 2px;
+    }
+    .day-divider::before,
+    .day-divider::after {
+      content: '';
+      flex: 1 1 auto;
+      height: 1px;
+      background: var(--upc-strip-divider, #fc9df3);
+    }
+    .day-label {
+      flex: 0 0 auto;
+      font-size: var(--upc-egrid-date, 13px);
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+  `;
+F([
+  p({ attribute: !1 })
+], M.prototype, "bands", 2);
+F([
+  p({ attribute: !1 })
+], M.prototype, "loader", 2);
+F([
+  p({ type: Number })
+], M.prototype, "thumbVersion", 2);
+F([
+  p()
+], M.prototype, "headerText", 2);
+F([
+  p({ type: Number })
+], M.prototype, "thumbSize", 2);
+F([
+  p({ type: Number })
+], M.prototype, "timeSize", 2);
+F([
+  p()
+], M.prototype, "playingKey", 2);
+F([
+  p()
+], M.prototype, "lastPlayedKey", 2);
+F([
+  p({ type: Boolean })
+], M.prototype, "keepLastPlayed", 2);
+F([
+  p({ type: Boolean, reflect: !0 })
+], M.prototype, "expanded", 2);
+F([
+  p({ type: Number })
+], M.prototype, "gridColumns", 2);
+F([
+  p()
+], M.prototype, "accent", 2);
+F([
+  p({ type: Boolean })
+], M.prototype, "hideHead", 2);
+F([
+  p({ type: Number })
+], M.prototype, "gridThumbWidth", 2);
+F([
+  p({ type: Number })
+], M.prototype, "dateFontSize", 2);
+F([
+  p({ type: Number })
+], M.prototype, "itemTextSize", 2);
+F([
+  p({ type: Boolean, reflect: !0 })
+], M.prototype, "captions", 2);
+F([
+  p({ type: Boolean, reflect: !0 })
+], M.prototype, "gridCaptions", 2);
+F([
+  p({ type: Boolean })
+], M.prototype, "loaded", 2);
+F([
+  p({ type: Boolean, reflect: !0, attribute: "fs" })
+], M.prototype, "fsPalette", 2);
+F([
+  tt(".strip")
+], M.prototype, "_stripEl", 2);
+M = F([
+  mt("upc-event-strip")
+], M);
+var hr = Object.defineProperty, lr = Object.getOwnPropertyDescriptor, D = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? lr(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && hr(t, i, o), o;
+};
+let R = class extends Z {
   constructor() {
     super(...arguments), this.bands = [], this.thumbVersion = 0, this.textSize = 12, this.textColor = "", this.durationSize = 12, this.durationColor = "", this.activeTextSize = 12, this.activeTextColor = "#000", this.activeDurationSize = 12, this.activeDurationColor = "#000", this.activeBg = "#fff", this.playingKey = "", this.dateFontSize = 13, this.dateFontColor = "", this.dividerColor = "", this.thumbWidth = 104, this.showCamera = !1, this.line1White = !1, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map();
   }
@@ -2396,8 +3563,8 @@ let E = class extends j {
       const s = i.target.dataset.key;
       if (!s || this._requested.has(s)) continue;
       this._requested.add(s);
-      const r = this._bandByKey.get(s);
-      r && this.loader?.get(r), this._io?.unobserve(i.target), t = !0;
+      const o = this._bandByKey.get(s);
+      o && this.loader?.get(o), this._io?.unobserve(i.target), t = !0;
     }
     t && this.requestUpdate();
   }
@@ -2410,14 +3577,14 @@ let E = class extends j {
   // PERF-SCRUB-2026-08-03: memoised formatters — one per rendered row before.
   // Revert: inline `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
   _fmtTime(e) {
-    return ht(e, {
+    return xt(e, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
     });
   }
   _fmtDay(e) {
-    return ht(e, {
+    return xt(e, {
       weekday: "short",
       month: "short",
       day: "numeric"
@@ -2450,27 +3617,34 @@ let E = class extends j {
     const i = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(e)}"]`)?.closest("button");
     return i ? (i.scrollIntoView({ block: "center", inline: "nearest" }), !0) : !1;
   }
+  /** One event's thumbnail, when it is on screen in this list (a zoom
+   *  transition flies to and from it). */
+  thumbOf(e) {
+    if (!e) return null;
+    const t = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(e)}"]`);
+    return t && ls(t, this._listEl) ? t : null;
+  }
   scrollToDay(e) {
     const t = e + 864e5, i = [...this.bands].sort((a, h) => h.start - a.start).find((a) => a.start < t);
     if (!i || !this._listEl) return;
-    const r = this.renderRoot.querySelector(`.thumb[data-key="${i.type}@${i.start}"]`)?.closest(".row");
-    if (!r) return;
-    const o = r.previousElementSibling, n = o?.classList.contains("day-divider") ? o : r;
+    const o = this.renderRoot.querySelector(`.thumb[data-key="${i.type}@${i.start}"]`)?.closest(".row");
+    if (!o) return;
+    const r = o.previousElementSibling, n = r?.classList.contains("day-divider") ? r : o;
     this._listEl.scrollTop = n.offsetTop;
   }
   render() {
     const e = [...this.bands].sort((i, s) => s.start - i.start), t = `--list-size:${this.textSize}px;--list-dur-size:${this.durationSize}px;--list-active-size:${this.activeTextSize}px;--list-active-dur-size:${this.activeDurationSize}px;--list-active-color:${this.activeTextColor};--list-active-dur-color:${this.activeDurationColor};--list-active-bg:${this.activeBg};--list-thumb-w:${this.thumbWidth}px;` + (this.dividerColor ? `--upc-divider:${this.dividerColor};` : "") + (this.textColor ? `--list-color:${this.textColor};` : "") + (this.durationColor ? `--list-dur-color:${this.durationColor};--list-dur-op:1;` : "");
-    return this._bandByKey.clear(), p`
+    return this._bandByKey.clear(), u`
       <div class="list" style=${t}>
-        ${e.length === 0 ? p`<div class="empty">No events in this range</div>` : se(
+        ${e.length === 0 ? u`<div class="empty">No events in this range</div>` : Oe(
       e,
       (i) => `${i.type}@${i.start}`,
       (i, s) => {
-        const r = `${i.type}@${i.start}`;
-        this._bandByKey.set(r, i);
-        const o = this._requested.has(r) ? this.loader?.get(i) : void 0, n = this.playingKey === r, a = i.ongoing ? "In progress" : this._fmtDur(i.durMs ?? i.end - i.start), h = this.showCamera && !!i.cameraName, u = h ? i.cameraName : this._fmtTime(i.start), d = h ? `${this._fmtTime(i.start)} · ${a}` : a, l = s === 0 || !this._sameDay(e[s - 1].start, i.start);
-        return p`
-                  ${l ? p`<div class="day-divider">
+        const o = `${i.type}@${i.start}`;
+        this._bandByKey.set(o, i);
+        const r = this._requested.has(o) ? this.loader?.get(i) : void 0, n = this.playingKey === o, a = i.ongoing ? "In progress" : this._fmtDur(i.durMs ?? i.end - i.start), h = this.showCamera && !!i.cameraName, c = h ? i.cameraName : this._fmtTime(i.start), d = h ? `${this._fmtTime(i.start)} · ${a}` : a, l = s === 0 || !this._sameDay(e[s - 1].start, i.start);
+        return u`
+                  ${l ? u`<div class="day-divider">
                         <span
                           class="day-label"
                           style="font-size:${this.dateFontSize}px;color:${this.dateFontColor || "#fff"}"
@@ -2479,11 +3653,11 @@ let E = class extends j {
                       </div>` : b}
                   <button class="row ${n ? "playing" : ""}" @click=${() => this._play(i)}>
                     <div class="info">
-                      <div class="t1">${u}</div>
+                      <div class="t1">${c}</div>
                       <div class="t2">${d}</div>
                     </div>
-                    <div class="thumb" data-key=${r}>
-                      ${o ? p`<img src=${o} alt=${i.label} />` : p`<span class="ph"></span>`}
+                    <div class="thumb" data-key=${o}>
+                      ${r ? u`<img src=${r} alt=${i.label} />` : u`<span class="ph"></span>`}
                     </div>
                   </button>
                 `;
@@ -2493,7 +3667,7 @@ let E = class extends j {
     `;
   }
 };
-E.styles = rt`
+R.styles = ft`
     :host {
       /* Fill the (position:relative) mode-body via absolute inset:0 rather than
          height:100%. This way the list can NEVER content-expand and blow up the
@@ -2556,6 +3730,7 @@ E.styles = rt`
          --secondary-text-color ~#b0), matching the timeline's label color. */
       color: var(--list-color, #d0d0d0);
       font-family: inherit;
+      transition: background-color 0.2s ease-out; /* the playing highlight moves softly */
     }
     .row:hover {
       background: rgba(255, 255, 255, 0.06);
@@ -2589,6 +3764,7 @@ E.styles = rt`
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: color 0.2s ease-out;
     }
     .t2 {
       font-size: var(--list-dur-size, 12px);
@@ -2596,6 +3772,9 @@ E.styles = rt`
       color: var(--list-dur-color, currentColor);
       opacity: var(--list-dur-op, 0.7);
       white-space: nowrap;
+      transition:
+        color 0.2s ease-out,
+        opacity 0.2s ease-out;
     }
     /* Prominent first line (multi list + timeline): line 1 white, line 2 full
        opacity — matching the expanded grid captions exactly. Only the inactive
@@ -2628,82 +3807,388 @@ E.styles = rt`
       background: var(--divider-color, rgba(255, 255, 255, 0.1));
     }
   `;
-C([
-  c({ attribute: !1 })
-], E.prototype, "bands", 2);
-C([
-  c({ attribute: !1 })
-], E.prototype, "loader", 2);
-C([
-  c({ type: Number })
-], E.prototype, "thumbVersion", 2);
-C([
-  c({ type: Number })
-], E.prototype, "textSize", 2);
-C([
-  c()
-], E.prototype, "textColor", 2);
-C([
-  c({ type: Number })
-], E.prototype, "durationSize", 2);
-C([
-  c()
-], E.prototype, "durationColor", 2);
-C([
-  c({ type: Number })
-], E.prototype, "activeTextSize", 2);
-C([
-  c()
-], E.prototype, "activeTextColor", 2);
-C([
-  c({ type: Number })
-], E.prototype, "activeDurationSize", 2);
-C([
-  c()
-], E.prototype, "activeDurationColor", 2);
-C([
-  c()
-], E.prototype, "activeBg", 2);
-C([
-  c()
-], E.prototype, "playingKey", 2);
-C([
-  c({ type: Number })
-], E.prototype, "dateFontSize", 2);
-C([
-  c()
-], E.prototype, "dateFontColor", 2);
-C([
-  c()
-], E.prototype, "dividerColor", 2);
-C([
-  c({ type: Number })
-], E.prototype, "thumbWidth", 2);
-C([
-  c({ type: Boolean, reflect: !0 })
-], E.prototype, "showCamera", 2);
-C([
-  c({ type: Boolean, reflect: !0 })
-], E.prototype, "line1White", 2);
-C([
-  G(".list")
-], E.prototype, "_listEl", 2);
-E = C([
-  ot("upc-events-list")
-], E);
-const oi = typeof navigator < "u" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent);
-function Cs(e, t, i, s) {
+D([
+  p({ attribute: !1 })
+], R.prototype, "bands", 2);
+D([
+  p({ attribute: !1 })
+], R.prototype, "loader", 2);
+D([
+  p({ type: Number })
+], R.prototype, "thumbVersion", 2);
+D([
+  p({ type: Number })
+], R.prototype, "textSize", 2);
+D([
+  p()
+], R.prototype, "textColor", 2);
+D([
+  p({ type: Number })
+], R.prototype, "durationSize", 2);
+D([
+  p()
+], R.prototype, "durationColor", 2);
+D([
+  p({ type: Number })
+], R.prototype, "activeTextSize", 2);
+D([
+  p()
+], R.prototype, "activeTextColor", 2);
+D([
+  p({ type: Number })
+], R.prototype, "activeDurationSize", 2);
+D([
+  p()
+], R.prototype, "activeDurationColor", 2);
+D([
+  p()
+], R.prototype, "activeBg", 2);
+D([
+  p()
+], R.prototype, "playingKey", 2);
+D([
+  p({ type: Number })
+], R.prototype, "dateFontSize", 2);
+D([
+  p()
+], R.prototype, "dateFontColor", 2);
+D([
+  p()
+], R.prototype, "dividerColor", 2);
+D([
+  p({ type: Number })
+], R.prototype, "thumbWidth", 2);
+D([
+  p({ type: Boolean, reflect: !0 })
+], R.prototype, "showCamera", 2);
+D([
+  p({ type: Boolean, reflect: !0 })
+], R.prototype, "line1White", 2);
+D([
+  tt(".list")
+], R.prototype, "_listEl", 2);
+R = D([
+  mt("upc-events-list")
+], R);
+function Jt(e) {
+  try {
+    e.pause();
+  } catch {
+  }
+  try {
+    e.srcObject = null;
+  } catch {
+  }
+  e.removeAttribute("src");
+  try {
+    e.load();
+  } catch {
+  }
+}
+function Se(e) {
+  if (!e) return;
+  e instanceof HTMLVideoElement && Jt(e);
+  const t = (i) => {
+    for (const s of Array.from(i.querySelectorAll("*")))
+      s instanceof HTMLVideoElement && Jt(s), s.shadowRoot && t(s.shadowRoot);
+  };
+  t(e), "shadowRoot" in e && e.shadowRoot && t(e.shadowRoot);
+}
+var cr = Object.defineProperty, dr = Object.getOwnPropertyDescriptor, J = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? dr(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && cr(t, i, o), o;
+};
+const ce = 800, pr = 4e3, vt = /* @__PURE__ */ new Set(), ur = 200;
+function ds(e, t) {
+  for (const i of Array.from(e.querySelectorAll("*")))
+    if (i instanceof HTMLVideoElement && i.readyState >= 2 && i.videoWidth > 0 || i instanceof HTMLVideoElement && i.poster && t?.has(i.poster) || i instanceof HTMLImageElement && i.complete && i.naturalWidth > 0 || i.shadowRoot && ds(i.shadowRoot, t)) return !0;
+  return !1;
+}
+let K = class extends Z {
+  constructor() {
+    super(...arguments), this.entries = [], this.stacked = !1, this.newest = {}, this.minuteTick = 0, this.columns = 2, this.scrollMode = !1, this.aspect = "16/9", this._streamReady = !1, this._visible = !1, this._streamSince = /* @__PURE__ */ new WeakMap(), this._watchFrames = () => {
+      clearTimeout(this._frameTimer), this._frameTimer = void 0;
+      const e = performance.now();
+      let t = !1;
+      for (const i of Array.from(this.renderRoot.querySelectorAll("ha-camera-stream:not(.live)"))) {
+        let s = this._streamSince.get(i);
+        s === void 0 && (s = e, this._streamSince.set(i, s), i.closest(".tile")?.classList.remove("ready"));
+        const o = this.stacked ? vt : void 0;
+        i.shadowRoot && ds(i.shadowRoot, o) || e - s > pr ? (i.classList.add("live"), i.closest(".tile")?.classList.add("ready")) : t = !0;
+      }
+      for (const i of Array.from(this.renderRoot.querySelectorAll(".tile:not(.ready)")))
+        i.querySelector(".connecting") && i.classList.add("ready");
+      t && this.isConnected && (this._frameTimer = setTimeout(this._watchFrames, 100));
+    };
+  }
+  connectedCallback() {
+    if (super.connectedCallback(), customElements.get("ha-camera-stream"))
+      this._streamReady = !0;
+    else {
+      const e = window.loadCardHelpers;
+      e?.().then(() => {
+        this._streamReady = !!customElements.get("ha-camera-stream");
+      }), customElements.whenDefined("ha-camera-stream").then(() => {
+        this._streamReady = !0;
+      });
+    }
+    this._visibilityObserver = new IntersectionObserver((e) => {
+      const t = e[e.length - 1].isIntersecting;
+      t !== this._visible && (t || Se(this.renderRoot), this._visible = t);
+    }), this._visibilityObserver.observe(this);
+    try {
+      this._posterObserver = new PerformanceObserver((e) => {
+        let t = !1;
+        for (const i of e.getEntries())
+          !i.name.includes("/api/camera_proxy/") || vt.has(i.name) || (vt.add(i.name), vt.size > ur && vt.delete(vt.values().next().value), t = !0);
+        t && this._watchFrames();
+      }), this._posterObserver.observe({ type: "resource", buffered: !0 });
+    } catch {
+    }
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback(), clearTimeout(this._frameTimer), this._frameTimer = void 0, this._visibilityObserver?.disconnect(), this._visibilityObserver = void 0, this._posterObserver?.disconnect(), this._posterObserver = void 0, Se(this.renderRoot);
+  }
+  updated() {
+    this._watchFrames();
+  }
+  /** One camera's tile (a zoom transition flies to and from it - from the
+   *  part of it inside this grid's viewport, see coverPart). */
+  tileOf(e) {
+    return this.renderRoot.querySelector(`.tile[data-camera="${CSS.escape(e)}"]`);
+  }
+  _open(e) {
+    this.dispatchEvent(
+      new CustomEvent("tile-open", { detail: e, bubbles: !0, composed: !0 })
+    );
+  }
+  _renderTile(e) {
+    const t = e.live_camera || e.camera, i = this.hass?.states[t], s = e.name || this.hass?.states[e.camera]?.attributes?.friendly_name || e.camera.split(".")[1] || e.camera, o = this.newest[e.camera];
+    return u`
+      <div class="tile" role="button" data-camera=${e.camera} @click=${() => this._open(e)}>
+        ${this._visible && this._streamReady && i ? u`<ha-camera-stream
+              .hass=${this.hass}
+              .stateObj=${i}
+              .controls=${!1}
+              .muted=${!0}
+              .fitMode=${"cover"}
+              allow-exoplayer
+            ></ha-camera-stream>` : i ? b : u`<div class="connecting">${t} not found</div>`}
+        <span class="name">${s}</span>
+        ${o ? u`<span class="last">${o.label}: ${Yo(o.start, Date.now())}</span>` : ""}
+      </div>
+    `;
+  }
+  render() {
+    const e = this.stacked ? 1 : this.columns || Math.max(1, this.entries.length), t = [];
+    for (let i = 0; i < this.entries.length; i += e)
+      t.push(this.entries.slice(i, i + e));
+    return u`
+      <div class="grid" style="--upc-grid-aspect:${this.aspect}">
+        ${t.map((i) => u`<div class="row">${i.map((s) => this._renderTile(s))}</div>`)}
+      </div>
+    `;
+  }
+};
+K.styles = ft`
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden; /* wide: the tiles fill the box — nothing to scroll */
+    }
+    /* Stacked (phone): full-width tiles at natural height — the PAGE
+       (multi-view host) scrolls, not this element. */
+    :host([stacked]) {
+      height: auto;
+      overflow: visible;
+    }
+    /* SCROLL mode (experimental 1-column tablet view): tiles fill the column
+       width at their aspect and THIS element scrolls vertically instead of
+       shrinking to fit — the hidden scrollbar keeps it clean. */
+    :host([scrollmode]) {
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    :host([scrollmode])::-webkit-scrollbar {
+      display: none;
+    }
+    .grid {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0; /* flush tiles — no spacing, like the UniFi app */
+    }
+    :host([stacked]) .grid,
+    :host([scrollmode]) .grid {
+      height: auto; /* content-sized — scrolls instead of filling */
+    }
+    .row {
+      display: flex;
+      flex: 1 1 0; /* wide: the rows share the box's height */
+      min-height: 0;
+      gap: 0;
+    }
+    :host([stacked]) .row,
+    :host([scrollmode]) .row {
+      flex: 0 0 auto;
+    }
+    .tile {
+      position: relative;
+      flex: 1 1 0; /* wide: the tiles share their row (an orphan spans it) */
+      min-width: 0;
+      border-radius: 0; /* flush, like the UniFi app */
+      overflow: hidden;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :host([stacked]) .tile,
+    :host([scrollmode]) .tile {
+      aspect-ratio: var(--upc-grid-aspect, 16/9);
+    }
+    :host([stacked]) .tile {
+      border-radius: 10px; /* phone: full-width cards read better rounded */
+      background: #000;
+      /* The whole tile - its black card, picture and labels - waits invisible
+         until its stream has a picture, then fades in as one (see
+         _watchFrames): black cards and names popping up first read as a
+         flash. */
+      opacity: 0;
+      transition: opacity ${ce}ms ease;
+    }
+    :host([stacked]) .tile.ready {
+      opacity: 1;
+    }
+    /* --video-max-height: see the long note in media-view.ts. HA's players cap
+       their inner <video> at calc(100vh - 97px) and let it sit at the top of the
+       box, which pins the picture high and shrinks it whenever a tile is taller
+       than that cap. Same override here so grid tiles letterbox like everything
+       else. */
+    ha-camera-stream {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      --video-max-height: 100%;
+      pointer-events: none; /* controls are off; the tile itself is the tap target */
+      /* Shown once it has a picture, slowly (see _watchFrames). */
+      opacity: 0;
+      transition: opacity ${ce}ms ease;
+    }
+    ha-camera-stream.live,
+    :host([stacked]) ha-camera-stream {
+      opacity: 1; /* (the phone fades the whole tile instead) */
+    }
+    .connecting {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary-text-color, #9aa0a6);
+      font-size: 13px;
+    }
+    /* Dark-to-transparent scrim along the bottom so the name / motion overlays
+       stay legible over light footage (text-shadow alone washes out). Sits above
+       the video, below the text (z-index 2). */
+    .tile::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 46px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+      pointer-events: none;
+      z-index: 1;
+      /* ...with the picture it is for. */
+      opacity: 0;
+      transition: opacity ${ce}ms ease;
+    }
+    .tile:has(ha-camera-stream.live)::after {
+      opacity: 1;
+    }
+    /* Overlays read on any footage thanks to the scrim + text shadow. */
+    .name {
+      position: absolute;
+      left: 12px;
+      bottom: 9px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .last {
+      position: absolute;
+      right: 12px;
+      bottom: 9px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 2;
+    }
+    /* Phone (stacked): the tiles run full-width, so the overlays read a touch
+       small — bump both up 1px. Tablet keeps 14/12. */
+    :host([stacked]) .name {
+      font-size: 15px;
+    }
+    :host([stacked]) .last {
+      font-size: 13px;
+    }
+  `;
+J([
+  p({ attribute: !1 })
+], K.prototype, "hass", 2);
+J([
+  p({ attribute: !1 })
+], K.prototype, "entries", 2);
+J([
+  p({ type: Boolean, reflect: !0 })
+], K.prototype, "stacked", 2);
+J([
+  p({ attribute: !1 })
+], K.prototype, "newest", 2);
+J([
+  p({ type: Number })
+], K.prototype, "minuteTick", 2);
+J([
+  p({ type: Number })
+], K.prototype, "columns", 2);
+J([
+  p({ type: Boolean, reflect: !0, attribute: "scrollmode" })
+], K.prototype, "scrollMode", 2);
+J([
+  p()
+], K.prototype, "aspect", 2);
+J([
+  m()
+], K.prototype, "_streamReady", 2);
+J([
+  m()
+], K.prototype, "_visible", 2);
+K = J([
+  mt("upc-live-grid")
+], K);
+function _r(e, t, i, s) {
   return i || t === "muted" ? !1 : e === "auto" || t === "unmuted";
 }
-const Ae = 6e4, Fs = 1e4, zs = 5e3, Rs = 5e3, Ls = 8e3, Ds = 15e3, Os = 400, Is = 15, Bs = 25 * 6e4, Ns = 5 * 6e4, Us = 16, Vs = 6, Hs = 2;
-function Ws(e, t, i) {
+const Si = 6e4, fr = 1e4, mr = 5e3, vr = 5e3, gr = 8e3, br = 15e3, wr = 400, yr = 15, xr = 25 * 6e4, kr = 2 * 6e4, Sr = 5 * 6e4, $r = 16, Tr = 6, Er = 2;
+function Ar(e, t, i) {
   return e ? [i ? "fast" : void 0, t ? "fine" : void 0].filter(
     (s) => !!s
   ) : [t ? "fine" : void 0, i ? "fast" : void 0].filter(
     (s) => !!s
   );
 }
-class js {
+class Mr {
   constructor() {
     this._dir = "", this._blocks = /* @__PURE__ */ new Set(), this._blockMs = 6e5, this._overview = /* @__PURE__ */ new Set(), this._overviewMs = 36e5, this._mapped = /* @__PURE__ */ new Set(), this._indexAt = 0, this._blobs = /* @__PURE__ */ new Map(), this._loading = /* @__PURE__ */ new Map(), this._maps = /* @__PURE__ */ new Map(), this._lastSync = 0, this._pinned = /* @__PURE__ */ new Set(), this._warnedNoHeadFile = !1, this._spriteBlocks = /* @__PURE__ */ new Set(), this._spriteOverview = /* @__PURE__ */ new Set(), this._fastSpriteBlocks = /* @__PURE__ */ new Set(), this._fastSpriteOverview = /* @__PURE__ */ new Set(), this._sprites = /* @__PURE__ */ new Map(), this._spriteLoading = /* @__PURE__ */ new Map(), this._fastSprites = /* @__PURE__ */ new Map(), this._fastSpriteLoading = /* @__PURE__ */ new Map(), this._sheets = /* @__PURE__ */ new Map(), this._sheetLoading = /* @__PURE__ */ new Map(), this._sheetAborts = /* @__PURE__ */ new Map(), this._sheetInflight = 0, this._tipAt = 0, this._tipReqAt = 0, this._tipPolling = !1, this._tipEnabled = !1, this._mapLoading = /* @__PURE__ */ new Map();
   }
@@ -2755,9 +4240,9 @@ class js {
     return s || (s = this._fetchSprite(t, !0).finally(() => this._fastSpriteLoading.delete(t.key)), this._fastSpriteLoading.set(t.key, s)), s;
   }
   async _fetchSprite(t, i = !1) {
-    const s = i ? this._fastSprites : this._sprites, r = i ? ".fast-sprite.json" : ".sprite.json";
+    const s = i ? this._fastSprites : this._sprites, o = i ? ".fast-sprite.json" : ".sprite.json";
     try {
-      const o = await fetch(t.url.replace(/\.mp4$/, r)), n = o.ok ? await o.json() : void 0;
+      const r = await fetch(t.url.replace(/\.mp4$/, o)), n = r.ok ? await r.json() : void 0;
       let a = null;
       return n?.version === 1 && n.count && n.cols && n.rows && n.tile_w && n.tile_h && Array.isArray(n.sheets) && n.sheets.length && (a = {
         count: n.count,
@@ -2776,17 +4261,17 @@ class js {
    *  the trailing tiles of the final sheet are ffmpeg's padding and must never
    *  be shown. */
   tileIndexFor(t, i, s) {
-    const r = t.end - t.start;
-    if (r <= 0) return 0;
-    const o = Math.min(1, Math.max(0, (s - t.start) / r));
-    return Math.min(i.count - 1, Math.floor(o * i.count));
+    const o = t.end - t.start;
+    if (o <= 0) return 0;
+    const r = Math.min(1, Math.max(0, (s - t.start) / o));
+    return Math.min(i.count - 1, Math.floor(r * i.count));
   }
   /** Which sheet a tile index lives in, and where inside it. */
   tileAt(t, i) {
-    const s = t.cols * t.rows, r = Math.min(t.count - 1, Math.max(0, i)), o = t.sheets[Math.floor(r / s)];
-    if (!o) return;
-    const n = r % s;
-    return { sheet: o, sx: n % t.cols * t.tileW, sy: Math.floor(n / t.cols) * t.tileH };
+    const s = t.cols * t.rows, o = Math.min(t.count - 1, Math.max(0, i)), r = t.sheets[Math.floor(o / s)];
+    if (!r) return;
+    const n = o % s;
+    return { sheet: r, sx: n % t.cols * t.tileW, sy: Math.floor(n / t.cols) * t.tileH };
   }
   /** The footage time a tile represents (its centre), so a caller can tell
    *  whether one candidate frame is closer to the wanted time than another. */
@@ -2829,12 +4314,12 @@ class js {
     const s = this._sheets.get(t);
     if (s)
       return this._sheets.delete(t), this._sheets.set(t, s), s;
-    let r = this._sheetLoading.get(t);
-    if (!r) {
-      if (i && this._sheetInflight >= Hs) return;
-      r = this._fetchSheet(t).finally(() => this._sheetLoading.delete(t)), this._sheetLoading.set(t, r);
+    let o = this._sheetLoading.get(t);
+    if (!o) {
+      if (i && this._sheetInflight >= Er) return;
+      o = this._fetchSheet(t).finally(() => this._sheetLoading.delete(t)), this._sheetLoading.set(t, o);
     }
-    return r;
+    return o;
   }
   async _fetchSheet(t) {
     const i = new AbortController();
@@ -2842,14 +4327,14 @@ class js {
     try {
       const s = await fetch(`${this._dir}/${t}`, { signal: i.signal });
       if (!s.ok) return;
-      const r = await createImageBitmap(await s.blob());
-      for (this._sheets.set(t, r); this._sheets.size > Vs; ) {
-        const o = this._sheets.keys().next().value;
-        if (o === void 0 || o === t) break;
-        const n = this._sheets.get(o);
-        this._sheets.delete(o), n?.close();
+      const o = await createImageBitmap(await s.blob());
+      for (this._sheets.set(t, o); this._sheets.size > Tr; ) {
+        const r = this._sheets.keys().next().value;
+        if (r === void 0 || r === t) break;
+        const n = this._sheets.get(r);
+        this._sheets.delete(r), n?.close();
       }
-      return r;
+      return o;
     } catch {
       return;
     } finally {
@@ -2870,9 +4355,9 @@ class js {
   async ensureIndex(t) {
     if (!this._dir) return;
     const i = Date.now() - this._indexAt;
-    if (i < Ae) {
+    if (i < Si) {
       const s = this._head;
-      s && t !== void 0 && t >= s.start && i >= Fs && this._refreshIndex();
+      s && t !== void 0 && t >= s.start && i >= fr && this._refreshIndex();
       return;
     }
     return this._refreshIndex();
@@ -2885,26 +4370,23 @@ class js {
   async _fetchIndex() {
     let t = !1, i = !0;
     try {
-      const s = await fetch(`${this._dir}/index.json`, { cache: "no-cache" });
-      if (s.ok) {
-        const r = await s.json();
-        if (Array.isArray(r.blocks)) {
-          t = !0, this._blocks = new Set(r.blocks), this._mapped = new Set(r.maps ?? []), r.block_ms && r.block_ms > 0 && (this._blockMs = r.block_ms), this._overview = new Set(r.overview ?? []), this._spriteBlocks = new Set(r.sprites ?? []), this._spriteOverview = new Set(r.osprites ?? []), this._fastSpriteBlocks = new Set(r.fast_sprites ?? []), this._fastSpriteOverview = new Set(r.fast_osprites ?? []), r.overview_block_ms && r.overview_block_ms > 0 && (this._overviewMs = r.overview_block_ms);
-          const o = r.head;
-          this._head = o && typeof o.start == "number" && typeof o.end == "number" && o.end > o.start ? {
-            start: o.start,
-            end: o.end,
-            map: !!o.map,
-            file: o.file,
-            fastSprite: !!o.fast_sprite
-          } : void 0, this._head && !this._head.file && !this._warnedNoHeadFile && (this._warnedNoHeadFile = !0, console.warn(
-            "[unifi-protect-timeline-card] scrub preview: protect_scrub.py is out of date (head has no immutable `file`) — near-live preview disabled. Update the pyscript job."
-          )), i = Date.now() - (r.generated ?? 0) > Bs;
-        }
+      const s = await Le(`${this._dir}/index.json`, (o) => o.generated, kr);
+      if (s && Array.isArray(s.blocks)) {
+        t = !0, this._blocks = new Set(s.blocks), this._mapped = new Set(s.maps ?? []), s.block_ms && s.block_ms > 0 && (this._blockMs = s.block_ms), this._overview = new Set(s.overview ?? []), this._spriteBlocks = new Set(s.sprites ?? []), this._spriteOverview = new Set(s.osprites ?? []), this._fastSpriteBlocks = new Set(s.fast_sprites ?? []), this._fastSpriteOverview = new Set(s.fast_osprites ?? []), s.overview_block_ms && s.overview_block_ms > 0 && (this._overviewMs = s.overview_block_ms);
+        const o = s.head;
+        this._head = o && typeof o.start == "number" && typeof o.end == "number" && o.end > o.start ? {
+          start: o.start,
+          end: o.end,
+          map: !!o.map,
+          file: o.file,
+          fastSprite: !!o.fast_sprite
+        } : void 0, this._head && !this._head.file && !this._warnedNoHeadFile && (this._warnedNoHeadFile = !0, console.warn(
+          "[unifi-protect-timeline-card] scrub preview: protect_scrub.py is out of date (head has no immutable `file`) — near-live preview disabled. Update the pyscript job."
+        )), i = Date.now() - (s.generated ?? 0) > xr;
       }
     } catch {
     }
-    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, Ae - zs), i && this._requestSync();
+    this._indexAt = t ? Date.now() : Date.now() - Math.max(0, Si - mr), i && this._requestSync();
   }
   /** Ask protect_cache for a pass (throttled). It runs itself every 15 s, so
    *  a stale index means it is failing; the call at least records why. No-ops
@@ -2912,7 +4394,7 @@ class js {
   _requestSync() {
     if (!this._hass) return;
     const t = Date.now();
-    t - this._lastSync < Ns || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "protect_cache", service: "scrub_sync" }).catch(() => {
+    t - this._lastSync < Sr || (this._lastSync = t, this._hass.callWS({ type: "call_service", domain: "protect_cache", service: "scrub_sync" }).catch(() => {
     }));
   }
   /** The block covering `t`, if any. Completed blocks win; the rolling head
@@ -2931,8 +4413,8 @@ class js {
       };
     const s = this._head;
     if (s && s.file && t >= s.start) {
-      const r = this._headHeld;
-      return r && r.start === s.start && t <= r.end && this._blobs.has(r.key) ? r : {
+      const o = this._headHeld;
+      return o && o.start === s.start && t <= o.end && this._blobs.has(o.key) ? o : {
         // The filename carries the covered range, so it IS the identity.
         key: s.file,
         start: s.start,
@@ -2961,7 +4443,7 @@ class js {
   requestTip() {
     if (!this._tipEnabled || !this._hass || !this._dir) return;
     const t = Date.now();
-    t - this._tipReqAt < Ls || this._tip && this._tip.end > t - Ds || (this._tipReqAt = t, this._hass.callWS({
+    t - this._tipReqAt < gr || this._tip && this._tip.end > t - br || (this._tipReqAt = t, this._hass.callWS({
       type: "call_service",
       domain: "pyscript",
       service: "protect_scrub_tip",
@@ -2975,8 +4457,8 @@ class js {
       this._tipPolling = !0;
       try {
         const t = this._tip?.end ?? 0;
-        for (let i = 0; i < Is; i++) {
-          if (await new Promise((s) => setTimeout(s, Os)), !this._tipEnabled) return;
+        for (let i = 0; i < yr; i++) {
+          if (await new Promise((s) => setTimeout(s, wr)), !this._tipEnabled) return;
           if (await this._fetchTip(), (this._tip?.end ?? 0) > t) {
             this.onTipUpdate?.();
             return;
@@ -2989,7 +4471,7 @@ class js {
   }
   /** Refresh tip.json if due (cheap: a few hundred bytes). */
   async ensureTip() {
-    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < Rs || await this._fetchTip();
+    !this._tipEnabled || !this._dir || Date.now() - this._tipAt < vr || await this._fetchTip();
   }
   async _fetchTip() {
     this._tipAt = Date.now();
@@ -3011,19 +4493,19 @@ class js {
   tipBlockFor(t, i) {
     const s = this._tip;
     if (!this._tipEnabled || !s || t < s.start || t > s.end && s.end <= i) return;
-    const r = {
+    const o = {
       key: s.file,
       start: s.start,
       end: s.end,
       url: `${this._dir}/${s.file}`,
       tip: !0
     };
-    if (this._blobs.has(r.key))
-      return this._tipHeld = r, r;
-    const o = this._tipHeld;
-    return o && t >= o.start && this._blobs.has(o.key) && (t <= o.end || o.end > i) ? (this.getBlock(r).then((n) => {
+    if (this._blobs.has(o.key))
+      return this._tipHeld = o, o;
+    const r = this._tipHeld;
+    return r && t >= r.start && this._blobs.has(r.key) && (t <= r.end || r.end > i) ? (this.getBlock(o).then((n) => {
       n && this.onTipUpdate?.();
-    }), o) : r;
+    }), r) : o;
   }
   /** The head's advertised end, for tipBlockFor's freshness comparison. */
   headEnd() {
@@ -3061,9 +4543,9 @@ class js {
   }
   async _fetchMap(t) {
     try {
-      const i = t.url.replace(/\.mp4$/, ".map.json"), s = await fetch(i, { cache: "no-cache" }), r = s.ok ? await s.json() : void 0;
-      let o = null;
-      return r?.version === 2 && Array.isArray(r.segments) && r.segments.length && (o = r.segments.filter((n) => typeof n?.f == "string" && n.e > n.s), o.length || (o = null)), this._maps.set(t.key, o), o ?? void 0;
+      const i = t.url.replace(/\.mp4$/, ".map.json"), s = await fetch(i, { cache: "no-cache" }), o = s.ok ? await s.json() : void 0;
+      let r = null;
+      return o?.version === 2 && Array.isArray(o.segments) && o.segments.length && (r = o.segments.filter((n) => typeof n?.f == "string" && n.e > n.s), r.length || (r = null)), this._maps.set(t.key, r), r ?? void 0;
     } catch {
       this._maps.set(t.key, null);
       return;
@@ -3077,12 +4559,12 @@ class js {
   async resolvePart(t, i) {
     const s = await this.getMap(t);
     if (!s) return;
-    let r = 0;
-    for (let o = 0; o < s.length && i >= s[o].s; o++)
-      r = o;
-    for (const o of [r - 1, r + 1])
-      o >= 0 && o < s.length && this.getBlock(this._partBlock(t, s[o]));
-    return this._partBlock(t, s[r]);
+    let o = 0;
+    for (let r = 0; r < s.length && i >= s[r].s; r++)
+      o = r;
+    for (const r of [o - 1, o + 1])
+      r >= 0 && r < s.length && this.getBlock(this._partBlock(t, s[r]));
+    return this._partBlock(t, s[o]);
   }
   _partBlock(t, i) {
     return {
@@ -3115,106 +4597,83 @@ class js {
         t.head && (this._indexAt = 0);
         return;
       }
-      const s = await i.blob(), r = URL.createObjectURL(s);
-      for (this._blobs.set(t.key, r), t.head && !t.part && (this._headHeld = t); this._blobs.size > Us; ) {
-        let o = !1;
+      const s = await i.blob(), o = URL.createObjectURL(s);
+      for (this._blobs.set(t.key, o), t.head && !t.part && (this._headHeld = t); this._blobs.size > $r; ) {
+        let r = !1;
         for (const [n, a] of this._blobs)
           if (!this._pinned.has(a)) {
-            this._blobs.delete(n), URL.revokeObjectURL(a), o = !0;
+            this._blobs.delete(n), URL.revokeObjectURL(a), r = !0;
             break;
           }
-        if (!o) break;
+        if (!r) break;
       }
-      return r;
+      return o;
     } catch {
       return;
     }
   }
 }
-function At(e) {
-  try {
-    e.pause();
-  } catch {
-  }
-  try {
-    e.srcObject = null;
-  } catch {
-  }
-  e.removeAttribute("src");
-  try {
-    e.load();
-  } catch {
-  }
-}
-function qt(e) {
-  if (!e) return;
-  e instanceof HTMLVideoElement && At(e);
-  const t = (i) => {
-    for (const s of Array.from(i.querySelectorAll("*")))
-      s instanceof HTMLVideoElement && At(s), s.shadowRoot && t(s.shadowRoot);
-  };
-  t(e), "shadowRoot" in e && e.shadowRoot && t(e.shadowRoot);
-}
-const qs = 248, Gs = 249, Ys = 250, xt = 251, It = 252, Bt = 253, Nt = 254, Xs = 255;
-function* Ut(e, t, i) {
+const Cr = 248, Pr = 249, Rr = 250, Bt = 251, de = 252, pe = 253, ue = 254, zr = 255;
+function* _e(e, t, i) {
   const s = new DataView(e.buffer, e.byteOffset, e.byteLength);
-  let r = t;
-  for (; r + 8 <= i; ) {
-    let o = s.getUint32(r), n = 8;
-    if (o === 1) {
-      if (r + 16 > i) return;
-      o = Number(s.getBigUint64(r + 8)), n = 16;
-    } else o === 0 && (o = i - r);
-    if (o < n || r + o > i) return;
-    yield { type: String.fromCharCode(e[r + 4], e[r + 5], e[r + 6], e[r + 7]), start: r + n, end: r + o }, r += o;
+  let o = t;
+  for (; o + 8 <= i; ) {
+    let r = s.getUint32(o), n = 8;
+    if (r === 1) {
+      if (o + 16 > i) return;
+      r = Number(s.getBigUint64(o + 8)), n = 16;
+    } else r === 0 && (r = i - o);
+    if (r < n || o + r > i) return;
+    yield { type: String.fromCharCode(e[o + 4], e[o + 5], e[o + 6], e[o + 7]), start: o + n, end: o + r }, o += r;
   }
 }
-function Ks(e, t, i = 0) {
-  const s = new DataView(e.buffer, e.byteOffset, e.byteLength), r = Ut(e, 0, e.length).next().value;
-  if (!r || r.type !== "moof") return [];
-  for (const o of Ut(e, r.start, r.end)) {
-    if (o.type !== "traf") continue;
-    let n = 0, a = i, h = null;
-    const u = [];
-    for (const d of Ut(e, o.start, o.end)) {
-      const l = s.getUint32(d.start) & 16777215;
-      if (d.type === "tfhd") {
-        let _ = d.start + 8;
-        l & 1 && (_ += 8), l & 2 && (_ += 4), l & 8 && (n = s.getUint32(_), _ += 4), l & 16 && (_ += 4), l & 32 && (a = s.getUint32(_));
-      } else if (d.type === "tfdt")
-        h = e[d.start] === 1 ? Number(s.getBigUint64(d.start + 4)) : s.getUint32(d.start + 4);
-      else if (d.type === "trun" && h != null) {
-        const _ = s.getUint32(d.start + 4);
-        let v = d.start + 8;
-        l & 1 && (v += 4);
-        let y = null;
-        l & 4 && (y = s.getUint32(v), v += 4);
+function Lr(e, t, i = 0) {
+  const s = new DataView(e.buffer, e.byteOffset, e.byteLength), o = _e(e, 0, e.length).next().value;
+  if (!o || o.type !== "moof") return { keys: [], end: null };
+  for (const r of _e(e, o.start, o.end)) {
+    if (r.type !== "traf") continue;
+    let n = 0, a = i, h = null, c = null;
+    const d = [];
+    for (const l of _e(e, r.start, r.end)) {
+      const _ = s.getUint32(l.start) & 16777215;
+      if (l.type === "tfhd") {
+        let v = l.start + 8;
+        _ & 1 && (v += 8), _ & 2 && (v += 4), _ & 8 && (n = s.getUint32(v), v += 4), _ & 16 && (v += 4), _ & 32 && (a = s.getUint32(v));
+      } else if (l.type === "tfdt")
+        h = e[l.start] === 1 ? Number(s.getBigUint64(l.start + 4)) : s.getUint32(l.start + 4);
+      else if (l.type === "trun" && h != null) {
+        const v = s.getUint32(l.start + 4);
+        let w = l.start + 8;
+        _ & 1 && (w += 4);
+        let T = null;
+        _ & 4 && (T = s.getUint32(w), w += 4);
         let z = h;
-        for (let O = 0; O < _ && v <= d.end; O++) {
-          let N = n, k = O === 0 && y != null ? y : a;
-          l & 256 && (N = s.getUint32(v), v += 4), l & 512 && (v += 4), l & 1024 && (k = s.getUint32(v), v += 4), l & 2048 && (v += 4), k & 65536 || u.push(z / t), z += N;
+        for (let O = 0; O < v && w <= l.end; O++) {
+          let C = n, W = O === 0 && T != null ? T : a;
+          _ & 256 && (C = s.getUint32(w), w += 4), _ & 512 && (w += 4), _ & 1024 && (W = s.getUint32(w), w += 4), _ & 2048 && (w += 4), W & 65536 || d.push(z / t), z += C;
         }
+        c = z / t;
       }
     }
-    return u;
+    return { keys: d, end: c };
   }
-  return [];
+  return { keys: [], end: null };
 }
-function Zs(e, t) {
+function Fr(e, t) {
   for (let i = 4; i + 16 <= e.length; i++) {
     if (e[i] !== 116 || e[i + 1] !== 102 || e[i + 2] !== 100 || e[i + 3] !== 116) continue;
-    const s = e[i + 4], r = new DataView(e.buffer, e.byteOffset + i + 8);
-    return (s === 1 ? Number(r.getBigUint64(0)) : r.getUint32(0)) / t;
+    const s = e[i + 4], o = new DataView(e.buffer, e.byteOffset + i + 8);
+    return (s === 1 ? Number(o.getBigUint64(0)) : o.getUint32(0)) / t;
   }
   return null;
 }
-function Js(e) {
+function Or(e) {
   for (let t = 4; t + 28 <= e.length; t++)
     if (!(e[t] !== 116 || e[t + 1] !== 114 || e[t + 2] !== 101 || e[t + 3] !== 120))
       return new DataView(e.buffer, e.byteOffset + t + 24).getUint32(0);
   return 0;
 }
-function Qs(e) {
+function Ir(e) {
   for (let t = 4; t + 24 <= e.length; t++) {
     if (e[t] !== 109 || e[t + 1] !== 100 || e[t + 2] !== 104 || e[t + 3] !== 100) continue;
     const i = e[t + 4], s = t + 8 + (i === 1 ? 16 : 8);
@@ -3222,19 +4681,19 @@ function Qs(e) {
   }
   return null;
 }
-function Ce(e) {
+function $i(e) {
   let t = 0;
-  for (const r of e) t += r.length;
+  for (const o of e) t += o.length;
   const i = new Uint8Array(t);
   let s = 0;
-  for (const r of e)
-    i.set(r, s), s += r.length;
+  for (const o of e)
+    i.set(o, s), s += o.length;
   return i;
 }
-function tr(e) {
+function Dr(e) {
   return e.split(",").map((t) => t.trim()).filter(Boolean).join(", ");
 }
-class er {
+class Ti {
   constructor() {
     this._carry = null, this._codecs = "", this._timescale = 9e4, this._trexFlags = 0, this._parts = null;
   }
@@ -3244,47 +4703,48 @@ class er {
   push(t) {
     let i = t;
     if (this._carry) {
-      const o = new Uint8Array(this._carry.length + t.length);
-      o.set(this._carry), o.set(t, this._carry.length), i = o, this._carry = null;
+      const r = new Uint8Array(this._carry.length + t.length);
+      r.set(this._carry), r.set(t, this._carry.length), i = r, this._carry = null;
     }
     const s = [];
-    let r = 0;
-    for (; i.length - r >= 4; ) {
-      const o = i[r], n = i[r + 1] << 16 | i[r + 2] << 8 | i[r + 3];
-      if (i.length - r - 4 < n) break;
-      const a = i.subarray(r + 4, r + 4 + n);
-      r += 4 + n, this._frame(o, a, s);
+    let o = 0;
+    for (; i.length - o >= 4; ) {
+      const r = i[o], n = i[o + 1] << 16 | i[o + 2] << 8 | i[o + 3];
+      if (i.length - o - 4 < n) break;
+      const a = i.subarray(o + 4, o + 4 + n);
+      o += 4 + n, this._frame(r, a, s);
     }
-    return r < i.length && (this._carry = i.slice(r)), s;
+    return o < i.length && (this._carry = i.slice(o)), s;
   }
   _frame(t, i, s) {
     switch (t) {
-      case qs:
-        this._codecs = tr(new TextDecoder().decode(i));
+      case Cr:
+        this._codecs = Dr(new TextDecoder().decode(i));
         return;
-      case Ys: {
-        const r = i.slice();
-        this._timescale = Qs(r) ?? this._timescale, this._trexFlags = Js(r), s.push({ kind: "init", codecs: this._codecs, data: r });
+      case Rr: {
+        const o = i.slice();
+        this._timescale = Ir(o) ?? this._timescale, this._trexFlags = Or(o), s.push({ kind: "init", codecs: this._codecs, data: o });
         return;
       }
-      case Gs:
-        this._parts = { [xt]: [], [Nt]: [], [It]: [], [Bt]: [] };
+      case Pr:
+        this._parts = { [Bt]: [], [ue]: [], [de]: [], [pe]: [] };
         return;
-      case xt:
-      case Nt:
-      case It:
       case Bt:
+      case ue:
+      case de:
+      case pe:
         this._parts?.[t].push(i.slice());
         return;
-      case Xs: {
-        const r = this._parts;
-        if (this._parts = null, !r || !r[xt].length) return;
-        const o = Ce(r[xt]);
+      case zr: {
+        const o = this._parts;
+        if (this._parts = null, !o || !o[Bt].length) return;
+        const r = $i(o[Bt]), n = Lr(r, this._timescale, this._trexFlags);
         s.push({
           kind: "media",
-          data: Ce([o, ...r[Nt], ...r[It], ...r[Bt]]),
-          time: Zs(o, this._timescale),
-          keys: Ks(o, this._timescale, this._trexFlags)
+          data: $i([r, ...o[ue], ...o[de], ...o[pe]]),
+          time: Fr(r, this._timescale),
+          keys: n.keys,
+          end: n.end
         });
         return;
       }
@@ -3293,17 +4753,17 @@ class er {
     }
   }
 }
-const ir = "/api/protect_stream/ws", sr = 45 * 86400, rr = 30, Fe = 12, or = 45, nr = 90, ze = 1, ar = 4, hr = 10 * 6e4, lr = 1500, cr = 9e4, Gt = 2e4, Re = [1e3, 3e3, 8e3], dr = 15e3, pr = 4 * 1024 * 1024, ur = 0.75, Le = 3, _r = 1200, Vt = 0.2, De = oi ? 450 : 250;
-class fr {
+const Ei = "/api/protect_stream/ws", Br = 45 * 86400, Ur = 30, Ai = 12, Nr = 45, Hr = 90, fe = 1, Vr = 0.75, Wr = 4, Mi = 0.45, qr = 0.15, jr = 1.1, Gr = 1.25, Kr = 1, Yr = 2500, Xr = 3e3, Ci = 2, Zr = 10 * 6e4, Jr = 1500, Qr = 9e4, tn = 2e4, Qt = 36e3, Pi = 45, Ri = 5, zi = 3, Ut = Qt + 4e3, en = 12e3, sn = 4e3, on = 11e3, Li = [1e3, 3e3, 8e3], rn = 15e3, nn = 4 * 1024 * 1024, an = 0.75, Fi = 3, hn = 1200, Nt = 0.2, Oi = De ? 450 : 250, Ii = ["waiting", "stalled", "playing", "pause", "seeking", "seeked", "error", "emptied", "ended", "loadedmetadata", "resize"];
+class ln {
   constructor(t, i = {}) {
-    this._hass = t, this._hooks = i, this.base = Math.floor(Date.now() / 1e3) - sr, this._video = null, this._nvrId = "", this._cameraId = "", this._channel = 0, this._ms = null, this._msUrl = null, this._msOpen = !1, this._mmsStreaming = !0, this._sb = null, this._codecs = "", this._ops = [], this._busy = !1, this._lastEvict = 0, this._quotaHold = !1, this._ws = null, this._wsOpening = null, this._gen = 0, this._stream = null, this._deframer = new er(), this._retryPending = !1, this._fails = 0, this._progressMark = -1 / 0, this._idleUntil = 0, this._skipFrom = null, this._live = !1, this._liveFirst = null, this._liveJoined = !1, this._wantPlay = !1, this._bound = null, this._boundHit = !1, this._rate = 1, this._epoch = 0, this._settled = !1, this._target = null, this._awaitSeeked = !1, this._seekedAt = 0, this._twoStep = null, this._recoveries = 0, this._keys = [], this._rvfc = 0, this._destroyed = !1, this._onSbUpdateEnd = () => {
+    this._hass = t, this._hooks = i, this.base = Math.floor(Date.now() / 1e3) - Br, this._video = null, this._nvrId = "", this._cameraId = "", this._channel = 0, this._ms = null, this._msUrl = null, this._msOpen = !1, this._mmsStreaming = !0, this._sb = null, this._codecs = "", this._ops = [], this._bfOps = [], this._initMain = null, this._liveGop = null, this._busy = !1, this._lastEvict = 0, this._quotaHold = !1, this._ws = null, this._wsOpening = null, this._gen = 0, this._stream = null, this._deframer = new Ti(), this._retryPending = !1, this._fails = 0, this._progressMark = -1 / 0, this._idleUntil = 0, this._skipFrom = null, this._live = !1, this._liveFirst = null, this._liveKey0 = null, this._liveJoined = !1, this._joinAt = 0, this._liveMovedCt = -1, this._liveMovedAt = 0, this._rejoins = 0, this._liveRestarts = 0, this._wantPlay = !1, this._bound = null, this._boundHit = !1, this._rate = 1, this._lowLatency = !1, this._liveChannel = null, this._epoch = 0, this._settled = !1, this._target = null, this._awaitSeeked = !1, this._seekedAt = 0, this._twoStep = null, this._recoveries = 0, this._notYetSteps = 0, this._bf = null, this._bfFor = null, this._viaNvr = !1, this._keys = [], this._rvfc = 0, this._destroyed = !1, this._epochAt = 0, this._snapAt = 0, this._onSbUpdateEnd = () => {
       this._busy = !1, this._extendDuration(), this._tick(), this._pump();
     }, this._onSbError = () => {
       this._busy = !1;
       const s = this._stream;
       s && this._streamFailed(s, "the browser rejected the footage (SourceBuffer error)");
     }, this._onMessage = (s) => {
-      const r = this._stream;
+      const o = this._stream;
       if (typeof s.data == "string") {
         let n;
         try {
@@ -3311,44 +4771,67 @@ class fr {
         } catch {
           return;
         }
-        if (!r || n.gen !== r.gen) return;
-        n.ev === "open" ? r.opened = !0 : n.ev === "end" ? (r.ended = !0, this._onStreamEnd(r)) : n.ev === "error" && this._streamFailed(r, n.message || "stream error");
+        if (!o || n.gen !== o.gen) return;
+        n.ev === "open" ? o.opened = !0 : n.ev === "end" ? (o.ended = !0, this._onStreamEnd(o)) : n.ev === "error" && this._streamFailed(o, n.message || "stream error");
         return;
       }
-      const o = s.data;
-      if (!(!r || o.byteLength < 4 || new DataView(o).getUint32(0) !== r.gen))
-        for (const n of this._deframer.push(new Uint8Array(o, 4))) this._accept(r, n);
+      const r = s.data;
+      if (!(!o || r.byteLength < 4 || new DataView(r).getUint32(0) !== o.gen))
+        for (const n of this._deframer.push(new Uint8Array(r, 4))) this._accept(o, n);
     }, this._tick = () => {
       const s = this._video;
       if (!s || !this._sb || this._destroyed || this._failedMsg) return;
-      if (this._live) {
+      st() && this._snapshot(s);
+      const o = this._bf;
+      if (o && !this._bfOps.length && Date.now() - (o.session + this.base) * 1e3 > Ut ? this._stopBackfill("expired") : o?.running && performance.now() - o.lastDataAt > (o.end == null ? sn : on) && this._bfRetry(o), this._live) {
         this._liveTick(s), this._queueEvict(), this._pump();
         return;
       }
-      !this._settled && this._target != null && this._twoStep == null && s.readyState >= 1 && !s.seeking && (s.currentTime < this._target - 0.25 || s.currentTime > this._target + Le) ? (this._awaitSeeked = !0, s.currentTime = this._target) : !this._settled && this._target != null && this._twoStep == null && !this._awaitSeeked && !s.seeking && this._recoveries < 2 && performance.now() - this._seekedAt > _r && this._recoverSeek(s);
-      const r = this._settled ? s.currentTime : this._target ?? s.currentTime, o = this._rangeAt(r), n = this._stream, a = o ? o[1] - r : 0;
-      if (!s.seeking) {
-        const h = this._nextRangeAfter(o ? o[1] : r), u = o ? o[1] - r < 0.3 : !0, d = n && !n.ended && (n.last == null || (o ? n.last <= o[1] + 0.5 : n.last < r));
-        if (u && h != null && !d && (this._settled || n?.first != null && n.first > r)) {
-          this._settled || (this._target = h), this._awaitSeeked = !0, s.currentTime = h;
+      const r = this._target;
+      if (!this._settled && r != null && this._stream?.kind === "live" && !this._loadedAt(r) && !this._inLiveSession(r) && !this._bfOps.length) {
+        const d = performance.now() - this._epochAt > en, l = this._bfWillFill(r) || (this._liveFirst == null || this._bfStarting()) && this._behindLiveReach(r);
+        if (!l || d) {
+          this._stopBackfill(l ? "too slow" : "cannot serve"), this._log("bf:reaim", { at: this._wall(r) }), this._viaNvr = !0;
+          try {
+            this.seek((r + this.base) * 1e3, { play: this._wantPlay });
+          } finally {
+            this._viaNvr = !1;
+          }
           return;
         }
       }
-      if (n?.kind === "play" && !n.ended) {
-        const h = !this._mmsStreaming && a > 2;
-        !n.paused && (a > rr || h) ? this._flow(!0) : n.paused && a < Fe && !h && this._flow(!1);
-      } else if (!n && a < Fe && this._mmsStreaming && !this._retryPending) {
-        let h = o ? o[1] : r;
-        this._skipFrom != null && this._skipFrom > h && (h = this._skipFrom);
-        const u = this._bound != null ? this._bound / 1e3 - this.base : 1 / 0, d = (h + this.base) * 1e3;
-        h < u - 0.3 && d < Date.now() - lr && performance.now() >= this._idleUntil && this._openPlay(d);
+      !this._settled && this._target != null && this._twoStep == null && s.readyState >= 1 && !s.seeking && (s.currentTime < this._target - 0.25 || s.currentTime > this._target + Fi) ? (this._awaitSeeked = !0, s.currentTime = this._target) : !this._settled && this._target != null && this._twoStep == null && !this._awaitSeeked && !s.seeking && this._recoveries < 2 && performance.now() - this._seekedAt > hn && this._recoverSeek(s);
+      const n = this._settled ? s.currentTime : this._target ?? s.currentTime, a = this._rangeAt(n), h = this._stream, c = a ? a[1] - n : 0;
+      if (!s.seeking) {
+        const d = this._nextRangeAfter(a ? a[1] : n), l = a ? a[1] - n < 0.3 : !0, _ = h && !h.ended && (h.last == null || (a ? h.last <= a[1] + 0.5 : h.last < n)) || this._bfWillFill(a ? a[1] : n) || this._bfOps.length > 0;
+        if (l && d != null && !_ && (this._settled || h?.first != null && h.first > n)) {
+          this._settled || (this._target = d), this._awaitSeeked = !0, s.currentTime = d;
+          return;
+        }
+      }
+      if (h?.kind === "live" && !h.ended) {
+        const d = this._liveRange(), l = d ? d[1] - n : 0;
+        l > Pi && (this._log("timeshiftEnd", { behind: +l.toFixed(1) }), this._stopStream());
+      } else if (h?.kind === "play" && !h.ended) {
+        const d = !this._mmsStreaming && c > 2;
+        !h.paused && (c > Ur || d) ? this._flow(!0) : h.paused && c < Ai && !d && this._flow(!1);
+      } else if (!h && c < Ai && this._mmsStreaming && !this._retryPending) {
+        let d = a ? a[1] : n;
+        this._skipFrom != null && this._skipFrom > d && (d = this._skipFrom);
+        const l = this._bound != null ? this._bound / 1e3 - this.base : 1 / 0, _ = (d + this.base) * 1e3;
+        d < l - 0.3 && _ < Date.now() - Jr && performance.now() >= this._idleUntil && this._openPlay(_);
       }
       this._queueEvict(), this._pump();
+    }, this._onDbgVideoEvent = (s) => {
+      const o = this._video;
+      if (!o) return;
+      const r = s.type === "error" && o.error ? `${o.error.code} ${o.error.message}` : void 0;
+      this._log(`v:${s.type}`, { ct: this._wall(o.currentTime), rs: o.readyState, seeking: o.seeking, err: r });
     }, this._onSeeked = () => {
       const s = this._video;
       if (s && this._twoStep != null) {
-        const r = this._twoStep;
-        this._twoStep = null, this._awaitSeeked = !0, s.currentTime = r;
+        const o = this._twoStep;
+        this._twoStep = null, this._awaitSeeked = !0, s.currentTime = o;
         return;
       }
       this._awaitSeeked = !1, this._seekedAt = performance.now(), s && !this._hasRvfc() && this._presented(s.currentTime), this._tick();
@@ -3360,8 +4843,8 @@ class fr {
     }, this._onVideoError = () => {
       const s = this._video;
       if (!s?.error || !this._ms) return;
-      const r = this._stream, o = `video error ${s.error.code}${s.error.message ? `: ${s.error.message}` : ""}`, n = this.wallTime, a = this._live;
-      this._dropMedia(), r ? this._streamFailed(r, o) : this._hooks.problem?.(o), !this._failedMsg && (a ? this.live() : n != null && this.seek(n));
+      const o = this._stream, r = `video error ${s.error.code}${s.error.message ? `: ${s.error.message}` : ""}`, n = this.wallTime, a = this._live;
+      this._dropMedia(), o ? this._streamFailed(o, r) : this._hooks.problem?.(r), !this._failedMsg && (a ? this.live() : n != null && this.seek(n));
     };
   }
   // ---- public surface ------------------------------------------------------
@@ -3403,7 +4886,7 @@ class fr {
   }
   /** Camera (and channel). A change drops everything loaded. */
   setSource(t, i, s = 0) {
-    return t === this._nvrId && i === this._cameraId && s === this._channel ? !1 : (this._nvrId = t, this._cameraId = i, this._channel = s, this._stopStream(), this._dropMedia(), this._lastWall = void 0, this._epoch++, this._settled = !1, this._target = null, !0);
+    return t === this._nvrId && i === this._cameraId && s === this._channel ? !1 : (this._nvrId = t, this._cameraId = i, this._channel = s, this._stopBackfill("camera changed"), this._bfFor = null, this._stopStream(), this._dropMedia(), this._lastWall = void 0, this._epoch++, this._settled = !1, this._target = null, !0);
   }
   /** Recorded playback stops (paused) here; nothing is fetched past it. */
   setBound(t) {
@@ -3412,9 +4895,32 @@ class fr {
   setRate(t) {
     this._rate = t, this._video && (this._video.playbackRate = t);
   }
+  /** Play LIVE from another of the camera's channels than recordings (which
+   *  exist only on channel 0); null = the same. Takes effect at the next
+   *  `live()` - or, behind live, at the next seek (the live stream filling
+   *  ahead restarts on it) - into the same buffer: the timeline is wall
+   *  clock, so the new channel's footage lands where the old one's would, and
+   *  the frame on screen stays until its first frame presents. */
+  setLiveChannel(t) {
+    t !== this._liveChannel && (this._liveChannel = t, this._log("liveChannel", { ch: t }));
+  }
+  /** Hold live as close to real time as is safe (on from Talk until the live
+   *  session ends). Off restores the normal rate; the lag stays where it is. */
+  setLowLatency(t) {
+    this._lowLatency !== t && (this._lowLatency = t, !t && this._video && (this._video.playbackRate = this._rate));
+  }
   /** Follow the live edge. */
   live() {
-    !this._video || this._destroyed || (this._failedMsg = void 0, this._live = !0, this._liveFirst = null, this._liveJoined = !1, this._bound = null, this._boundHit = !1, this._wantPlay = !0, this._skipFrom = null, this._newEpoch(null), this._ensureMedia(), this._openStream("live", Date.now()), this._hooks.change?.());
+    this._log("live"), this._liveRestarts = 0, this._goLive();
+  }
+  _goLive() {
+    if (!(!this._video || this._destroyed)) {
+      if (this._liveStreaming() && this._stream.channel === (this._liveChannel ?? this._channel)) {
+        this._log("resumeLive"), this._failedMsg = void 0, this._live = !0, this._liveJoined = !1, this._rejoins = 0, this._bound = null, this._boundHit = !1, this._wantPlay = !0, this._skipFrom = null, this._newEpoch(null), this._tick(), this._hooks.change?.();
+        return;
+      }
+      this._failedMsg = void 0, this._live = !0, this._liveFirst = null, this._liveKey0 = null, this._liveJoined = !1, this._rejoins = 0, this._bound = null, this._boundHit = !1, this._wantPlay = !0, this._skipFrom = null, this._newEpoch(null), this._ensureMedia(), this._openStream("live", Date.now()), this._hooks.change?.();
+    }
   }
   /**
    * Show the frame at `wallMs` exactly. Inside what is loaded this is a native
@@ -3424,27 +4930,85 @@ class fr {
   seek(t, i = {}) {
     const s = this._video;
     if (!s || this._destroyed) return;
-    this._failedMsg = void 0, i.play !== void 0 && (this._wantPlay = i.play), this._live && this._stream?.kind === "live" && this._stopStream(), this._live = !1, this._liveJoined = !1, this._boundHit = !1, this._skipFrom = null, this._idleUntil = 0;
-    let r = t / 1e3 - this.base;
-    this._bound != null && (r = Math.min(r, (this._bound - De) / 1e3 - this.base)), this._newEpoch(r), this._ensureMedia();
-    const o = this._rangeAt(r), n = !!o && o[1] - r >= Vt, a = this._stream;
-    a && a.kind === "play" && !this._feeds(a, n ? o : null, r) && this._stopStream(), this._awaitSeeked = !0, s.currentTime = r, !n && !this._stream && this._openPlay((r + this.base) * 1e3), this._wantPlay ? this._play() : s.pause(), this._tick(), this._hooks.change?.();
+    this._failedMsg = void 0, i.play !== void 0 && (this._wantPlay = i.play);
+    let o = t / 1e3 - this.base;
+    this._bound != null && (o = Math.min(o, (this._bound - Oi) / 1e3 - this.base));
+    const r = this._keepLiveFor(o);
+    this._log("seek", { to: Math.round(t), play: i.play, timeshift: r }), this._stream?.kind === "live" && !r && this._stopStream(), this._live = !1, this._liveJoined = !1, s.playbackRate = this._rate, this._boundHit = !1, this._skipFrom = null, this._idleUntil = 0, this._newEpoch(o), this._ensureMedia();
+    const n = this._stream;
+    r && n?.kind === "live" && n.channel !== (this._liveChannel ?? this._channel) && (this._log("timeshiftChannel", { from: n.channel }), this._openStream("live", Date.now()));
+    const a = this._rangeAt(o), h = !!a && a[1] - o >= Nt, c = this._stream;
+    c && c.kind === "play" && !this._feeds(c, h ? a : null, o) && this._stopStream(), this._awaitSeeked = !0, s.currentTime = o, !h && !this._stream && (!this._viaNvr && this._behindLiveReach(o) ? (this._log("behindLive", { at: this._wall(o) }), this._openStream("live", Date.now())) : this._openPlay((o + this.base) * 1e3)), this._wantPlay ? this._play() : s.pause(), this._tick(), this._hooks.change?.();
   }
   play() {
     this._wantPlay = !0, !this._boundHit && (this._play(), this._tick());
   }
-  /** Pause. Pausing LIVE leaves live: the paused frame becomes recorded footage. */
+  /** Pause. Pausing LIVE leaves live: the paused frame becomes recorded
+   *  footage - with the live stream still filling behind it (timeshift), so
+   *  play carries on from the paused frame and live is rejoined in the same
+   *  stream; it stops once the frame is TIMESHIFT_MAX_S behind. */
   pause() {
-    this._wantPlay = !1, this._video?.pause(), this._live && (this._live = !1, this._liveJoined = !1, this._stream?.kind === "live" && this._stopStream(), this._video && (this._target = this._video.currentTime)), this._hooks.change?.();
+    this._log("pause", { live: this._live }), this._wantPlay = !1, this._video?.pause(), this._live && (this._live = !1, this._liveJoined = !1, this._video && (this._video.playbackRate = this._rate), this._video && (this._target = this._video.currentTime)), this._hooks.change?.();
   }
   /** Is this wall-clock instant loaded (so a seek to it is native)? */
   isLoaded(t) {
-    const i = t / 1e3 - this.base, s = this._rangeAt(i);
-    return !!s && s[1] - i >= Vt;
+    return this._loadedAt(t / 1e3 - this.base);
+  }
+  /** Media time t is loaded, with a little footage after it. */
+  _loadedAt(t) {
+    const i = this._rangeAt(t);
+    return !!i && i[1] - t >= Nt;
+  }
+  /** Does a seek to media time t keep the live stream running (timeshift)? In
+   *  the live session's footage, in what its backfill holds or delivers (or
+   *  will, once it starts), or in other footage still loaded not far behind
+   *  its edge. */
+  _keepLiveFor(t) {
+    const i = this._stream;
+    if (!i || i.kind !== "live" || i.ended) return !1;
+    const s = !this._viaNvr && this._behindLiveReach(t);
+    if (this._liveFirst == null) return s;
+    if (this._inLiveSession(t) || !this._viaNvr && this._bfWillFill(t) || this._bfStarting() && s) return !0;
+    const o = this._liveRange();
+    return !!o && this._loadedAt(t) && o[1] - t <= Pi;
+  }
+  /** Media time t is recent enough that the NVR may refuse a playback starting
+   *  there (RECORDED_SAFE_MS), but within what a backfill covers: the live
+   *  stream and its backfill deliver it exactly (see BACKFILL_MS). */
+  _behindLiveReach(t) {
+    const i = Date.now() - (t + this.base) * 1e3;
+    return i > 0 && i <= Ut - 3e3;
+  }
+  /** The live stream's backfill is still to start: no footage yet to place
+   *  it, or not started for this session. */
+  _bfStarting() {
+    return !this._bf && (this._liveFirst == null || this._bfFor !== this._liveFirst);
+  }
+  /** Can a seek reach this instant exactly - loaded, delivered behind live
+   *  (its session's stream or backfill), or recent enough to be fetched that
+   *  way (a seek there starts the live stream and its backfill)? */
+  isAvailable(t) {
+    const i = t / 1e3 - this.base;
+    return this.isLoaded(t) || this.timeshiftable(t) || this._behindLiveReach(i);
+  }
+  /** Is this instant playable behind live on the running live stream and its
+   *  backfill - never waiting on the NVR's accept edge (timeshift)? */
+  timeshiftable(t) {
+    return this._keepLiveFor(t / 1e3 - this.base);
+  }
+  /** The live stream is running (live, or timeshifted behind it). */
+  _liveStreaming() {
+    const t = this._stream;
+    return !!t && t.kind === "live" && !t.ended && this._liveFirst != null;
+  }
+  /** Media time t is in the running live session's footage (from its first
+   *  keyframe on), so its stream delivers it - nothing to ask the NVR for. */
+  _inLiveSession(t) {
+    return this._liveStreaming() && t >= (this._liveKey0 ?? this._liveFirst) - 0.05;
   }
   /** Release the decoder and the socket (hidden card). The next live()/seek() rebuilds. */
   suspend() {
-    this._stopStream(), this._closeSocket(), this._dropMedia(), this._settled = !1;
+    this._log("suspend"), this._stopBackfill("suspended"), this._bfFor = null, this._stopStream(), this._closeSocket(), this._dropMedia(), this._settled = !1;
   }
   destroy() {
     this._destroyed = !0, this.suspend(), this._video && this._unbindVideo(this._video), this._video = null, clearInterval(this._tickTimer);
@@ -3453,79 +5017,135 @@ class fr {
   _ensureMedia() {
     const t = this._video;
     if (!t || this._ms) return;
-    const s = window.ManagedMediaSource, r = new (s ?? MediaSource)();
-    this._ms = r, this._msOpen = !1, this._mmsStreaming = !0, t.disableRemotePlayback = !0, r.addEventListener(
+    const s = window.ManagedMediaSource, o = new (s ?? MediaSource)();
+    if (this._ms = o, this._msOpen = !1, this._mmsStreaming = !0, t.disableRemotePlayback = !0, o.addEventListener(
       "sourceopen",
       () => {
-        this._ms === r && (this._msOpen = !0, this._pump());
+        this._ms === o && (this._msOpen = !0, this._pump());
       },
       { once: !0 }
-    ), s ? (r.addEventListener("startstreaming", () => {
+    ), st())
+      for (const r of ["sourceopen", "sourceended", "sourceclose"])
+        o.addEventListener(r, () => this._log(`ms:${r}`, { current: this._ms === o }));
+    s ? (o.addEventListener("startstreaming", () => {
       this._mmsStreaming = !0, this._tick();
-    }), r.addEventListener("endstreaming", () => {
+    }), o.addEventListener("endstreaming", () => {
       this._mmsStreaming = !1, this._tick();
-    }), t.srcObject = r) : (this._msUrl = URL.createObjectURL(r), t.src = this._msUrl), t.playbackRate = this._rate;
+    }), t.srcObject = o) : (this._msUrl = URL.createObjectURL(o), t.src = this._msUrl), t.playbackRate = this._rate;
   }
   /** Detach the MediaSource and free the decoder (a detached element keeps it). */
   _dropMedia() {
-    this._ops = [], this._busy = !1, this._sb = null, this._codecs = "", this._msOpen = !1, this._quotaHold = !1, this._ms && (this._ms = null, this._video && At(this._video), this._msUrl && URL.revokeObjectURL(this._msUrl), this._msUrl = null), this._liveFirst = null, this._liveJoined = !1;
+    this._stopBackfill("media dropped"), this._ops = [], this._bfOps = [], this._initMain = null, this._liveGop = null, this._busy = !1, this._sb = null, this._codecs = "", this._msOpen = !1, this._quotaHold = !1, this._ms && (this._ms = null, this._video && Jt(this._video), this._msUrl && URL.revokeObjectURL(this._msUrl), this._msUrl = null), this._liveFirst = null, this._liveKey0 = null, this._liveJoined = !1;
   }
-  /** Run the next queued append/remove. */
+  /** Run the next queued append/remove: a backfill append in progress first
+   *  (to its end - see _planBackfillAppend; evictions may cut in, a quota
+   *  error needs them), then the stream's. */
   _pump() {
     if (!(!this._ms || !this._msOpen || this._busy || this._quotaHold))
-      for (; this._ops.length; ) {
-        const i = this._ops[0];
-        if (i.t !== "remove" && i.gen !== this._gen) {
-          this._ops.shift();
+      for (this._bfOps.length || this._planBackfillAppend(); ; ) {
+        const i = this._bfOps.length > 0 && this._ops[0]?.t !== "remove", s = i ? this._bfOps : this._ops;
+        if (!s.length) return;
+        const o = s[0];
+        if (!i && o.t !== "remove" && o.gen !== this._gen) {
+          s.shift();
           continue;
         }
-        if (i.t === "init" && !this._prepareBuffer(i.codecs)) {
-          this._ops.shift();
+        if (o.t === "init" && !this._prepareBuffer(o.codecs)) {
+          s.shift();
           return;
         }
-        const s = this._sb;
-        if (!s) {
-          this._ops.shift();
+        const r = this._sb;
+        if (!r) {
+          s.shift();
           continue;
         }
-        if (s.updating) return;
+        if (r.updating) return;
         try {
-          if (i.t === "remove") {
-            if (this._ops.shift(), i.end > i.start) {
-              this._busy = !0, s.remove(i.start, i.end);
+          if (o.t === "remove") {
+            if (s.shift(), o.end > o.start) {
+              this._busy = !0, r.remove(o.start, o.end);
               return;
             }
             continue;
           }
-          let r = i.data, o = 1;
-          if (i.t === "media") {
-            const n = [i.data];
-            let a = i.data.length;
-            for (; o < this._ops.length; ) {
-              const h = this._ops[o];
-              if (h.t !== "media" || h.gen !== i.gen || a + h.data.length > pr) break;
-              n.push(h.data), a += h.data.length, o++;
+          const n = o.t === "media" && o.windowEnd || 1 / 0;
+          r.appendWindowEnd !== n && (r.appendWindowEnd = n);
+          let a = o.data, h = 1;
+          if (o.t === "media") {
+            const c = [o.data];
+            let d = o.data.length;
+            for (; h < s.length; ) {
+              const l = s[h];
+              if (l.t !== "media" || l.gen !== o.gen || l.windowEnd || o.windowEnd || d + l.data.length > nn) break;
+              c.push(l.data), d += l.data.length, h++;
             }
-            if (o > 1) {
-              r = new Uint8Array(a);
-              let h = 0;
-              for (const u of n)
-                r.set(u, h), h += u.length;
+            if (h > 1) {
+              a = new Uint8Array(d);
+              let l = 0;
+              for (const _ of c)
+                a.set(_, l), l += _.length;
             }
-          }
-          this._busy = !0, s.appendBuffer(r), this._ops.splice(0, o);
+            i || this._trackLiveGop(s.slice(0, h));
+          } else i || (this._initMain = o);
+          this._busy = !0, r.appendBuffer(a), s.splice(0, h);
           return;
-        } catch (r) {
-          if (this._busy = !1, r?.name === "QuotaExceededError") {
+        } catch (n) {
+          if (this._busy = !1, n?.name === "QuotaExceededError") {
             this._onQuota();
             return;
           }
-          this._ops.shift();
-          const o = this._stream;
-          o && this._streamFailed(o, `append failed: ${r?.message ?? r}`);
+          if (s.shift(), i) {
+            this._log("bf:appendFailed", { message: n?.message ?? String(n) });
+            continue;
+          }
+          const a = this._stream;
+          a && this._streamFailed(a, `append failed: ${n?.message ?? n}`);
           return;
         }
       }
+  }
+  /** Remember the live GOP being built, from its keyframe's fragment on
+   *  (the backfill puts it back after its own footage). */
+  _trackLiveGop(t) {
+    const i = this._stream;
+    if (!(!i || i.kind !== "live" || t[0]?.gen !== i.gen))
+      for (const s of t)
+        s.key != null ? this._liveGop = { start: s.key, ops: [s] } : this._liveGop && this._liveGop.ops.length < 600 ? this._liveGop.ops.push(s) : this._liveGop = null;
+  }
+  /**
+   * Put the backfill's delivered footage into the buffer - only while the
+   * playhead (or the seek heading for it) is behind the live GOP being built,
+   * since that GOP has to go back in after it: MSE takes one stream at a
+   * time, and live fragments appended after the backfill would lose their
+   * video until the next live keyframe (see BACKFILL_MS). So: remove the
+   * current live GOP, append the backfill (its fragments are whole GOPs,
+   * each from a keyframe), then the GOP again from its keyframe - and live
+   * carries on seamlessly from there. While live plays, it waits; and only
+   * what the playhead needs goes in (from its GOP on - ~4 MB a GOP).
+   */
+  _planBackfillAppend() {
+    const t = this._bf, i = this._video, s = this._liveGop, o = this._stream;
+    if (!t || !t.held.length || !i || this._live || !s || !this._initMain || !o || o.kind !== "live" || o.ended || s.ops[0].gen !== o.gen) return;
+    const r = this._settled ? i.currentTime : this._target ?? i.currentTime;
+    if (r > s.start - 0.5 || r > t.session + 1) return;
+    const n = t.held.filter((c) => c.end > r - 0.05);
+    if (!n.length) return;
+    const a = this._sb;
+    if (t.init && t.init.codecs !== this._initMain.codecs && !a?.changeType) {
+      this._stopBackfill("no changeType");
+      return;
+    }
+    t.held = t.held.filter((c) => c.end <= r - 0.05);
+    const h = [{ t: "remove", start: s.start - 5e-4, end: 1 / 0 }];
+    t.init && h.push(t.init);
+    for (const c of n)
+      h.push({ t: "media", gen: -1, data: c.data, windowEnd: c.end > t.session ? t.session : void 0 });
+    h.push(this._initMain, ...s.ops), this._log("bf:append", {
+      from: this._wall(n[0].time),
+      to: this._wall(n[n.length - 1].end),
+      gops: n.length,
+      live: s.ops.length
+    }), this._bfOps = h;
   }
   /** Create the SourceBuffer on the first init, or switch codecs. */
   _prepareBuffer(t) {
@@ -3534,23 +5154,23 @@ class fr {
     const s = `video/mp4; codecs="${t}"`;
     if (this._sb) {
       if (t === this._codecs) return !0;
-      const o = this._sb;
-      if (o.changeType && !o.updating)
+      const r = this._sb;
+      if (r.changeType && !r.updating)
         try {
-          return o.changeType(s), this._codecs = t, !0;
+          return r.changeType(s), this._codecs = t, !0;
         } catch {
         }
       const n = this._stream;
       return n && this._streamFailed(n, `codec changed to ${t}`), !1;
     }
-    const r = i.constructor;
-    if (r.isTypeSupported && !r.isTypeSupported(s))
+    const o = i.constructor;
+    if (o.isTypeSupported && !o.isTypeSupported(s))
       return this._giveUp(`This device cannot play this camera's video (${t}).`), !1;
     try {
-      const o = i.addSourceBuffer(s);
-      return o.mode = "segments", o.timestampOffset = -this.base, o.addEventListener("updateend", this._onSbUpdateEnd), o.addEventListener("error", this._onSbError), this._sb = o, this._codecs = t, this._extendDuration(), !0;
-    } catch (o) {
-      return this._giveUp(`Could not start the player: ${o?.message ?? o}`), !1;
+      const r = i.addSourceBuffer(s);
+      return r.mode = "segments", r.timestampOffset = -this.base, r.addEventListener("updateend", this._onSbUpdateEnd), r.addEventListener("error", this._onSbError), this._sb = r, this._codecs = t, this._extendDuration(), !0;
+    } catch (r) {
+      return this._giveUp(`Could not start the player: ${r?.message ?? r}`), !1;
     }
   }
   /**
@@ -3570,12 +5190,12 @@ class fr {
     } catch {
       return;
     }
-    const r = this._video;
-    r && !this._settled && this._target != null && Math.abs(r.currentTime - this._target) > 0.25 && (this._awaitSeeked = !0, r.currentTime = this._target);
+    const o = this._video;
+    o && !this._settled && this._target != null && Math.abs(o.currentTime - this._target) > 0.25 && (this._awaitSeeked = !0, o.currentTime = this._target);
   }
   /** The buffer is full: drop what is behind the playhead and try again. */
   _onQuota() {
-    this._quotaHold = !0, this._flow(!0);
+    this._log("quota", { ranges: this._rangesWall() }), this._quotaHold = !0, this._flow(!0);
     const t = this._queueEvict(!0);
     window.setTimeout(() => {
       this._quotaHold = !1, this._pump();
@@ -3588,49 +5208,69 @@ class fr {
   _queueEvict(t = !1) {
     const i = this._sb, s = this._video;
     if (!i || !s) return !1;
+    const o = this._live && !this._liveJoined;
+    if (o && !t) return !1;
     const r = performance.now();
     if (!t && r - this._lastEvict < 2e3) return !1;
     this._lastEvict = r;
-    const o = s.currentTime, n = t ? 4 : or, a = this._settled ? null : this._target, h = [];
-    for (let u = 0; u < i.buffered.length; u++) {
-      const d = i.buffered.start(u), l = i.buffered.end(u);
-      a != null && d <= a && a <= l || (l < o - n ? h.push([d, l]) : d < o - n ? h.push([d, o - n]) : d > o + nr && h.push([d, l]));
+    const n = s.currentTime, a = t ? 4 : Nr, h = this._settled ? null : this._target, c = o && this._liveFirst != null ? this._liveFirst - 0.1 : null, d = [];
+    for (let l = 0; l < i.buffered.length; l++) {
+      const _ = i.buffered.start(l), v = i.buffered.end(l);
+      h != null && _ <= h && h <= v || c != null && v >= c || (v < n - a ? d.push([_, v]) : _ < n - a ? d.push([_, n - a]) : _ > n + Hr && d.push([_, v]));
     }
-    return h.length ? (this._ops.unshift(...h.map(([u, d]) => ({ t: "remove", start: u, end: d }))), !0) : !1;
+    return d.length ? (st() && this._log("evict", {
+      aggressive: t,
+      ct: this._wall(n),
+      removes: d.map(([l, _]) => [this._wall(l), this._wall(_)])
+    }), this._ops.unshift(...d.map(([l, _]) => ({ t: "remove", start: l, end: _ }))), !0) : !1;
   }
   // ---- streams -------------------------------------------------------------
   _openPlay(t) {
-    let i = t + hr;
+    let i = t + Zr;
     this._bound != null && (i = Math.min(i, this._bound)), this._bound == null && i > Date.now() - 1e3 && (i = void 0), this._openStream("play", t, i);
   }
   _openStream(t, i, s) {
-    this._stopStream();
-    const r = ++this._gen;
+    this._stopStream(t === "live");
+    const o = ++this._gen;
     this._deframer.reset();
-    const o = { gen: r, kind: t, from: i, end: s, opened: !1, paused: !1, ended: !1, first: null, last: null };
-    this._stream = o, clearTimeout(this._firstDataTimer), this._firstDataTimer = window.setTimeout(() => {
-      this._stream === o && o.last == null && !o.ended && this._streamFailed(o, "the NVR sent no footage");
-    }, dr), this._socket().then(
-      (n) => {
-        if (this._stream !== o) return;
-        const a = {
+    const r = t === "live" ? this._liveChannel ?? this._channel : this._channel, n = {
+      gen: o,
+      kind: t,
+      channel: r,
+      askedAt: performance.now(),
+      from: i,
+      end: s,
+      opened: !1,
+      paused: !1,
+      ended: !1,
+      first: null,
+      last: null
+    };
+    this._log("open", { kind: t, gen: o, ch: r, from: Math.round(i), end: s && Math.round(s) }), this._stream = n, clearTimeout(this._firstDataTimer), this._firstDataTimer = window.setTimeout(() => {
+      this._stream === n && n.last == null && !n.ended && this._streamFailed(n, "the NVR sent no footage");
+    }, rn), this._socket().then(
+      (a) => {
+        if (this._stream !== n) return;
+        const h = {
           op: t,
-          gen: r,
+          gen: o,
           nvr_id: this._nvrId,
           camera_id: this._cameraId,
-          channel: this._channel
+          channel: r
         };
-        t === "play" && (a.start = Math.round(i), s && (a.end = Math.round(s))), n.send(JSON.stringify(a));
+        t === "play" && (h.start = Math.round(i), s && (h.end = Math.round(s))), a.send(JSON.stringify(h));
       },
-      (n) => {
-        this._stream === o && this._streamFailed(o, `relay unreachable: ${n?.message ?? n}`);
+      (a) => {
+        this._stream === n && this._streamFailed(n, `relay unreachable: ${a?.message ?? a}`);
       }
     );
   }
-  /** Drop the stream in flight; anything it still sends is ignored. */
-  _stopStream() {
-    const t = this._stream;
-    t && (this._stream = null, this._gen++, clearTimeout(this._firstDataTimer), clearTimeout(this._retryTimer), this._retryPending = !1, !t.ended && this._ws?.readyState === WebSocket.OPEN && this._ws.send(JSON.stringify({ op: "stop" })));
+  /** Drop the stream in flight; anything it still sends is ignored. A live
+   *  stream replaced by another live stream (a channel switch - Talk - or a
+   *  restart) keeps the backfill: the footage before it stays in the buffer. */
+  _stopStream(t = !1) {
+    const i = this._stream;
+    i && (i.kind === "live" && (t || this._stopBackfill("live stopped"), this._liveGop = null), this._stream = null, this._gen++, clearTimeout(this._firstDataTimer), clearTimeout(this._retryTimer), this._retryPending = !1, !i.ended && this._ws?.readyState === WebSocket.OPEN && this._ws.send(JSON.stringify({ op: "stop" })));
   }
   /** Pause / resume the NVR (recorded only; live cannot be throttled). */
   _flow(t) {
@@ -3643,15 +5283,15 @@ class fr {
     const t = (async () => {
       const i = this._hass();
       if (!i) throw new Error("Home Assistant not connected");
-      const s = await Ke(i, ir, 30), r = i.auth?.data?.hassUrl || window.location.origin, o = new URL(s, r);
-      o.protocol = o.protocol === "https:" ? "wss:" : "ws:";
-      const n = new WebSocket(o.toString());
+      const s = await Yt(i, Ei, 30), o = i.auth?.data?.hassUrl || window.location.origin, r = new URL(s, o);
+      r.protocol = r.protocol === "https:" ? "wss:" : "ws:";
+      const n = new WebSocket(r.toString());
       return n.binaryType = "arraybuffer", await new Promise((a, h) => {
-        const u = window.setTimeout(() => h(new Error("timed out")), 1e4);
+        const c = window.setTimeout(() => h(new Error("timed out")), 1e4);
         n.onopen = () => {
-          clearTimeout(u), a();
+          clearTimeout(c), a();
         }, n.onclose = () => {
-          clearTimeout(u), h(new Error("closed (is protect_cache installed and up to date?)"));
+          clearTimeout(c), h(new Error("closed (is protect_cache installed and up to date?)"));
         };
       }), n.onmessage = this._onMessage, n.onclose = () => {
         if (this._ws !== n) return;
@@ -3679,22 +5319,195 @@ class fr {
       }
     }
   }
-  _accept(t, i) {
-    if (i.kind === "init")
-      this._ops.push({ t: "init", gen: t.gen, data: i.data, codecs: i.codecs });
-    else {
-      if (i.time != null) {
-        const s = i.time - this.base;
-        t.first == null && (t.first = s, t.kind === "live" && (this._liveFirst = s), clearTimeout(this._firstDataTimer)), t.last = s;
+  // ---- backfill: the history behind a live session (see BACKFILL_MS) -------
+  /** Start the backfill for the live session that just presented its first
+   *  frame - once per session. It always fetches the recordings' channel
+   *  (Talk plays live from channel 1, which is not recorded; the buffer
+   *  switches codec between them with changeType). */
+  _startBackfill() {
+    const t = this._liveFirst;
+    if (this._bf || this._destroyed || t == null || this._bfFor === t || !this._liveStreaming()) return;
+    this._bfFor = t;
+    const i = this._blockStart(this._liveKey0 ?? t);
+    if (Date.now() - (i + this.base) * 1e3 >= Ut) return;
+    const s = {
+      ws: null,
+      running: !0,
+      gen: 0,
+      askedAt: performance.now(),
+      lastDataAt: performance.now(),
+      from: (i + this.base) * 1e3 - Ut,
+      session: i,
+      deframer: new Ti(),
+      steps: 0,
+      retries: 0,
+      conn: 0,
+      init: null,
+      held: [],
+      end: null
+    };
+    this._bf = s, this._log("bf:start", { from: Math.round(s.from), session: this._wall(i) }), this._bfConnect(s);
+  }
+  async _bfConnect(t) {
+    const i = ++t.conn;
+    try {
+      const s = this._hass();
+      if (!s) throw new Error("Home Assistant not connected");
+      const o = await Yt(s, Ei, 30), r = s.auth?.data?.hassUrl || window.location.origin, n = new URL(o, r);
+      n.protocol = n.protocol === "https:" ? "wss:" : "ws:";
+      const a = new WebSocket(n.toString());
+      if (a.binaryType = "arraybuffer", await new Promise((h, c) => {
+        const d = window.setTimeout(() => c(new Error("timed out")), 1e4);
+        a.onopen = () => {
+          clearTimeout(d), h();
+        }, a.onclose = () => {
+          clearTimeout(d), c(new Error("closed"));
+        };
+      }), this._bf !== t || !t.running || t.conn !== i) {
+        a.close();
+        return;
       }
-      for (const s of i.keys) this._addKey(s - this.base);
-      this._ops.push({ t: "media", gen: t.gen, data: i.data });
+      t.ws = a, a.onmessage = (h) => this._onBfMessage(t, h), a.onclose = () => this._bfFailed(t, "connection lost"), this._bfRequest(t);
+    } catch (s) {
+      t.conn === i && this._bfFailed(t, `relay unreachable: ${s?.message ?? s}`);
+    }
+  }
+  _bfRequest(t) {
+    t.gen++, t.askedAt = performance.now(), t.lastDataAt = t.askedAt, t.deframer.reset(), t.ws?.send(
+      JSON.stringify({
+        op: "play",
+        gen: t.gen,
+        nvr_id: this._nvrId,
+        camera_id: this._cameraId,
+        channel: this._channel,
+        start: Math.round(t.from)
+      })
+    );
+  }
+  /** A backfill that stopped delivering (see BACKFILL_STALL_MS) asks again
+   *  from the start on a fresh socket - what it already has is skipped. */
+  _bfRetry(t) {
+    if (t.retries >= 2) {
+      this._bfFailed(t, "stalled");
+      return;
+    }
+    t.retries++, t.lastDataAt = performance.now(), this._log("bf:retry", { retries: t.retries, got: t.end != null });
+    const i = t.ws;
+    if (t.ws = null, i) {
+      i.onclose = null, i.onmessage = null;
+      try {
+        i.readyState === WebSocket.OPEN && i.send(JSON.stringify({ op: "stop" })), i.close();
+      } catch {
+      }
+    }
+    this._bfConnect(t);
+  }
+  _onBfMessage(t, i) {
+    if (this._bf !== t || !t.running) return;
+    if (typeof i.data == "string") {
+      let o;
+      try {
+        o = JSON.parse(i.data);
+      } catch {
+        return;
+      }
+      if (o.gen !== t.gen) return;
+      if (o.ev === "open")
+        this._log("bf:open", { ms: Math.round(performance.now() - t.askedAt) });
+      else if (o.ev === "error") {
+        if (/refused/.test(o.message ?? "") && t.steps < zi) {
+          t.steps++, t.from -= Ri * 1e3, this._log("bf:notyet", { steps: t.steps }), this._bfRequest(t);
+          return;
+        }
+        this._bfFailed(t, o.message || "stream error");
+      } else o.ev === "end" && this._bfFailed(t, "the NVR ended it");
+      return;
+    }
+    const s = i.data;
+    if (!(s.byteLength < 4 || new DataView(s).getUint32(0) !== t.gen)) {
+      for (const o of t.deframer.push(new Uint8Array(s, 4))) {
+        if (this._bf !== t || !t.running) return;
+        this._acceptBf(t, o);
+      }
+      this._pump();
+    }
+  }
+  _acceptBf(t, i) {
+    if (i.kind === "init") {
+      t.init = { t: "init", gen: -1, data: i.data, codecs: i.codecs };
+      return;
+    }
+    if (i.time == null) return;
+    const s = i.time - this.base, o = (i.end ?? i.time) - this.base;
+    if (t.end == null && this._log("bf:data1", { ms: Math.round(performance.now() - t.askedAt), at: this._wall(s) }), t.lastDataAt = performance.now(), !(t.end != null && o <= t.end + 0.05)) {
+      if (s < t.session - 0.02) {
+        for (const r of i.keys) this._addKey(r - this.base);
+        t.held.push({ data: i.data, time: s, end: o }), t.end = o;
+      }
+      o >= t.session - 0.02 && (this._log("bf:done", { at: this._wall(s) }), this._bfEnd(t, "met live"));
+    }
+  }
+  /** Stop the backfill's stream; what it delivered stays (held or loaded). */
+  _bfEnd(t, i) {
+    if (!t.running) return;
+    t.running = !1, this._log("bf:end", { why: i });
+    const s = t.ws;
+    if (t.ws = null, s) {
+      s.onclose = null, s.onmessage = null;
+      try {
+        s.readyState === WebSocket.OPEN && s.send(JSON.stringify({ op: "stop" })), s.close();
+      } catch {
+      }
+    }
+  }
+  /** Drop the backfill: its stream and what it holds. One going into the
+   *  buffer finishes (it has the live GOP to put back). */
+  _stopBackfill(t) {
+    const i = this._bf;
+    i && (this._bfEnd(i, t), this._bf = null, this._log("bf:stop", { why: t, held: i.held.length }));
+  }
+  /** The backfill can't deliver any more; a seek waiting for its footage is
+   *  aimed the ordinary way on the next tick. */
+  _bfFailed(t, i) {
+    this._bf !== t || !t.running || (this._bfEnd(t, `failed: ${i}`), this._tick());
+  }
+  /** The backfill holds footage at media time t, or is yet to deliver it (or
+   *  the footage just after it, which t needs to count as loaded). */
+  _bfWillFill(t) {
+    const i = this._bf;
+    if (!i || t > i.session + 0.05) return !1;
+    if (i.held.some((o) => t >= o.time - 0.05 && t < o.end)) return !0;
+    const s = i.end ?? i.from / 1e3 - this.base;
+    return i.running && t >= s - Nt - 0.05;
+  }
+  _accept(t, i) {
+    if (i.kind === "init") {
+      if (this._ops.push({ t: "init", gen: t.gen, data: i.data, codecs: i.codecs }), st()) {
+        const s = t.kind === "live" ? this._liveChannel ?? this._channel : this._channel;
+        this._log("init", { gen: t.gen, codecs: i.codecs, ch: s });
+        const o = this._hass()?.states?.[this._cameraId]?.attributes, r = Number(o?.width) || this._video?.videoWidth || 0, n = Number(o?.height) || this._video?.videoHeight || 0;
+        s === 0 && mo(this._cameraId, i.codecs, r, n);
+      }
+    } else {
+      if (i.time != null) {
+        const o = i.time - this.base;
+        t.first == null && (t.first = o, t.kind === "live" && (this._liveFirst = o, this._liveKey0 = null), clearTimeout(this._firstDataTimer), this._log("data1", {
+          gen: t.gen,
+          kind: t.kind,
+          ms: Math.round(performance.now() - t.askedAt),
+          at: this._wall(o),
+          keys: i.keys.length
+        })), t.last = o;
+      }
+      for (const o of i.keys) this._addKey(o - this.base);
+      const s = i.keys.length ? i.keys[0] - this.base : void 0;
+      t.kind === "live" && this._liveKey0 == null && s != null && (this._liveKey0 = s), this._ops.push({ t: "media", gen: t.gen, data: i.data, key: s }), t.kind === "live" && !this._live && this._liveKey0 != null && this._startBackfill();
     }
     this._pump();
   }
   _onStreamEnd(t) {
     if (this._stream === t) {
-      if (clearTimeout(this._firstDataTimer), t.kind === "live") {
+      if (this._log("end", { gen: t.gen, kind: t.kind, got: t.last != null }), clearTimeout(this._firstDataTimer), t.kind === "live") {
         this._streamFailed(t, "the NVR ended the live stream");
         return;
       }
@@ -3703,40 +5516,53 @@ class fr {
   }
   _streamFailed(t, i) {
     if (this._stream !== t) return;
-    if (t.kind === "play" && /refused/.test(i) && t.from > Date.now() - cr) {
+    if (this._log("fail", { gen: t.gen, kind: t.kind, message: i, fails: this._fails }), t.kind === "play" && /refused/.test(i) && t.from > Date.now() - Qr) {
       this._notRecordedYet(t);
       return;
     }
     this._hooks.problem?.(i), this._stopStream();
     const s = this._video;
-    if (s && (this._progressMark = Math.max(this._progressMark, s.currentTime)), this._fails++, this._fails > Re.length) {
+    if (s && (this._progressMark = Math.max(this._progressMark, s.currentTime)), this._fails++, this._fails > Li.length) {
       this._giveUp("This footage could not be played. Tap an event or the timeline to try again.");
       return;
     }
-    const r = Re[this._fails - 1];
+    const o = Li[this._fails - 1];
     clearTimeout(this._retryTimer), this._retryPending = !0, this._retryTimer = window.setTimeout(() => {
       this._retryPending = !1, !(this._destroyed || this._stream) && (this._live ? this._openStream("live", Date.now()) : this._tick());
-    }, r), this._hooks.change?.();
+    }, o), this._hooks.change?.();
   }
   /**
    * The NVR refuses a playback that starts after its recording edge - footage
    * reaches its disk ~13-20 s after it happens (measured: a request ending
    * "10 s ago" was granted up to 19.4 s ago), and live has no history. Not a
-   * failure: a pending seek lands on the nearest footage there is (the start
-   * of the live buffer after a rewind from live), and playback that caught up
-   * with the edge waits for it to move on.
+   * failure. A pending seek whose target is NOT loaded (this was its own
+   * request) is asked again further back (NOTYET_STEP_S, up to
+   * NOTYET_MAX_STEPS), and only then lands on the nearest footage after it.
+   * A seek whose target IS loaded is left alone - the refusal was for the
+   * footage after it. Both used to land on the nearest footage AFTER the
+   * target: the start of the live buffer after a rewind from live, a second
+   * or two back, which read as "skip back did nothing" (measured 2026-10-26:
+   * 3.0, 1.5, 2.6 and 0 s for a 10 s skip). Playback that caught up with the
+   * edge waits for it to move on.
    */
   _notRecordedYet(t) {
-    this._stopStream(), this._idleUntil = performance.now() + 2e3;
-    const i = this._video;
-    if (i && !this._settled && this._target != null) {
-      const s = this._nextRangeAfter(this._target);
-      s != null && (this._target = s, this._awaitSeeked = !0, i.currentTime = s);
+    this._log("notyet", { gen: t.gen, steps: this._notYetSteps }), this._stopStream(), this._idleUntil = performance.now() + 2e3;
+    const i = this._video, s = this._target;
+    if (!i || this._settled || s == null || this._loadedAt(s)) {
+      this._hooks.change?.();
+      return;
     }
-    this._hooks.change?.();
+    if (this._notYetSteps < zi) {
+      this._notYetSteps++;
+      const r = s - Ri;
+      this._target = r, this._awaitSeeked = !0, i.currentTime = r, this._idleUntil = 0, this._openPlay((r + this.base) * 1e3), this._hooks.change?.();
+      return;
+    }
+    const o = this._nextRangeAfter(s);
+    o != null && (this._target = o, this._awaitSeeked = !0, i.currentTime = o), this._hooks.change?.();
   }
   _giveUp(t) {
-    this._stopStream(), this._failedMsg = t, this._hooks.failed?.(t), this._hooks.change?.();
+    this._log("giveup", { message: t }), this._stopStream(), this._failedMsg = t, this._hooks.failed?.(t), this._hooks.change?.();
   }
   // ---- playback control loop -----------------------------------------------
   /** Range [start, end] (media s) containing t, or null. */
@@ -3744,41 +5570,153 @@ class fr {
     const i = this._sb;
     if (!i) return null;
     const s = i.buffered;
-    for (let r = 0; r < s.length; r++)
-      if (s.start(r) - 0.05 <= t && t <= s.end(r)) return [s.start(r), s.end(r)];
+    for (let o = 0; o < s.length; o++)
+      if (s.start(o) - 0.05 <= t && t <= s.end(o)) return [s.start(o), s.end(o)];
     return null;
   }
   /** Does this recorded stream feed the footage around t? */
   _feeds(t, i, s) {
-    const r = t.last ?? t.from / 1e3 - this.base, o = (i ? i[0] : s) - 1, n = (i ? i[1] : s) + 1;
-    return r >= o && r <= n;
+    const o = t.last ?? t.from / 1e3 - this.base, r = (i ? i[0] : s) - 1, n = (i ? i[1] : s) + 1;
+    return o >= r && o <= n;
+  }
+  /** Where the buffered footage running into media time t starts, stepping
+   *  back over gaps under 2 s (a live channel switch leaves ~0.2-0.7 s). */
+  _blockStart(t) {
+    const i = this._sb?.buffered;
+    let s = t;
+    if (!i) return s;
+    for (let o = i.length - 1; o >= 0; o--)
+      if (!(i.start(o) > s + 0.05)) {
+        if (i.end(o) < s - 2) break;
+        s = Math.min(s, i.start(o));
+      }
+    return s;
   }
   _nextRangeAfter(t) {
     const i = this._sb;
     if (!i) return null;
     const s = i.buffered;
-    for (let r = 0; r < s.length; r++) if (s.start(r) > t + 0.05) return s.start(r);
+    for (let o = 0; o < s.length; o++) if (s.start(o) > t + 0.05) return s.start(o);
     return null;
   }
+  /** The buffered LIVE footage: the newest range reaching past the first live
+   *  fragment, clipped to start there (null until some is buffered). Its
+   *  start is decodable: MSE drops every frame before a range's keyframe. */
+  _liveRange() {
+    const t = this._sb?.buffered, i = this._liveFirst;
+    if (!t || i == null || !t.length) return null;
+    const s = t.length - 1;
+    return t.end(s) < i + 0.05 ? null : [Math.max(t.start(s), i - 0.05), t.end(s)];
+  }
+  /** Where to land in [start, end] for a lag of `behind`: the newest keyframe
+   *  at or before it (decodes at once, even on a slow tablet), else the start. */
+  _liveTarget(t, i, s) {
+    const o = this._keyBefore(i - s, t);
+    return o != null && o >= t ? o : t;
+  }
   _liveTick(t) {
-    const i = this._sb;
-    if (!i || this._liveFirst == null) return;
-    const s = i.buffered.length;
-    if (!s) return;
-    const r = i.buffered.end(s - 1);
-    if (!(r < this._liveFirst)) {
-      if (!this._liveJoined) {
-        if (r - this._liveFirst < 0.3) return;
-        this._liveJoined = !0, this._awaitSeeked = !0;
-        const o = this._keyBefore(r - ze, this._liveFirst);
-        t.currentTime = o ?? this._liveFirst, this._wantPlay && this._play();
+    const i = this._liveRange();
+    if (!i) return;
+    const [s, o] = i, r = performance.now();
+    if (!this._liveJoined) {
+      if (o - s < 0.3) return;
+      this._join(t, this._liveTarget(s, o, this._lowLatency ? Mi : fe), r);
+      return;
+    }
+    if (!this._settled) {
+      r - this._joinAt > Yr && (t.seeking || !t.paused) && this._rejoin(t, s, o, "live did not start", r);
+      return;
+    }
+    if (t.paused) return;
+    if (Math.abs(t.currentTime - this._liveMovedCt) > 0.01)
+      this._liveMovedCt = t.currentTime, this._liveMovedAt = r, this._rejoins = 0, this._liveRestarts = 0;
+    else if (r - this._liveMovedAt > Xr && o > t.currentTime + 0.5) {
+      this._rejoin(t, s, o, "live stalled", r);
+      return;
+    }
+    if (t.seeking) return;
+    const n = this._lowLatency ? Mi : fe, a = this._rangeAt(t.currentTime);
+    if (a && a[1] < s - 0.01 && a[1] - t.currentTime < 0.3) {
+      this._jump(t, this._liveTarget(s, o, n));
+      return;
+    }
+    const h = o - t.currentTime;
+    if (h > (this._lowLatency ? Kr : Wr) && this._jump(t, this._liveTarget(s, o, n)))
+      return;
+    const c = this._lowLatency ? qr : Vr;
+    let d = t.playbackRate;
+    h > n + c ? d = h > n + 2 ? Gr : jr : h <= n && (d = this._rate), d !== t.playbackRate && (t.playbackRate = d, this._log("rate", { rate: d, lag: +h.toFixed(2) }));
+  }
+  _join(t, i, s) {
+    const o = this._sb?.buffered;
+    this._log("join", {
+      target: this._wall(i),
+      from: this._wall(t.currentTime),
+      liveFirst: this._liveFirst != null ? this._wall(this._liveFirst) : null,
+      edge: o && o.length ? this._wall(o.end(o.length - 1)) : null,
+      rejoin: this._liveJoined
+    }), this._liveJoined = !0, this._awaitSeeked = !0, this._joinAt = s, this._liveMovedCt = i, this._liveMovedAt = s, t.currentTime = i, this._wantPlay && this._play();
+  }
+  /** Catch up inside the live footage - only forward, only to a keyframe the
+   *  element can show at once (a mid-GOP target made a slow decoder chew
+   *  through up to 5 s of frames, showing a spinner). */
+  _jump(t, i) {
+    return i <= t.currentTime + 0.3 ? !1 : (this._log("jump", { from: this._wall(t.currentTime), to: this._wall(i) }), t.currentTime = i, !0);
+  }
+  _rejoin(t, i, s, o, r) {
+    if (this._rejoins++, this._log("rejoin", { why: o, n: this._rejoins, restarts: this._liveRestarts, seeking: t.seeking, rs: t.readyState }), this._rejoins > Ci) {
+      if (++this._liveRestarts > Ci) {
+        this._giveUp("Live video could not be played. Tap LIVE to try again.");
         return;
       }
-      !t.paused && !t.seeking && r - t.currentTime > ar && (t.currentTime = r - ze);
+      this._hooks.problem?.(`${o}: restarting live`), this._stopStream(), this._dropMedia(), this._goLive();
+      return;
     }
+    this._hooks.problem?.(`${o}: re-joining live`), this._join(t, this._liveTarget(i, s, fe), r);
+  }
+  // ---- telemetry (debug: true) -----------------------------------------------
+  _log(t, i = {}) {
+    st() && P(t, { cam: this._cameraId, ...i });
+  }
+  /** Media time -> wall-clock seconds (2 decimals), for telemetry. */
+  _wall(t) {
+    return Math.round((t + this.base) * 100) / 100;
+  }
+  _rangesWall() {
+    const t = this._sb?.buffered, i = [];
+    if (!t) return i;
+    for (let s = 0; s < t.length; s++) i.push([this._wall(t.start(s)), this._wall(t.end(s))]);
+    return i.slice(-4);
+  }
+  _snapshot(t) {
+    const i = performance.now();
+    if (i - this._snapAt < 2e3) return;
+    this._snapAt = i;
+    const s = t.getVideoPlaybackQuality?.(), o = this._sb?.buffered, r = o && o.length ? o.end(o.length - 1) : null;
+    this._log("snap", {
+      live: this._live,
+      joined: this._liveJoined,
+      settled: this._settled,
+      ct: this._wall(t.currentTime),
+      lag: this._live ? +(Date.now() / 1e3 - (t.currentTime + this.base)).toFixed(2) : void 0,
+      buf: r != null ? +(r - t.currentTime).toFixed(2) : null,
+      ranges: this._rangesWall(),
+      rate: t.playbackRate,
+      paused: t.paused,
+      seeking: t.seeking,
+      rs: t.readyState,
+      muted: t.muted,
+      dropped: s?.droppedVideoFrames,
+      frames: s?.totalVideoFrames,
+      size: `${t.videoWidth}x${t.videoHeight}`,
+      ws: this._ws?.readyState,
+      stream: this._stream ? `${this._stream.kind}#${this._stream.gen}` : null,
+      fails: this._fails,
+      failed: this._failedMsg
+    });
   }
   _newEpoch(t) {
-    this._epoch++, this._settled = !1, this._target = t, this._twoStep = null, this._recoveries = 0;
+    this._epoch++, this._epochAt = performance.now(), this._settled = !1, this._target = t, this._twoStep = null, this._recoveries = 0, this._notYetSteps = 0;
   }
   _addKey(t) {
     const i = this._keys;
@@ -3789,8 +5727,8 @@ class fr {
   /** The last keyframe at or before t, not before `from` (null if unknown). */
   _keyBefore(t, i) {
     for (let s = this._keys.length - 1; s >= 0; s--) {
-      const r = this._keys[s];
-      if (r <= t + 1e-3) return r >= i - 0.05 ? r : null;
+      const o = this._keys[s];
+      if (o <= t + 1e-3) return o >= i - 0.05 ? o : null;
     }
     return null;
   }
@@ -3806,10 +5744,10 @@ class fr {
     const i = this._target;
     if (i == null) return;
     const s = this._rangeAt(i);
-    if (!s || s[1] - i < Vt) return;
+    if (!s || s[1] - i < Nt) return;
     this._recoveries++;
-    const r = this._keyBefore(i, s[0]);
-    this._awaitSeeked = !0, r != null && i - r > 0.05 ? (this._twoStep = i, t.currentTime = r) : t.currentTime = i;
+    const o = this._keyBefore(i, s[0]);
+    this._awaitSeeked = !0, o != null && i - o > 0.05 ? (this._twoStep = i, t.currentTime = o) : t.currentTime = i;
   }
   _play() {
     const t = this._video;
@@ -3818,18 +5756,21 @@ class fr {
   }
   // ---- the <video> ---------------------------------------------------------
   _bindVideo(t) {
-    t.addEventListener("seeked", this._onSeeked), t.addEventListener("timeupdate", this._onTimeUpdate), t.addEventListener("waiting", this._onMediaEvent), t.addEventListener("playing", this._onMediaEvent), t.addEventListener("pause", this._onMediaEvent), t.addEventListener("error", this._onVideoError), this._armFrameCallback(t), clearInterval(this._tickTimer), this._tickTimer = window.setInterval(this._tick, 250);
+    if (t.addEventListener("seeked", this._onSeeked), t.addEventListener("timeupdate", this._onTimeUpdate), t.addEventListener("waiting", this._onMediaEvent), t.addEventListener("playing", this._onMediaEvent), t.addEventListener("pause", this._onMediaEvent), t.addEventListener("error", this._onVideoError), st())
+      for (const i of Ii) t.addEventListener(i, this._onDbgVideoEvent);
+    this._armFrameCallback(t), clearInterval(this._tickTimer), this._tickTimer = window.setInterval(this._tick, 250);
   }
   _unbindVideo(t) {
     t.removeEventListener("seeked", this._onSeeked), t.removeEventListener("timeupdate", this._onTimeUpdate), t.removeEventListener("waiting", this._onMediaEvent), t.removeEventListener("playing", this._onMediaEvent), t.removeEventListener("pause", this._onMediaEvent), t.removeEventListener("error", this._onVideoError);
+    for (const s of Ii) t.removeEventListener(s, this._onDbgVideoEvent);
     const i = t;
     this._rvfc && i.cancelVideoFrameCallback && i.cancelVideoFrameCallback(this._rvfc), this._rvfc = 0;
   }
   _armFrameCallback(t) {
     const i = t;
     if (!i.requestVideoFrameCallback) return;
-    const s = (r, o) => {
-      this._video === t && (this._presented(o.mediaTime), this._rvfc = i.requestVideoFrameCallback(s));
+    const s = (o, r) => {
+      this._video === t && (this._presented(r.mediaTime), this._rvfc = i.requestVideoFrameCallback(s));
     };
     this._rvfc = i.requestVideoFrameCallback(s);
   }
@@ -3840,51 +5781,53 @@ class fr {
     const i = this._video;
     if (!i) return;
     if (!this._settled) {
-      if (this._awaitSeeked || !(this._live ? this._liveFirst != null && t >= this._liveFirst - 0.05 : this._target != null && t >= this._target - ur && t <= this._target + Le)) return;
-      this._settled = !0, this._hooks.change?.();
+      if (this._awaitSeeked || !(this._live ? this._liveFirst != null && t >= this._liveFirst - 0.05 : this._target != null && t >= this._target - an && t <= this._target + Fi)) return;
+      this._settled = !0, this._log("settled", { live: this._live, ms: Math.round(performance.now() - this._epochAt), at: this._wall(t) }), this._hooks.change?.(), this._live && this._startBackfill();
     }
     const s = (t + this.base) * 1e3;
-    if (this._lastWall = s, t > this._progressMark + 1 && (this._fails = 0, this._progressMark = t), !this._live && this._bound != null && !this._boundHit && !i.paused && s >= this._bound - De * Math.max(1, i.playbackRate)) {
+    if (this._lastWall = s, t > this._progressMark + 1 && (this._fails = 0, this._progressMark = t), !this._live && this._bound != null && !this._boundHit && !i.paused && s >= this._bound - Oi * Math.max(1, i.playbackRate)) {
       this._boundHit = !0, this._wantPlay = !1, i.pause(), this._hooks.frame?.(s), this._hooks.boundReached?.(), this._hooks.change?.();
       return;
     }
     this._hooks.frame?.(s);
   }
 }
-var mr = Object.defineProperty, vr = Object.getOwnPropertyDescriptor, g = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? vr(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && mr(t, i, r), r;
+var cn = Object.defineProperty, dn = Object.getOwnPropertyDescriptor, g = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? dn(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && cn(t, i, o), o;
 };
-const Oe = 5 * 6e4, gr = 400, br = 1200, Ht = 400, wr = 40, yr = 5, xr = 15, kr = 5e3, Sr = 15e3, $r = 350, Tr = 3e3, Ie = Gt + 5e3, Er = 250;
-function Be(e) {
+const Di = 5 * 6e4, pn = 4e3, Bi = 1, un = 400, _n = 1200, me = 400, fn = 40, mn = 5, vn = 15, gn = 5e3, bn = 15e3, gt = 1e4, wn = "M12.5,3C17.15,3 21.08,6.03 22.47,10.22L20.1,11C19.05,7.81 16.04,5.5 12.5,5.5C10.54,5.5 8.77,6.22 7.38,7.38L10,10H3V3L5.6,5.6C7.45,4 9.85,3 12.5,3Z", yn = "M11.5,3C14.15,3 16.55,4 18.4,5.6L21,3V10H14L16.62,7.38C15.23,6.22 13.46,5.5 11.5,5.5C7.96,5.5 4.95,7.81 3.9,11L1.53,10.22C2.92,6.03 6.85,3 11.5,3Z", xn = "M10,12V22H8V14H6V12H10M18,14V20C18,21.11 17.11,22 16,22H14A2,2 0 0,1 12,20V14A2,2 0 0,1 14,12H16C17.11,12 18,12.9 18,14M14,14V20H16V14H14Z", Ui = 128, ps = 247, kn = 0.9, us = 0.8, Sn = us, $n = 90, Tn = 350, En = 3e3, An = 5 * 6e4, Ni = Qt + 5e3, Mn = 2e3, Cn = 250;
+function Hi(e) {
   return e?.name === "NotAllowedError";
 }
-let f = class extends j {
+let f = class extends Z {
   constructor() {
-    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.liveAudioStart = "muted", this.stacked = !1, this.startFs = !1, this.fsHandoff = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this._player = new fr(() => this.hass, {
+    super(...arguments), this.nvrId = "", this.cameraId = "", this.gaps = [], this.targetTime = Date.now(), this.scrubbing = !1, this.live = !1, this.canTalk = !1, this.now = Date.now(), this.previewDir = "", this.previewMode = "sprites", this.fastPreview = "speed", this.tipEnabled = !1, this.clipEndTime = 0, this.accent = "", this.liveAudioStart = "muted", this.stacked = !1, this.startFs = !1, this.fsHandoff = !1, this.fsTimeline = !1, this.fsTimelineWidth = 165, this.fsTimelineGrabWidth = 0, this.fsTimelinePadding = 100, this.fsTimelineGutter = 140, this.fsTimelineScrim = 0.88, this.fsTimelineScrimExtend = 170, this.cardFs = !1, this.cardFsExit = !1, this.roundCtrl = !1, this.closable = !1, this.phone = !1, this.upright = !1, this.chromeHidden = !1, this.chromeAside = !1, this._uprightBarH = 0, this._posterOn = !1, this._posterGone = !1, this._posterFadeIn = !1, this.fsSide = 0, this.holdCtrl = !1, this._tlReach = 0, this._onTimelineReach = (e) => {
+      this._tlReach = e.detail.px;
+    }, this._hostW = 0, this._hostH = 0, this._player = new ln(() => this.hass, {
       frame: (e) => this._onFrame(e),
       change: () => this._onPlayerChange(),
       boundReached: () => this._finishEvent(),
       failed: (e) => {
-        this._error = e;
+        P("ui:error", { cam: this.cameraId, message: e }), this._error = e;
       },
       problem: (e) => this._reportPlaybackProblem(e),
       play: (e) => this._playFollowVideo(e)
-    }), this._mode = null, this._waiting = !1, this._blank = !1, this._liveSettled = !1, this._liveEpoch = 0, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._eventEndSent = !1, this._stageRestarts = [], this._lastTimeReport = 0, this._preview = new js(), this._previewActive = null, this._previewBlocks = {
+    }), this._mode = null, this._waiting = !1, this._waitingSince = 0, this._blank = !1, this._liveSettled = !1, this._liveEpoch = 0, this._followPaused = !1, this._followMuted = !0, this._tapToPlay = !1, this._followCtrl = !1, this._ctrlMode = "live", this._isFs = !1, this._forceRotate = !1, this._talk = "idle", this._talkMsg = "", this._talkMsgOn = !1, this._modalOn = !1, this._followRate = 1, this._nearLive = !1, this._livePausedState = !1, this._liveMuted = !0, this._livePreviewWarmed = !1, this._liveAudioAttempted = !1, this._liveAudioTrying = !1, this._eventEndSent = !1, this._stageRestarts = [], this._lastTimeReport = 0, this._preview = new Mr(), this._previewActive = null, this._previewBlocks = {
       a: void 0,
       b: void 0
     }, this._previewPending = {
       a: void 0,
       b: void 0
-    }, this._previewRetries = { a: 0, b: 0 }, this._previewToken = 0, this._coarseScrub = !1, this._scrubDir = 1, this._spriteReady = !1, this._spriteToken = 0, this._autoSprites = !1, this._seekSamples = [], this._reattached = !1, this._resumePaused = !1, this._resumeOnShow = !1, this._stageStuckSince = 0, this._stageLastCt = -1, this._hidden = !1, this._suspended = !1, this._hostIntersecting = !0, this._onDocVisibility = () => {
+    }, this._previewRetries = { a: 0, b: 0 }, this._previewToken = 0, this._coarseScrub = !1, this._scrubDir = 1, this._spriteReady = !1, this._spriteToken = 0, this._autoSprites = !1, this._seekSamples = [], this._reattached = !1, this._resumePaused = !1, this._resumeOnShow = !1, this._stageStuckSince = 0, this._stageLastCt = -1, this._hidden = !1, this._suspended = !1, this._hiddenAt = 0, this._hostIntersecting = !0, this._onDocVisibility = () => {
       this._onHostVisibility(this._hostIntersecting && !document.hidden);
     }, this._onTapToPlay = (e) => {
       e.stopPropagation(), this._tapToPlay = !1, this._mode === "live" ? (this._livePausedState = !1, this._reportLivePlaying(!0)) : this._followPaused = !1;
       const t = this._mainVideo;
       t && this._playFollowVideo(t);
     }, this._frozen = !1, this._showFollowCtrl = () => {
-      this._followCtrl = !0, clearTimeout(this._followCtrlTimer), !(this.scrubbing || this._seekDragAt !== void 0) && (this._followCtrlTimer = setTimeout(() => {
+      this._followCtrl = !0, clearTimeout(this._followCtrlTimer), !(this.scrubbing || this._seekDragAt !== void 0 || this.holdCtrl) && (this._followCtrlTimer = setTimeout(() => {
         this._followCtrl = !1;
       }, 5200));
     }, this._hideFollowCtrl = () => {
@@ -3925,10 +5868,27 @@ let f = class extends j {
         return;
       }
       this._followPaused = !this._followPaused, this._followPaused ? this._player.pause() : this._player.play(), this._showFollowCtrl();
+    }, this._toggleTalk = (e) => {
+      if (e.stopPropagation(), this._showFollowCtrl(), this._talk !== "idle") {
+        this._stopTalk();
+        return;
+      }
+      this._liveMuted && this._setSessionMuted(!1);
+      const t = new xo(this.hass, this.nvrId, this.cameraId, (i) => {
+        this._talker === t && (this._talker = void 0, this._talk = "idle", i && this._showTalkMsg(i));
+      });
+      this._talker = t, this._talk = "connecting", this._player.setLowLatency(!0), this._player.setLiveChannel(Bi), this._player.live(), t.start().then(
+        () => {
+          this._talker === t && (this._talk = "talking");
+        },
+        (i) => {
+          this._talker === t && (this._talker = void 0, this._talk = "idle", this._player.setLowLatency(!1), this._showTalkMsg(i.message || "Talking failed"));
+        }
+      );
     }, this._toggleFollowMute = (e) => {
       e.stopPropagation(), this._setSessionMuted(!this._followMuted), this._showFollowCtrl();
     }, this._toggleFs = (e) => {
-      if (e.stopPropagation(), this.fsHandoff && !this._isFs && !document.fullscreenElement) {
+      if (e.stopPropagation(), P("ui:fullscreen", { cam: this.cameraId, on: !this._isFs }), this.fsHandoff && !this._isFs && !document.fullscreenElement) {
         const t = (this._mode === "recorded" ? this._player.wallTime : void 0) ?? this.targetTime;
         this._player.pause(), this.dispatchEvent(
           new CustomEvent("fullscreen-handoff", {
@@ -3941,7 +5901,7 @@ let f = class extends j {
       }
       if (this.stacked) {
         const t = !this._isFs;
-        this._isFs = t, this._forceRotate = t && window.innerHeight > window.innerWidth, this._showFollowCtrl();
+        this._isFs = t, this._forceRotate = t && this._rotateForFs(), this._showFollowCtrl();
         return;
       }
       document.fullscreenElement ? document.exitFullscreen?.().catch(() => {
@@ -3949,6 +5909,34 @@ let f = class extends j {
       }), this._showFollowCtrl();
     }, this._onDlgClose = () => {
       this._modalOn = !1, this._isFs && (this._isFs = !1, this._forceRotate = !1);
+    }, this._pressFlash = (e) => {
+      const t = e.currentTarget;
+      if (t.disabled) return;
+      t.classList.add("pressed");
+      const i = performance.now(), s = () => {
+        for (const r of ["pointerup", "pointercancel", "pointerleave"])
+          t.removeEventListener(r, s);
+        const o = Math.max(0, $n - (performance.now() - i));
+        setTimeout(() => t.classList.remove("pressed"), o);
+      };
+      for (const o of ["pointerup", "pointercancel", "pointerleave"])
+        t.addEventListener(o, s);
+    }, this._spinArc = (e) => {
+      const i = e.currentTarget.querySelector(".arc");
+      if (!i) return;
+      const s = i.classList.contains("fwd") ? 40 : -40;
+      i.animate(
+        [
+          { transform: "rotate(0deg)", easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+          { transform: `rotate(${s}deg)`, offset: 0.3, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" },
+          { transform: "rotate(0deg)" }
+        ],
+        { duration: 560 }
+      );
+    }, this._exitCardFs = (e) => {
+      e.stopPropagation(), this.dispatchEvent(new CustomEvent("fs-exit", { bubbles: !0, composed: !0 }));
+    }, this._close = (e) => {
+      e.stopPropagation(), this.dispatchEvent(new CustomEvent("player-close", { bubbles: !0, composed: !0 }));
     }, this._onFsChange = () => {
       this.stacked || (this._isFs = !!document.fullscreenElement);
     }, this._liveSkipBack = (e) => {
@@ -3956,7 +5944,7 @@ let f = class extends j {
       const t = this._player.wallTime ?? Date.now();
       this.dispatchEvent(
         new CustomEvent("rewind", {
-          detail: { time: t - 15e3 },
+          detail: { time: t - gt },
           bubbles: !0,
           composed: !0
         })
@@ -3966,13 +5954,17 @@ let f = class extends j {
     }, this._toggleLiveMute = (e) => {
       e.stopPropagation(), this._setSessionMuted(!this._liveMuted), this._showFollowCtrl();
     }, this._skipBack = (e) => {
-      e.stopPropagation(), this._followSkip(-15e3);
+      e.stopPropagation(), this._followSkip(-gt);
     }, this._skipFwd = (e) => {
-      if (e.stopPropagation(), this._followNearLive()) {
+      e.stopPropagation();
+      const t = this._player.wallTime;
+      if (t == null) return;
+      const i = t + gt, s = this._player.timeshiftable(i) || i <= Date.now() - Qt;
+      if (i >= Date.now() - Mn || !s) {
         this.dispatchEvent(new CustomEvent("go-live", { bubbles: !0, composed: !0 }));
         return;
       }
-      this._followSkip(15e3);
+      this._followSkip(gt);
     }, this._toggleFollowRate = (e) => {
       e.stopPropagation(), !this._followNearLive() && (this._setFollowRate(this._followRate === 1 ? 2 : this._followRate === 2 ? 4 : 1), this._showFollowCtrl());
     }, this._onEventSeekDown = (e) => {
@@ -3986,18 +5978,21 @@ let f = class extends j {
       const i = (n) => {
         this._seekDragAt = this._eventSeekAt(n, t);
       }, s = (n) => {
-        t.removeEventListener("pointermove", i), t.removeEventListener("pointerup", r), t.removeEventListener("pointercancel", o);
+        t.removeEventListener("pointermove", i), t.removeEventListener("pointerup", o), t.removeEventListener("pointercancel", r);
         const a = this._seekDragAt;
         this._seekDragAt = void 0, n && a !== void 0 && this._seekFollowTo(a), this._showFollowCtrl();
-      }, r = () => s(!0), o = () => s(!1);
-      t.addEventListener("pointermove", i), t.addEventListener("pointerup", r), t.addEventListener("pointercancel", o), this._showFollowCtrl();
+      }, o = () => s(!0), r = () => s(!1);
+      t.addEventListener("pointermove", i), t.addEventListener("pointerup", o), t.addEventListener("pointercancel", r), this._showFollowCtrl();
     }, this._onStripPress = (e) => {
       if (e.stopPropagation(), this._keepCtrlAlive(), e.composedPath()[0] !== e.currentTarget) return;
       this.querySelector('[slot="fs-timeline"]')?.beginDrag?.(e);
     };
   }
   connectedCallback() {
-    super.connectedCallback(), document.addEventListener("fullscreenchange", this._onFsChange), this.addEventListener("pointerdown", this._keepCtrlAlive, !0), this.addEventListener("pointermove", this._keepCtrlAlive, !0), this.addEventListener("pointerdown", this._onPressCapture, !0), this.addEventListener("pointerup", this._onReleaseCapture, !0), this.addEventListener("pointercancel", this._onCancelCapture, !0), this.addEventListener("click", this._onClickCapture, !0), this._visObserver = new IntersectionObserver(
+    super.connectedCallback(), document.addEventListener("fullscreenchange", this._onFsChange), this.addEventListener("timeline-reach", this._onTimelineReach), this._hostRo = new ResizeObserver((e) => {
+      const t = e[e.length - 1].contentRect, i = Math.round(t.width), s = Math.round(t.height);
+      i && i !== this._hostW && (this._hostW = i), s && s !== this._hostH && (this._hostH = s);
+    }), this._hostRo.observe(this), this.addEventListener("pointerdown", this._keepCtrlAlive, !0), this.addEventListener("pointermove", this._keepCtrlAlive, !0), this.addEventListener("pointerdown", this._onPressCapture, !0), this.addEventListener("pointerup", this._onReleaseCapture, !0), this.addEventListener("pointercancel", this._onCancelCapture, !0), this.addEventListener("click", this._onClickCapture, !0), this._visObserver = new IntersectionObserver(
       (e) => {
         this._hostIntersecting = e[e.length - 1].isIntersecting, this._onDocVisibility();
       },
@@ -4005,14 +6000,14 @@ let f = class extends j {
     ), this._visObserver.observe(this), document.addEventListener("visibilitychange", this._onDocVisibility), this._stageWatch = setInterval(() => this._checkStage(), 1e3), this.hasUpdated && (this._reattached = !0, this.requestUpdate());
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), clearInterval(this._stageWatch), this._mode === "recorded" && (this._resumeAt = this._player.wallTime ?? this._resumeAt, this._resumePaused = this._followPaused), this._loadedForTime = void 0, this._resetAudioSession(), clearTimeout(this._followCtrlTimer), clearTimeout(this._scrubFineTimer), clearTimeout(this._livePreviewWarmTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this.removeEventListener("pointerdown", this._onPressCapture, !0), this.removeEventListener("pointerup", this._onReleaseCapture, !0), this.removeEventListener("pointercancel", this._onCancelCapture, !0), this.removeEventListener("click", this._onClickCapture, !0), clearTimeout(this._pendingTap?.timer), this._pendingTap = void 0, this._visObserver?.disconnect(), this._visObserver = void 0, document.removeEventListener("visibilitychange", this._onDocVisibility), clearTimeout(this._suspendTimer), this._suspended = !1, this._player.suspend(), this._resetPreviewSlots(), this._preview.destroy(), qt(this.renderRoot);
+    super.disconnectedCallback(), clearInterval(this._stageWatch), this._stopTalk(), this._ctrlRO?.disconnect(), this._ctrlRO = void 0, this._ctrlObserved = void 0, this._mode === "recorded" && (this._resumeAt = this._player.wallTime ?? this._resumeAt, this._resumePaused = this._followPaused), this._loadedForTime = void 0, this._resetAudioSession(), clearTimeout(this._followCtrlTimer), clearTimeout(this._scrubFineTimer), clearTimeout(this._livePreviewWarmTimer), this._releaseFrame(), document.removeEventListener("fullscreenchange", this._onFsChange), this.removeEventListener("timeline-reach", this._onTimelineReach), this._hostRo?.disconnect(), this.removeEventListener("pointerdown", this._keepCtrlAlive, !0), this.removeEventListener("pointermove", this._keepCtrlAlive, !0), this.removeEventListener("pointerdown", this._onPressCapture, !0), this.removeEventListener("pointerup", this._onReleaseCapture, !0), this.removeEventListener("pointercancel", this._onCancelCapture, !0), this.removeEventListener("click", this._onClickCapture, !0), clearTimeout(this._pendingTap?.timer), this._pendingTap = void 0, this._visObserver?.disconnect(), this._visObserver = void 0, document.removeEventListener("visibilitychange", this._onDocVisibility), clearTimeout(this._suspendTimer), this._suspended = !1, this._player.suspend(), this._resetPreviewSlots(), this._preview.destroy(), Se(this.renderRoot);
   }
   willUpdate(e) {
-    if (this.clipEndTime > 0 && (e.has("targetTime") || e.has("cameraId")) || e.has("cameraId") ? this._releaseFrame() : e.has("scrubbing") && !this.scrubbing && this._holdFrame(!0), e.has("cameraId") && (this._loadedForTime = void 0), e.has("scrubbing") && !this.scrubbing)
-      for (const i of [this._previewVidA, this._previewVidB]) i && At(i);
+    if (this.clipEndTime > 0 && (e.has("targetTime") || e.has("cameraId")) || e.has("cameraId") ? this._releaseFrame() : e.has("scrubbing") && !this.scrubbing && this._holdFrame(!0), e.has("cameraId") && (this._loadedForTime = void 0), e.has("poster") && (clearTimeout(this._posterTimer), this._posterOn = !!this.poster, this._posterGone = !1, this._posterFadeIn = !!this.poster && this._mode !== null), (e.has("live") && !this.live || e.has("cameraId") || e.has("canTalk") && !this.canTalk) && this._stopTalk(), e.has("scrubbing") && !this.scrubbing)
+      for (const i of [this._previewVidA, this._previewVidB]) i && Jt(i);
   }
   _onHostVisibility(e) {
-    e !== !this._hidden && (this._hidden = !e, clearTimeout(this._suspendTimer), this._hidden ? (this._resumeOnShow = !this.live && !this.scrubbing && this._mode === "recorded" && !this._followPaused, this._resetAudioSession(), this._muteAndPauseAll(), this._suspendTimer = setTimeout(() => this._suspend(), Tr)) : this._suspended ? this._unsuspend() : this._resumeAfterVisible());
+    e !== !this._hidden && (this._hidden = !e, clearTimeout(this._suspendTimer), this._hidden ? (this._hiddenAt = Date.now(), this._resumeOnShow = !this.live && !this.scrubbing && this._mode === "recorded" && !this._followPaused, this._resetAudioSession(), this._muteAndPauseAll(), this._suspendTimer = setTimeout(() => this._suspend(), En)) : this._suspended ? (!this.live && Date.now() - this._hiddenAt > An && this.dispatchEvent(new CustomEvent("go-live", { bubbles: !0, composed: !0 })), this._unsuspend()) : this._resumeAfterVisible());
   }
   /** Hidden for a while (a closed popup, a view HA keeps cached behind another,
    *  the screen off): let go of EVERYTHING, exactly as a detach would. Pausing
@@ -4020,7 +6015,7 @@ let f = class extends j {
    *  coming. A hidden card on the wall tablet once held its decoders for hours
    *  and still had them when the viewer opened live fullscreen on top of it. */
   _suspend() {
-    !this._hidden || this._suspended || (this._mode === "recorded" && (this._resumeAt = this._player.wallTime ?? this._resumeAt ?? this.targetTime, this._resumePaused = this._followPaused, this._loadedForTime = void 0), this._player.suspend(), this._resetPreviewSlots(), this._suspended = !0);
+    !this._hidden || this._suspended || (P("ui:suspend", { cam: this.cameraId, mode: this._mode }), this._stopTalk(), this._mode === "recorded" && (this._resumeAt = this._player.wallTime ?? this._resumeAt ?? this.targetTime, this._resumePaused = this._followPaused, this._loadedForTime = void 0), this._player.suspend(), this._resetPreviewSlots(), this._suspended = !0);
   }
   _unsuspend() {
     this._suspended = !1, this._reattached = !0, this._resumeOnShow = !1;
@@ -4043,7 +6038,7 @@ let f = class extends j {
    *  resumes too: becoming visible again IS the return (re-opening the popup),
    *  and staying paused looked like a picture frozen for no reason. */
   _resumeAfterVisible() {
-    if (this.live) {
+    if (P("ui:resume", { cam: this.cameraId, live: this.live }), this.live) {
       !this._livePausedState && !this.scrubbing && this._startLive();
       return;
     }
@@ -4077,18 +6072,18 @@ let f = class extends j {
       this._stageStuckSince = s;
       return;
     }
-    const r = s - this._stageStuckSince;
-    if (r < 2500) return;
-    if (r < 6e3) {
+    const o = s - this._stageStuckSince;
+    if (o < 2500) return;
+    if (o < 6e3) {
       e.paused && this._playFollowVideo(e);
       return;
     }
-    const o = this._player.wallTime ?? this.targetTime;
+    const r = this._player.wallTime ?? this.targetTime;
     if (this._stageStuckSince = 0, this._stageLastCt = -1, this._stageRestarts = this._stageRestarts.filter((n) => s - n < 12e4), this._stageRestarts.length >= 2) {
-      this._reportPlaybackProblem(`playback stalled ${Math.round(r / 1e3)}s — giving up`), e.pause(), this._error = "Playback keeps stalling on this device. Tap an event or the timeline to try again.";
+      this._reportPlaybackProblem(`playback stalled ${Math.round(o / 1e3)}s — giving up`), e.pause(), this._error = "Playback keeps stalling on this device. Tap an event or the timeline to try again.";
       return;
     }
-    this._stageRestarts.push(s), this._reportPlaybackProblem(`playback stalled ${Math.round(r / 1e3)}s — restarting`), this._player.seek(o, { play: !0 });
+    this._stageRestarts.push(s), this._reportPlaybackProblem(`playback stalled ${Math.round(o / 1e3)}s — restarting`), this._player.seek(r, { play: !0 });
   }
   /** Tell the card whether LIVE is playing: it pins the playhead to now only
    *  while it is, and on a resume it snaps back to now (live resumes at the
@@ -4105,22 +6100,26 @@ let f = class extends j {
   // ---- the player's hooks ----------------------------------------------------
   /** Every presented frame of the current seek / live switch (wall-clock ms). */
   _onFrame(e) {
-    if (this._blank && (this._blank = !1), this._frozen && this._releaseFrame(), this._mode !== "recorded" || this.scrubbing) return;
+    if (this._blank && (this._blank = !1, this._posterOn || this._mainVideo?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: Lt, easing: "ease-out" })), this._frozen && this._releaseFrame(), this._posterOn && !this._posterGone && (this._posterGone = !0, clearTimeout(this._posterTimer), this._posterTimer = setTimeout(() => this._posterOn = !1, Lt + 60)), this._mode !== "recorded" || this.scrubbing) return;
     const t = performance.now(), i = this._lastWallReported === void 0 ? void 0 : this._lastWallReported + (t - this._lastTimeReport) * (this._mainVideo?.playbackRate ?? 1);
-    if (!(i === void 0 || Math.abs(e - i) > 1e3) && t - this._lastTimeReport < Er) return;
+    if (!(i === void 0 || Math.abs(e - i) > 1e3) && t - this._lastTimeReport < Cn) return;
     this._lastTimeReport = t, this._lastWallReported = e, this.dispatchEvent(
       new CustomEvent("playback-time", { detail: { time: e }, bubbles: !0, composed: !0 })
     ), this.clipEndTime > 0 && (this._followNow = e);
-    const r = Date.now() - e < Ie;
-    r !== this._nearLive && (this._nearLive = r), r && this._followRate !== 1 && this._setFollowRate(1);
+    const o = Date.now() - e < Ni;
+    o !== this._nearLive && (this._nearLive = o), o && this._followRate !== 1 && this._setFollowRate(1);
   }
   /** Loading / settled / failed changed. */
   _onPlayerChange() {
     const e = this._player.loading;
-    if (e !== this._waiting && (this._waiting = e), this._mode === "live" && this._player.settled && !this._liveSettled) {
+    if (e !== this._waiting) {
+      const t = performance.now();
+      P("ui:waiting", { cam: this.cameraId, on: e, mode: this._mode, ms: e ? void 0 : Math.round(t - this._waitingSince) }), e && (this._waitingSince = t), this._waiting = e;
+    }
+    if (this._mode === "live" && this._player.settled && !this._liveSettled) {
       this._liveSettled = !0, this._scheduleLivePreviewWarm();
       const t = this._mainVideo;
-      t && Cs(this.liveAudioStart, this._audioUserChoice, this._liveAudioAttempted) && this._tryAutoLiveAudio(t);
+      t && _r(this.liveAudioStart, this._audioUserChoice, this._liveAudioAttempted) && this._tryAutoLiveAudio(t);
     }
   }
   // ---- what the stage plays ---------------------------------------------------
@@ -4133,32 +6132,32 @@ let f = class extends j {
   /** Follow the live edge — in the same element, so whatever is on screen
    *  stays until the first live frame. */
   _startLive() {
-    this._mode = "live", this._error = void 0, this._tapToPlay = !1, this._followNow = void 0, this._nearLive = !1, this._resetLiveSession();
+    P("ui:live", { cam: this.cameraId, from: this._mode }), this._mode = "live", this._error = void 0, this._tapToPlay = !1, this._followNow = void 0, this._nearLive = !1, this._resetLiveSession();
     const e = this._mainVideo;
-    e && (e.muted = this._liveMuted), this._player.live(), this._reportLivePlaying(!0), this._flashFollowCtrl();
+    e && (e.muted = this._liveMuted), this._player.setLowLatency(this._talk !== "idle"), this._player.setLiveChannel(this._talk !== "idle" ? Bi : null), this._player.live(), this._reportLivePlaying(!0), this._flashFollowCtrl();
   }
   /** Play recorded footage from `at` (an event's start, a tapped time, where a
    *  hidden card left off). `fresh`: a new selection, so the old picture is
    *  hidden until the new one presents. */
   _playRecorded(e, t = {}) {
-    this._mode = "recorded", this._error = void 0, this._tapToPlay = !1, this._nearLive = !1, this._followPaused = !(t.play ?? !0), t.fresh && (this._blank = !0), this._player.setBound(this._eventEnd || null);
+    P("ui:recorded", { cam: this.cameraId, at: Math.round(e), fresh: t.fresh, play: t.play, event: !!this._eventEnd }), this._mode = "recorded", this._error = void 0, this._tapToPlay = !1, this._nearLive = !1, this._followPaused = !(t.play ?? !0), t.fresh && !this._posterOn && (this._blank = !0), this._player.setBound(this._eventEnd || null), this._player.setLiveChannel(null);
     const i = this._mainVideo;
     i && (i.muted = this._followMuted), this._player.setRate(this._followRate), this._seekRecorded(e), this._flashFollowCtrl();
   }
   /** Position recorded playback at `tIn` (clamped to the event / what exists). */
   _seekRecorded(e) {
     let t = Math.max(this._seekFloor, Math.min(e, this._seekCeiling));
-    !this._player.isLoaded(t) && !this._eventEnd && (t = Math.min(t, Date.now() - Gt)), this._followNow = t, this._lastWallReported = void 0, this._player.seek(t, { play: !this._followPaused });
+    !this._player.isAvailable(t) && !this._eventEnd && (t = Math.min(t, Date.now() - Qt)), this._followNow = t, this._lastWallReported = void 0, this._player.seek(t, { play: !this._followPaused });
   }
   firstUpdated() {
-    this._fsDlg && (this._fsDlg.open = !0), this.startFs && (this.stacked ? (this._forceRotate = window.innerHeight > window.innerWidth, this._isFs = !0) : this.requestFullscreen?.().catch(() => {
+    this._fsDlg && (this._fsDlg.open = !0), this.startFs && (this.stacked ? (this._forceRotate = this._rotateForFs(), this._isFs = !0) : this.requestFullscreen?.().catch(() => {
     }));
   }
   updated(e) {
-    if (e.has("_isFs") && this.stacked && this._syncFsDialog(), this.stacked && !this._isFs && !this._modalOn && this._fsDlg && !this._fsDlg.open && (this._fsDlg.open = !0), e.has("_followCtrl") || e.has("_isFs"))
+    if (e.has("_isFs") && this.stacked && this._syncFsDialog(), this.stacked && !this._isFs && !this._modalOn && this._fsDlg && !this._fsDlg.open && (this._fsDlg.open = !0), e.has("_followCtrl") || e.has("_isFs") || e.has("cardFs"))
       for (const i of this.querySelectorAll('[slot="fs-timeline"]'))
         i.toggleAttribute("inert", !this._followCtrl);
-    if (e.has("_isFs") && e.get("_isFs") === !0 && !this._isFs && this.startFs && this.dispatchEvent(new CustomEvent("fs-exit", { bubbles: !0, composed: !0 })), e.has("scrubbing") && (clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, this.scrubbing || this._preview.abortSheets(), this.scrubbing ? clearTimeout(this._followCtrlTimer) : this._followCtrl && this._showFollowCtrl()), (e.has("_isFs") || e.has("_forceRotate")) && this.dispatchEvent(
+    if (e.has("holdCtrl") && (this.holdCtrl || this._followCtrl) && this._showFollowCtrl(), e.has("_isFs") && e.get("_isFs") === !0 && !this._isFs && this.startFs && this.dispatchEvent(new CustomEvent("fs-exit", { bubbles: !0, composed: !0 })), e.has("scrubbing") && (clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, this.scrubbing || this._preview.abortSheets(), this.scrubbing ? clearTimeout(this._followCtrlTimer) : this._followCtrl && this._showFollowCtrl()), this._syncUprightCtrl(), (e.has("_isFs") || e.has("_forceRotate")) && this.dispatchEvent(
       new CustomEvent("fs-change", {
         detail: { fs: this._isFs, rotated: this._isFs && this._forceRotate },
         bubbles: !0,
@@ -4181,13 +6180,18 @@ let f = class extends j {
       if (this._loadedForTime !== this.targetTime || t) {
         this._loadedForTime = this.targetTime;
         const i = t && this._resumeAt !== void 0 ? this._resumeAt : void 0, s = i !== void 0 && this._resumePaused;
-        this.clipEndTime > this.targetTime + 500 ? (i === void 0 && (this._eventEndSent = !1), this._followNow = void 0, this._playRecorded(i ?? this.targetTime, {
-          fresh: i === void 0,
-          play: !s && !(i !== void 0 && this._eventEndSent)
-        })) : this._playRecorded(i ?? this.targetTime, {
-          fresh: e.has("cameraId"),
-          play: !s
-        });
+        if (this.clipEndTime > this.targetTime + 500) {
+          i === void 0 && (this._eventEndSent = !1), this._followNow = void 0;
+          const o = this.stacked && this.roundCtrl && this._mode === "recorded" && !e.has("cameraId");
+          this._playRecorded(i ?? this.targetTime, {
+            fresh: i === void 0 && !o,
+            play: !s && !(i !== void 0 && this._eventEndSent)
+          });
+        } else
+          this._playRecorded(i ?? this.targetTime, {
+            fresh: e.has("cameraId"),
+            play: !s
+          });
       }
       this._resumeAt = void 0;
     }
@@ -4221,36 +6225,36 @@ let f = class extends j {
   _updateScrubSpeed(e) {
     const t = performance.now(), i = this._scrubVelPrev;
     this._scrubVelPrev = { t: e, at: t };
-    const s = i ? t - i.at : 0, r = i && s > 0 && s <= Ht ? Math.abs(e - i.t) / s : 0;
+    const s = i ? t - i.at : 0, o = i && s > 0 && s <= me ? Math.abs(e - i.t) / s : 0;
     if (i && e !== i.t && (this._scrubDir = e > i.t ? 1 : -1), this.fastPreview === "off") {
       this._coarseScrub = !1;
       return;
     }
     if (this.fastPreview === "always") {
-      this._coarseScrub = !!i && e !== i.t && s > 0 && s <= Ht;
+      this._coarseScrub = !!i && e !== i.t && s > 0 && s <= me;
       return;
     }
-    const o = this._preview.blockMs();
-    this._coarseScrub = this._coarseScrub ? r > o / br : r > o / gr;
+    const r = this._preview.blockMs();
+    this._coarseScrub = this._coarseScrub ? o > r / _n : o > r / un;
   }
   _scheduleFineScrubUpgrade() {
     clearTimeout(this._scrubFineTimer), this._scrubFineTimer = void 0, !(!this._coarseScrub || !this.scrubbing) && (this._scrubFineTimer = setTimeout(() => {
       this._scrubFineTimer = void 0, this.scrubbing && this._updatePreview();
-    }, Ht + 25));
+    }, me + 25));
   }
   async _resolvePlayable(e) {
     if (this._coarseScrub) {
-      const r = this._preview.overviewBlockFor(e);
-      if (r) {
-        if (this._unitReady(r) || (this._prefetchUnit(r), this._useSprites())) return r;
+      const o = this._preview.overviewBlockFor(e);
+      if (o) {
+        if (this._unitReady(o) || (this._prefetchUnit(o), this._useSprites())) return o;
         if (this._previewActive) return;
       }
     }
     const t = this._preview.tipBlockFor(e, this._preview.headEnd());
     if (t) {
       if (this._preview.isCached(t)) return t;
-      this._preview.getBlock(t).then((r) => {
-        r && this.scrubbing && this._updatePreview();
+      this._preview.getBlock(t).then((o) => {
+        o && this.scrubbing && this._updatePreview();
       });
     }
     const i = await this._resolveFine(e);
@@ -4265,7 +6269,7 @@ let f = class extends j {
     return this.previewMode === "sprites" ? !0 : this.previewMode === "video" ? !1 : this._autoSprites;
   }
   _spriteVariants(e) {
-    return Ws(
+    return Ar(
       this._coarseScrub,
       this._preview.hasSprites(e),
       this._preview.hasFastSprites(e)
@@ -4292,32 +6296,72 @@ let f = class extends j {
    *  claims to be. One-way on purpose: a device that has proved slow shouldn't
    *  flip back mid-session on one lucky sample. */
   _noteSeek(e) {
-    if (this._autoSprites || this.previewMode !== "auto" || (this._seekSamples.push(e), this._seekSamples.length < yr)) return;
-    this._seekSamples.length > xr && this._seekSamples.shift();
-    const t = this._seekSamples.slice().sort((s, r) => s - r);
-    t[Math.floor(t.length / 2)] > wr && (this._autoSprites = !0, this.requestUpdate());
+    if (this._autoSprites || this.previewMode !== "auto" || (this._seekSamples.push(e), this._seekSamples.length < mn)) return;
+    this._seekSamples.length > vn && this._seekSamples.shift();
+    const t = this._seekSamples.slice().sort((s, o) => s - o);
+    t[Math.floor(t.length / 2)] > fn && (this._autoSprites = !0, this.requestUpdate());
   }
   /** Paint the frame for `t` from the sprite sheets. Returns false when this
    *  unit has no atlas (tip, mapped part, or a block the job hasn't reached),
    *  so the caller can fall back to the video path for it. */
+  /** The footage's pixel size: the camera entity's resolution (channel 0 = the
+   *  stream the player shows), else the player's own video. undefined while
+   *  neither is known. */
+  _footageSize() {
+    const e = this.hass?.states?.[this.cameraId]?.attributes;
+    let t = Number(e?.width) || 0, i = Number(e?.height) || 0;
+    return t > 0 && i > 0 || (t = this._mainVideo?.videoWidth || 0, i = this._mainVideo?.videoHeight || 0), t > 0 && i > 0 ? [t, i] : void 0;
+  }
+  /** Backing size of the sprite canvas. The scrub job squeezes every keyframe
+   *  into a fixed 640x360 tile whatever the camera's shape (a 1920x2560
+   *  portrait doorbell included), so the canvas takes the FOOTAGE's aspect and
+   *  the tile is drawn stretched back into it; object-fit: contain then frames
+   *  the preview exactly like the <video> it stands in for. A 16:9 camera
+   *  stays 640x360, as before. */
+  _spriteSize(e) {
+    const t = this._footageSize();
+    return t ? [e.tileW, Math.max(1, Math.round(e.tileW * t[1] / t[0]))] : [e.tileW, e.tileH];
+  }
+  _syncUprightCtrl() {
+    const e = this.cardFs && this.upright ? this : this.stacked && this._isFs && !this._forceRotate ? this._fsDlg : void 0, t = this.renderRoot.querySelector(".vctrl");
+    if (!e || !t) {
+      this._ctrlRO?.disconnect(), this._ctrlRO = void 0, this._ctrlObserved = void 0;
+      return;
+    }
+    this._ctrlObserved !== t && (this._ctrlRO?.disconnect(), this._ctrlRO = new ResizeObserver(() => {
+      const i = t.offsetHeight;
+      e.style.setProperty("--upc-fs-ctrl-h", `${i}px`), e === this && (this._uprightBarH = i);
+    }), this._ctrlRO.observe(t), this._ctrlObserved = t);
+  }
+  /** Phone fullscreen turns the player to landscape on an upright phone (turn
+   *  the phone to watch) — except for footage that is itself PORTRAIT (the
+   *  doorbell): rotated, it would play sideways in a small band, so it stays
+   *  upright and fills the screen, with the overlay timeline down its right
+   *  edge (the `upright` layout). Unknown footage size keeps the rotation. */
+  _rotateForFs() {
+    if (window.innerHeight <= window.innerWidth) return !1;
+    const e = this._footageSize();
+    return !(e && e[1] > e[0]);
+  }
   async _drawSprite(e, t) {
     const i = await this._preferredSprite(e);
     if (!i) return !1;
-    const { set: s } = i, r = s.cols * s.rows, o = this._spriteToken;
+    const { set: s } = i, o = s.cols * s.rows, r = this._spriteToken;
     let n = this._preview.tileIndexFor(e, s, t);
-    const a = Math.floor(n / r), h = s.sheets[a];
+    const a = Math.floor(n / o), h = s.sheets[a];
     if (!h) return !0;
-    let u = this._preview.hasSheet(h) ? await this._preview.getSheet(h) : void 0;
-    if (u || (u = await this._preview.getSheet(h)), !u || !this.scrubbing || o !== this._spriteToken || (n = this._preview.tileIndexFor(e, s, this.targetTime), Math.floor(n / r) !== a)) return !0;
+    let c = this._preview.hasSheet(h) ? await this._preview.getSheet(h) : void 0;
+    if (c || (c = await this._preview.getSheet(h)), !c || !this.scrubbing || r !== this._spriteToken || (n = this._preview.tileIndexFor(e, s, this.targetTime), Math.floor(n / o) !== a)) return !0;
     const d = this._preview.tileAt(s, n);
     if (!d) return !0;
     const l = this._spriteCanvas;
     if (!l) return !0;
-    (l.width !== s.tileW || l.height !== s.tileH) && (l.width = s.tileW, l.height = s.tileH);
-    const _ = l.getContext("2d");
-    if (!_) return !0;
+    const [_, v] = this._spriteSize(s);
+    (l.width !== _ || l.height !== v) && (l.width = _, l.height = v);
+    const w = l.getContext("2d");
+    if (!w) return !0;
     try {
-      _.drawImage(u, d.sx, d.sy, s.tileW, s.tileH, 0, 0, s.tileW, s.tileH);
+      w.drawImage(c, d.sx, d.sy, s.tileW, s.tileH, 0, 0, _, v);
     } catch {
       return !0;
     }
@@ -4329,11 +6373,11 @@ let f = class extends j {
   async _warmSprites(e, t) {
     const i = await this._preferredSprite(e);
     if (!i) return;
-    const { set: s } = i, r = s.cols * s.rows, o = e.end - e.start;
-    if (o <= 0) return;
-    const n = Math.min(1, Math.max(0, (t - e.start) / o)), a = Math.floor(Math.min(s.count - 1, Math.floor(n * s.count)) / r), h = this._scrubDir || 1;
-    for (const u of this._coarseScrub ? [a, a + h] : [a, a - 1, a + 1]) {
-      const d = s.sheets[u];
+    const { set: s } = i, o = s.cols * s.rows, r = e.end - e.start;
+    if (r <= 0) return;
+    const n = Math.min(1, Math.max(0, (t - e.start) / r)), a = Math.floor(Math.min(s.count - 1, Math.floor(n * s.count)) / o), h = this._scrubDir || 1;
+    for (const c of this._coarseScrub ? [a, a + h] : [a, a - 1, a + 1]) {
+      const d = s.sheets[c];
       d && !this._preview.hasSheet(d) && this._preview.getSheet(d, !0);
     }
   }
@@ -4385,7 +6429,7 @@ let f = class extends j {
   async _warmPreview() {
     if (!this.previewDir || !this.hass || (this._preview.configure(this.hass, this.previewDir), this._preview.setTipEnabled(this.tipEnabled), this._preview.onTipUpdate = () => {
       this.scrubbing && this._updatePreview();
-    }, this.scrubbing && this.tipEnabled && this.targetTime > Date.now() - Oe && this._preview.requestTip(), await this._preview.ensureIndex(this.targetTime), !this.scrubbing)) return;
+    }, this.scrubbing && this.tipEnabled && this.targetTime > Date.now() - Di && this._preview.requestTip(), await this._preview.ensureIndex(this.targetTime), !this.scrubbing)) return;
     const e = await this._resolveFine(this.targetTime);
     e && this._prefetchUnit(e), this._warmOverview(this.targetTime);
   }
@@ -4415,7 +6459,7 @@ let f = class extends j {
    *  once its frame has decoded — the active element never blanks. A time with
    *  no cached coverage keeps the last shown frame (UniFi-style). */
   async _updatePreview() {
-    if (!this.previewDir || !this.hass || (this._preview.configure(this.hass, this.previewDir), await this._preview.ensureIndex(this.targetTime), this.tipEnabled && this.targetTime > Date.now() - Oe && (this._preview.requestTip(), this._preview.ensureTip()), !this.scrubbing)) return;
+    if (!this.previewDir || !this.hass || (this._preview.configure(this.hass, this.previewDir), await this._preview.ensureIndex(this.targetTime), this.tipEnabled && this.targetTime > Date.now() - Di && (this._preview.requestTip(), this._preview.ensureTip()), !this.scrubbing)) return;
     this._updateScrubSpeed(this.targetTime), this._scheduleFineScrubUpgrade(), this._warmOverview(this.targetTime);
     const e = await this._resolvePlayable(this.targetTime);
     if (!e || !this.scrubbing) return;
@@ -4426,9 +6470,9 @@ let f = class extends j {
     const t = this._previewActive;
     if (t && this._previewBlocks[t]?.key === e.key) {
       this._seekPreview(t);
-      for (const r of [e.start - 1, e.end + 1]) {
-        const o = this._preview.blockFor(r);
-        o && !o.mapped && o.key !== e.key && this._preview.getBlock(o);
+      for (const o of [e.start - 1, e.end + 1]) {
+        const r = this._preview.blockFor(o);
+        r && !r.mapped && r.key !== e.key && this._preview.getBlock(r);
       }
       return;
     }
@@ -4441,11 +6485,11 @@ let f = class extends j {
     this._previewWant = e.key;
     const s = ++this._previewToken;
     try {
-      if (!this._preview.isCached(e) && (await new Promise((o) => setTimeout(o, 120)), s !== this._previewToken || !this.scrubbing))
+      if (!this._preview.isCached(e) && (await new Promise((r) => setTimeout(r, 120)), s !== this._previewToken || !this.scrubbing))
         return;
-      const r = await this._preview.getBlock(e);
-      if (!r || s !== this._previewToken || this.scrubbing && (await this._resolvePlayable(this.targetTime))?.key !== e.key || s !== this._previewToken) return;
-      this._loadPreviewInto(this._standbySlot(), e, r);
+      const o = await this._preview.getBlock(e);
+      if (!o || s !== this._previewToken || this.scrubbing && (await this._resolvePlayable(this.targetTime))?.key !== e.key || s !== this._previewToken) return;
+      this._loadPreviewInto(this._standbySlot(), e, o);
     } finally {
       this._previewWant === e.key && (this._previewWant = void 0);
     }
@@ -4471,13 +6515,13 @@ let f = class extends j {
     if (!t || !i) return;
     const s = t.duration;
     if (!isFinite(s) || s <= 0) return;
-    const r = Math.min(1, Math.max(0, (this.targetTime - i.start) / (i.end - i.start))), o = Math.min(r * s, Math.max(0, s - 0.05));
-    if (Math.abs(t.currentTime - o) < 0.02) {
+    const o = Math.min(1, Math.max(0, (this.targetTime - i.start) / (i.end - i.start))), r = Math.min(o * s, Math.max(0, s - 0.05));
+    if (Math.abs(t.currentTime - r) < 0.02) {
       e !== this._previewActive && this._promotePreview(e);
       return;
     }
     if (t.seeking) {
-      this._previewPending[e] = o;
+      this._previewPending[e] = r;
       return;
     }
     if (this._previewPending[e] = void 0, this.previewMode === "auto") {
@@ -4486,7 +6530,7 @@ let f = class extends j {
       };
       t.addEventListener("seeked", a, { once: !0 });
     }
-    t.currentTime = o;
+    t.currentTime = r;
   }
   /** Show a standby slot: a class swap only (no transition). Refuses to promote
    *  a unit whose frame isn't decoded yet (that would blank the stage — the
@@ -4511,8 +6555,8 @@ let f = class extends j {
   // Bounded per unit; a persistent failure just keeps the last good frame.
   _onPreviewError(e) {
     if (e === this._previewActive) {
-      const s = this._previewBlocks[e], r = this._previewSrcOf(e);
-      s && r && this._previewRetries[e] < 2 && (this._previewRetries[e]++, this._loadPreviewInto(this._standbySlot(), s, r));
+      const s = this._previewBlocks[e], o = this._previewSrcOf(e);
+      s && o && this._previewRetries[e] < 2 && (this._previewRetries[e]++, this._loadPreviewInto(this._standbySlot(), s, o));
       return;
     }
     const t = this._previewVideo(e), i = this._previewSrcOf(e);
@@ -4552,7 +6596,7 @@ let f = class extends j {
   /** The end of the event being played, never later than the NVR has recorded;
    *  0 when no event is (continuous timeline playback). Playback STOPS here. */
   get _eventEnd() {
-    return this.clipEndTime > this.targetTime ? Math.min(this.clipEndTime, Date.now() - Gt) : 0;
+    return this.clipEndTime > this.targetTime ? Math.min(this.clipEndTime, Date.now() - tn) : 0;
   }
   /** The event's end has played: the player paused on its last frame; tell
    *  the host (once). Nothing follows it — rolling on into what came next read
@@ -4582,15 +6626,15 @@ let f = class extends j {
     e.play().then(() => {
       this._tapToPlay = !1;
     }).catch((t) => {
-      Be(t) && (e.muted = !0, e.play().then(() => {
+      Hi(t) && (e.muted = !0, e.play().then(() => {
         this._tapToPlay = !1, this._audioUserChoice === "unmuted" && (e.volume = 1, e.muted = !1);
       }).catch((i) => {
-        Be(i) && (this._tapToPlay = !0);
+        Hi(i) && (P("ui:tapToPlay", { cam: this.cameraId }), this._tapToPlay = !0);
       }));
     });
   }
   _reportPlaybackProblem(e) {
-    console.warn(`[unifi-timeline] ${e}`);
+    console.warn(`[unifi-timeline] ${e}`), P("problem", { cam: this.cameraId, message: e });
     const t = Date.now();
     f._problemTimes = f._problemTimes.filter((i) => t - i < 36e5), !(f._problemTimes.length >= 10 || !this.hass) && (f._problemTimes.push(t), this.hass.callWS({
       type: "call_service",
@@ -4609,10 +6653,10 @@ let f = class extends j {
     try {
       const i = Math.min(32, t.width), s = Math.min(32, t.height);
       if (!i || !s) return !0;
-      const r = e.getImageData(0, 0, i, s).data;
-      let o = 0;
-      for (let n = 0; n < r.length; n += 4) o += (r[n] + r[n + 1] + r[n + 2]) / 3;
-      return o / (r.length / 4) < 3;
+      const o = e.getImageData(0, 0, i, s).data;
+      let r = 0;
+      for (let n = 0; n < o.length; n += 4) r += (o[n] + o[n + 1] + o[n + 2]) / 3;
+      return r / (o.length / 4) < 3;
     } catch {
       return !0;
     }
@@ -4628,21 +6672,21 @@ let f = class extends j {
    *  `preferSprite`: the sprite canvas first (it is what is on screen in sprite
    *  mode, and holds exactly the instant scrubbed to). */
   _holdFrame(e = !1) {
-    const t = oi ? void 0 : this._visibleVideo(), i = this._spriteReady && this._spriteCanvas && this._spriteCanvas.width > 0 ? this._spriteCanvas : void 0, r = (e ? [i, t] : [t, i]).find((d) => !!d), o = this._freezeCanvas;
-    if (!r || !o) return;
-    const n = r instanceof HTMLCanvasElement, a = n ? r.width : r.videoWidth, h = n ? r.height : r.videoHeight;
+    const t = De ? void 0 : this._visibleVideo(), i = this._spriteReady && this._spriteCanvas && this._spriteCanvas.width > 0 ? this._spriteCanvas : void 0, o = (e ? [i, t] : [t, i]).find((d) => !!d), r = this._freezeCanvas;
+    if (!o || !r) return;
+    const n = o instanceof HTMLCanvasElement, a = n ? o.width : o.videoWidth, h = n ? o.height : o.videoHeight;
     if (!a || !h) return;
-    let u = !1;
+    let c = !1;
     try {
-      (o.width !== a || o.height !== h) && (o.width = a, o.height = h);
-      const d = o.getContext("2d", { willReadFrequently: !0 });
-      d?.clearRect(0, 0, o.width, o.height), d?.drawImage(r, 0, 0, o.width, o.height), u = !!d && !this._looksBlack(d, o);
+      (r.width !== a || r.height !== h) && (r.width = a, r.height = h);
+      const d = r.getContext("2d", { willReadFrequently: !0 });
+      d?.clearRect(0, 0, r.width, r.height), d?.drawImage(o, 0, 0, r.width, r.height), c = !!d && !this._looksBlack(d, r);
     } catch {
-      u = !1;
+      c = !1;
     }
-    u && (this._frozen = !0, o.removeAttribute("hidden"), clearTimeout(this._freezeTimer), this._freezeTimer = setTimeout(
+    c && (this._frozen = !0, r.removeAttribute("hidden"), clearTimeout(this._freezeTimer), this._freezeTimer = setTimeout(
       () => this._releaseFrame(),
-      this.live ? kr : Sr
+      this.live ? gn : bn
     ));
   }
   _releaseFrame() {
@@ -4662,7 +6706,7 @@ let f = class extends j {
     for (const t of e.composedPath()) {
       if (t === this) break;
       if (t instanceof Element && t.matches(
-        "button, input, select, a, .vseek, .tap-play, .evt-wrap, .zoom-panel, .zoom-fab, .live-arrow"
+        "button, input, select, a, .vseek, .tap-play, .evt-wrap, .zoom-panel, .zoom-fab, .live-arrow, .tl-foot, .fs-top, .fs-side"
       ))
         return !0;
     }
@@ -4673,6 +6717,14 @@ let f = class extends j {
   _commitTap() {
     const e = this._pendingTap;
     this._pendingTap = void 0, e && (clearTimeout(e.timer), e.visible ? this._hideFollowCtrl() : this._showFollowCtrl());
+  }
+  /** End talking, if it is on (any reason: Stop, leaving live, hidden...). */
+  _stopTalk() {
+    const e = this._talker;
+    this._talker = void 0, this._talk !== "idle" && (this._talk = "idle"), e?.stop();
+  }
+  _showTalkMsg(e) {
+    this._talkMsg = e, this._talkMsgOn = !0, clearTimeout(this._talkMsgTimer), this._talkMsgTimer = setTimeout(() => this._talkMsgOn = !1, pn);
   }
   /** Promote/demote the player dialog to/from the top layer to match _isFs.
    *  Enter uses `open = false` (not close()) to demote the inline dialog so no
@@ -4697,7 +6749,7 @@ let f = class extends j {
    *  until the card is hidden. Unmuting resumes playback the user had not
    *  paused (a muted autoplay refusal leaves it stopped). */
   _setSessionMuted(e) {
-    this._audioUserChoice = e ? "muted" : "unmuted", this._liveMuted = e, this._followMuted = e, this._liveAudioAttempted = !0;
+    P("ui:mute", { cam: this.cameraId, muted: e }), this._audioUserChoice = e ? "muted" : "unmuted", this._liveMuted = e, this._followMuted = e, this._liveAudioAttempted = !0;
     const t = this._mainVideo;
     if (!t || (t.muted = e, e)) return;
     t.volume = 1, !(this._mode === "live" ? this._livePausedState : this._followPaused) && t.paused && t.play().catch(() => {
@@ -4720,7 +6772,7 @@ let f = class extends j {
     this._liveAudioAttempted = !0, this._liveAudioTrying = !0;
     const t = this._liveEpoch, i = e.currentTime;
     try {
-      if (e.muted = !1, await e.play(), await new Promise((s) => setTimeout(s, $r)), t !== this._liveEpoch || e !== this._mainVideo || e.paused || e.currentTime <= i + 0.01)
+      if (e.muted = !1, await e.play(), await new Promise((s) => setTimeout(s, Tn)), t !== this._liveEpoch || e !== this._mainVideo || e.paused || e.currentTime <= i + 0.01)
         throw new Error("audible autoplay did not remain active");
       this._liveMuted = !1;
     } catch {
@@ -4747,7 +6799,7 @@ let f = class extends j {
   /** Near the recording edge: skip-forward goes live, speed stays at 1x. */
   _followNearLive() {
     const e = this._player.wallTime;
-    return e != null && Date.now() - e < Ie;
+    return e != null && Date.now() - e < Ni;
   }
   _setFollowRate(e) {
     this._followRate !== e && (this._followRate = e, this._player.setRate(e));
@@ -4757,62 +6809,220 @@ let f = class extends j {
    *  the recording edge (and its skip-forward goes live there). */
   _renderCtrlBar(e, t = !1) {
     t || (this._ctrlMode = e);
-    const i = e === "live", s = i ? this._livePausedState : this._followPaused, r = i ? this._liveMuted : this._followMuted, o = i ? 1 : this._followRate, n = !i && this._followRate > 1, a = i || this._nearLive, h = i ? this._liveSkipBack : this._skipBack, u = i ? this._toggleLivePlay : this._toggleFollowPlay, d = this._skipFwd, l = this._toggleFollowRate, _ = i ? this._toggleLiveMute : this._toggleFollowMute, v = !i && this._nearLive ? "Go live" : "Forward 15s";
-    return p`
-      <div
-        class="vctrl ${this._followCtrl ? "show" : ""} ${this._isFs ? "fs" : ""} ${this._fsStrip ? "fs-inset" : ""} ${t ? "inert" : ""}"
-        style="--upc-fs-tl-w:${this.fsTimelineWidth}px;--upc-fs-tl-gut:${this.fsTimelineGutter}px;--upc-fs-tl-pad:${this.fsTimelinePadding}px"
-        @click=${(y) => y.stopPropagation()}
-      >
-        <button @click=${h} title="Back 15s">
-          <ha-icon icon="mdi:rewind-15"></ha-icon>
+    const i = e === "live", s = i ? this._livePausedState : this._followPaused, o = i ? this._liveMuted : this._followMuted, r = i ? 1 : this._followRate, n = !i && this._followRate > 1, a = i || this._nearLive, h = i ? this._liveSkipBack : this._skipBack, c = i ? this._toggleLivePlay : this._toggleFollowPlay, d = this._skipFwd, l = this._toggleFollowRate, _ = i ? this._toggleLiveMute : this._toggleFollowMute, v = !i && this._nearLive ? "Go live" : `Forward ${gt / 1e3}s`, w = `Back ${gt / 1e3}s`, T = i && this.canTalk, z = this.canTalk ? u`<div class="vtalk-msg ${this._talkMsgOn ? "show" : ""}" role="status">${this._talkMsg}</div>` : b, O = u`<button
+      class="vctrl-speed ${n ? "on" : ""}"
+      ?disabled=${a}
+      @click=${i ? void 0 : l}
+      title="Playback speed"
+    >
+      ${r}<span class="vx">×</span>
+    </button>`, C = u`<button
+      class="vmute ${o ? "" : "on"}"
+      @click=${_}
+      title=${o ? "Unmute" : "Mute"}
+    >
+      <ha-icon icon=${o ? "mdi:volume-off" : "mdi:volume-high"}></ha-icon>
+    </button>`, W = this.canTalk ? u`<button
+          class="vtalk ${this._talk}"
+          ?disabled=${this._talk === "connecting"}
+          @click=${this._toggleTalk}
+          title=${this._talk === "talking" ? "Stop talking" : "Talk"}
+        >
+          <ha-icon icon=${this._talk === "idle" ? "mdi:microphone-off" : "mdi:microphone"}></ha-icon>
+        </button>` : b, G = T ? W : b;
+    if (this.cardFs || this.roundCtrl) {
+      const H = `${this._followCtrl ? "show" : ""} ${t ? "inert" : ""}`, et = this._tlReach || this.fsTimelineWidth, Y = this.fsTimeline ? et + this.fsTimelineGutter : 0, I = this.cardFs ? this.phone ? Math.max(Y, this.fsSide) : Y + this.fsSide : 0, y = !this.cardFs && !i && this.clipEndTime > this.targetTime, S = this.cardFs ? this.phone ? Sn : 1 : this.stacked ? us : kn, V = ps * S, rt = this._hostW ? (this._hostW - I - V - 48) / 2 : Ui * S, ms = Math.max(28 * S, Math.min(Ui * S, Math.floor(rt))), Be = this._hostW && this._hostW - I < V + 2 * 28 * S + 8 ? "crowded" : "", vs = this.upright ? 0 : I / 2, gs = this.stacked && this.roundCtrl && this._hostW ? `--upc-vc-top:${this._picCentreY()}px;` : "", Ft = `--upc-fs-shift:${I / 2}px;--upc-bar-shift:${vs}px;--upc-vc-gap:${ms}px;--upc-vc-row:${V}px;--vc-k:${S};${gs}`, Ue = (Q) => u`<svg class="vc-skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <g transform="translate(0 -1)">
+            <path class="arc ${Q ? "fwd" : ""}" d=${Q ? yn : wn}></path>
+          </g>
+          <path transform="translate(0 1)" d=${xn}></path>
+        </svg>`, Ne = u`<button
+          class="vc-skip press"
+          @pointerdown=${this._pressFlash}
+          @click=${(Q) => {
+        this._spinArc(Q), h(Q);
+      }}
+          title=${w}
+        >
+          ${Ue(!1)}
         </button>
-        <button @click=${u} title=${s ? "Play" : "Pause"}>
+        <button
+          class="vc-play press"
+          @pointerdown=${this._pressFlash}
+          @click=${c}
+          title=${s ? "Play" : "Pause"}
+        >
+          <ha-icon icon=${s ? "mdi:play" : "mdi:pause"}></ha-icon>
+        </button>
+        <button
+          class="vc-skip press"
+          ?disabled=${i}
+          @pointerdown=${this._pressFlash}
+          @click=${(Q) => {
+        i || (this._spinArc(Q), d(Q));
+      }}
+          title=${v}
+        >
+          ${Ue(!0)}
+        </button>`;
+      return u`
+        ${z}
+        <div class="vshade ${H} ${y ? "seek" : ""}" style=${Ft}></div>
+        ${this.upright ? b : u`<div class="vcshade ${H} ${Be}" style=${Ft}></div>`}
+        ${this.upright ? b : u`<div class="vcenter ${H} ${Be}" style=${Ft}>${Ne}</div>`}
+        <div
+          class="vctrl fs card ${H} ${T ? "has-talk" : ""}"
+          style=${Ft}
+          @click=${(Q) => Q.stopPropagation()}
+        >
+          ${this.upright ? u`<div class="vc-row">${Ne}</div>` : b}
+          ${y ? this._renderClipSeek() : b}
+          ${this.cardFs ? this._renderAxisGroup(O, C, W, T) : this._renderClipGroup(O, C, G)}
+        </div>
+      `;
+    }
+    return u`
+      ${z}
+      <div
+        class="vctrl ${this._followCtrl ? "show" : ""} ${this._fsLook ? "fs" : ""} ${this._fsStrip ? "fs-inset" : ""} ${t ? "inert" : ""} ${T ? "has-talk" : ""}"
+        style="--upc-fs-tl-w:${this.fsTimelineWidth}px;--upc-fs-tl-gut:${this.fsTimelineGutter}px;--upc-fs-tl-pad:${this.fsTimelinePadding}px;--upc-fs-side:${this.fsSide}px"
+        @click=${(H) => H.stopPropagation()}
+      >
+        <button @click=${h} title=${w}>
+          <ha-icon icon="mdi:rewind-10"></ha-icon>
+        </button>
+        <button @click=${c} title=${s ? "Play" : "Pause"}>
           <ha-icon icon=${s ? "mdi:play" : "mdi:pause"}></ha-icon>
         </button>
         <button ?disabled=${i} @click=${i ? void 0 : d} title=${v}>
-          <ha-icon icon="mdi:fast-forward-15"></ha-icon>
+          <ha-icon icon="mdi:fast-forward-10"></ha-icon>
         </button>
-        <button
-          class="vctrl-speed ${n ? "on" : ""}"
-          ?disabled=${a}
-          @click=${i ? void 0 : l}
-          title="Playback speed"
-        >
-          ${o}×
-        </button>
-        <button @click=${_} title=${r ? "Unmute" : "Mute"}>
-          <ha-icon icon=${r ? "mdi:volume-off" : "mdi:volume-high"}></ha-icon>
-        </button>
+        ${O}${C}${G}
         <button class="vfs" @click=${this._toggleFs} title="Fullscreen">
           <ha-icon icon=${this._isFs ? "mdi:fullscreen-exit" : "mdi:fullscreen"}></ha-icon>
         </button>
-        ${!i && this.clipEndTime > this.targetTime ? this._renderEventSeekRow() : p`<div class="vctrl-spacer"></div>`}
+        ${!i && this.clipEndTime > this.targetTime ? this._renderEventSeekRow() : u`<div class="vctrl-spacer"></div>`}
       </div>
     `;
+  }
+  /** The camera screen's bottom row (cardFs): speed, sound, talk (live only)
+   *  and exit (when the host has somewhere to go back to), centred as a whole
+   *  on the middle row's axis whichever of them it holds - each button placed
+   *  by its index (.vg-slot). Talk keeps its slot while away, half a place
+   *  past sound - right where it stands in the row it leaves or joins. */
+  _renderAxisGroup(e, t, i, s) {
+    const o = this.cardFsExit, r = 2 + (s ? 1 : 0) + (o ? 1 : 0);
+    return u`<div class="vctrl-group axis" style=${`--n:${r}`}>
+      <span class="vg-slot" style="--i:0">${e}</span>
+      <span class="vg-slot" style="--i:1">${t}</span>
+      ${this.canTalk ? u`<span class="vg-slot ${s ? "" : "off"}" style=${`--i:${s ? 2 : 1.5}`}>${i}</span>` : b}
+      ${o ? u`<span class="vg-slot" style=${`--i:${r - 1}`}>
+            <button class="press" @pointerdown=${this._pressFlash} @click=${this._exitCardFs} title="Exit full screen">
+              <ha-icon icon="mdi:fullscreen-exit"></ha-icon>
+            </button>
+          </span>` : b}
+    </div>`;
+  }
+  /** A clip player's bottom row (roundCtrl): speed, sound, "View in Timeline",
+   *  Close. */
+  _renderClipGroup(e, t, i) {
+    return u`<div class="vctrl-group">
+      ${e}${t}${i}
+      ${this.fsHandoff ? u`<button
+            class="vc-tl press"
+            @pointerdown=${this._pressFlash}
+            @click=${this._toggleFs}
+            title="Watch what happened before and after, on the camera's timeline"
+          >
+            View in Timeline
+          </button>` : b}
+      ${this.closable ? u`<button class="press" @pointerdown=${this._pressFlash} @click=${this._close} title="Close">
+            <ha-icon icon="mdi:close"></ha-icon>
+          </button>` : b}
+    </div>`;
+  }
+  /** The phone's camera screen: its timeline steps aside while the events
+   *  panel is open (user, 2026-10-28: "the list replaces the timeline") -
+   *  sideways it would push the ruler into the middle of the picture, upright
+   *  off the screen's left edge. */
+  _tlAside() {
+    return this.cardFs && this.phone && this.fsSide > 0;
+  }
+  /** Where the event being played is, for its seek bar: `frac` of the way,
+   *  `sec` whole seconds in of `secs` (its length as the events list rounds
+   *  it - "8s" - so the bar never reads 0:07 at an 8-second event's end).
+   *  An event that has played to its end reads as ended: the player stops it
+   *  a little short of its last frame (END_MARGIN_MS - MSE stalls at the
+   *  buffered end), which showed "−0:01" left at the end (user, 2026-10-31). */
+  _clipProgress() {
+    const e = this.targetTime, t = Math.max(1, this.clipEndTime - e), s = this._seekDragAt === void 0 && this._eventEndSent && this._player.atBound ? e + t : this._seekDragAt ?? this._followNow ?? e, o = Math.min(t, Math.max(0, s - e)), r = Math.max(1, Math.round(t / 1e3));
+    return { frac: o / t, sec: o >= t ? r : Math.min(r, Math.floor(o / 1e3)), secs: r };
   }
   /** Time readout + seek bar over the EVENT being played, start to end, in
    *  wall-clock time — the same timeline the footage is on, so a position on
    *  the bar IS an instant and seeking to it is _seekFollowTo. */
   _renderEventSeekRow() {
-    const e = this.targetTime, t = Math.max(1, this.clipEndTime - e), i = this._seekDragAt ?? this._followNow ?? e, s = Math.min(t, Math.max(0, i - e)), r = s / t;
-    return p`<div class="vseek-row">
-      <span class="vtime">${this._fmtClock(s / 1e3)} / ${this._fmtClock(t / 1e3)}</span>
+    const { frac: e, sec: t, secs: i } = this._clipProgress();
+    return u`<div class="vseek-row">
+      <span class="vtime">${this._fmtClock(t)} / ${this._fmtClock(i)}</span>
       <div class="vseek" @pointerdown=${this._onEventSeekDown}>
         <div class="vseek-track">
-          <div class="vseek-fill" style="width:${r * 100}%"></div>
-          <div class="vseek-knob" style="left:${r * 100}%"></div>
+          <div class="vseek-fill" style="width:${e * 100}%"></div>
+          <div class="vseek-knob" style="left:${e * 100}%"></div>
         </div>
       </div>
     </div>`;
   }
+  /** The round controls' seek bar over the event (.vc-seek): elapsed on the
+   *  left, what is left on the right - the same drag as the classic bar. */
+  _renderClipSeek() {
+    const { frac: e, sec: t, secs: i } = this._clipProgress();
+    return u`<div class="vc-seek">
+      <span class="vtime left">${this._fmtClock(t)}</span>
+      <div class="vseek ${this._seekDragAt !== void 0 ? "drag" : ""}" @pointerdown=${this._onEventSeekDown}>
+        <div class="vseek-track">
+          <div class="vseek-fill" style="width:${e * 100}%"></div>
+          <div class="vseek-knob" style="left:${e * 100}%"></div>
+        </div>
+      </div>
+      <span class="vtime">−${this._fmtClock(i - t)}</span>
+    </div>`;
+  }
   _eventSeekAt(e, t) {
-    const i = t.getBoundingClientRect(), s = this._forceRotate ? (e.clientY - i.top) / i.height : (e.clientX - i.left) / i.width, r = Math.min(1, Math.max(0, s));
-    return this.targetTime + r * (this.clipEndTime - this.targetTime);
+    const i = t.getBoundingClientRect(), s = this._forceRotate ? (e.clientY - i.top) / i.height : (e.clientX - i.left) / i.width, o = Math.min(1, Math.max(0, s));
+    return this.targetTime + o * (this.clipEndTime - this.targetTime);
+  }
+  /** Where the picture is drawn in this element (object-fit contain), in its
+   *  own coordinates: what a zoom transition flies into or out of. */
+  videoBox() {
+    const e = this._footageSize(), t = this.poster instanceof HTMLCanvasElement ? this.poster : void 0, i = e ? e[0] / e[1] : t ? t.width / t.height : 16 / 9, s = this.cardFs && this.upright ? this.clientHeight - this._uprightBarH : this.clientHeight, o = ir({ x: 0, y: 0, w: this.clientWidth, h: s }, i);
+    return this.stacked && this.roundCtrl && (o.y = 0), o;
+  }
+  /** The phone's clip card: the middle of its (top-aligned) picture. */
+  _picCentreY() {
+    const e = this._footageSize(), t = e ? e[0] / e[1] : 16 / 9, i = this._hostH || this.clientHeight;
+    return Math.min(i, this._hostW / t) / 2;
+  }
+  /** The frame on screen as a canvas, where that is safe (see frameOf). */
+  snapshot() {
+    return rr(this._mainVideo);
+  }
+  /** The footage's pixel size, when known (see _footageSize). */
+  footageSize() {
+    return this._footageSize();
+  }
+  /** The poster, filling the box the video will fill. */
+  _renderPoster(e) {
+    const t = this.videoBox(), i = `poster ${this._posterGone ? "gone" : ""} ${this._posterFadeIn ? "in" : ""}`, s = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`;
+    return e instanceof HTMLCanvasElement ? u`<div class=${i} style=${s}>${e}</div>` : u`<img class=${i} style=${s} src=${e} alt="" />`;
+  }
+  /** Fullscreen, or its card-sized equivalent (cardFs): the same chrome. */
+  get _fsLook() {
+    return this._isFs || this.cardFs;
   }
   /** True while the host's slotted overlay timeline is on screen. */
   get _fsStrip() {
-    return this._isFs && this.fsTimeline;
+    return this._fsLook && this.fsTimeline;
   }
   /** The fullscreen overlay timeline strip. Rendered as a SIBLING of the stage
    *  (inside the dialog on mobile) so it survives the stage being swapped for
@@ -4823,43 +7033,51 @@ let f = class extends j {
    *  auto-hide so a long drag can't make the strip vanish under the finger. */
   _renderFsTimeline() {
     if (!this._fsStrip) return b;
-    const e = (r) => {
-      r.stopPropagation(), this._keepCtrlAlive();
+    const e = (o) => {
+      o.stopPropagation(), this._keepCtrlAlive();
     }, t = this.fsTimelineScrim, i = `linear-gradient(to left, rgba(0,0,0,${t}) 30%, rgba(0,0,0,${(t * 0.78).toFixed(3)}) 55%, rgba(0,0,0,${(t * 0.35).toFixed(3)}) 80%, transparent)`, s = this.fsTimelineGrabWidth > 0 ? `calc(${Math.max(this.fsTimelineWidth, this.fsTimelineGrabWidth)}px + ${this.fsTimelineGutter}px)` : "100%";
-    return p`<div
-      class="fs-tl ${this._followCtrl ? "show" : ""}"
-      style="--upc-fs-tl-w:${this.fsTimelineWidth}px;--upc-fs-tl-boxw:${s};--upc-fs-tl-gut:${this.fsTimelineGutter}px;--upc-fs-tl-pad:${this.fsTimelinePadding}px;--upc-fs-tl-scrim-ext:${this.fsTimelineScrimExtend}px;--upc-fs-tl-bg:${i}"
+    return u`<div
+      class="fs-tl ${this._followCtrl ? "show" : ""} ${this._tlAside() ? "aside" : ""}"
+      style="--upc-fs-tl-w:${this.fsTimelineWidth}px;--upc-fs-tl-boxw:${s};--upc-fs-tl-gut:${this.fsTimelineGutter}px;--upc-fs-tl-pad:${this.fsTimelinePadding}px;--upc-fs-tl-scrim-ext:${this.fsTimelineScrimExtend}px;--upc-fs-tl-bg:${i};--upc-fs-side:${this.fsSide}px"
       @pointerdown=${this._onStripPress}
       @pointermove=${e}
       @wheel=${e}
-      @pointerup=${(r) => r.stopPropagation()}
-      @pointercancel=${(r) => r.stopPropagation()}
-      @click=${(r) => r.stopPropagation()}
+      @pointerup=${(o) => o.stopPropagation()}
+      @pointercancel=${(o) => o.stopPropagation()}
+      @click=${(o) => o.stopPropagation()}
     >
       <slot name="fs-timeline"></slot>
     </div>`;
   }
+  /** cardFs: the host's camera picker (top) and events panel (right). */
+  _renderCardChrome() {
+    if (!this.cardFs) return b;
+    const e = this._followCtrl ? "show" : "";
+    return u`<div class="fs-top ${e}"><slot name="fs-top"></slot></div>
+      <div class="fs-side ${e}"><slot name="fs-side"></slot></div>`;
+  }
   render() {
-    const e = this._stage(), t = p`<canvas class="freeze" ?hidden=${!this._frozen}></canvas>`;
-    return this.stacked ? p`<dialog
-      class="fs-wrap ${this._isFs ? "fs-active" : ""} ${this._forceRotate ? "rotate" : ""}"
+    const e = this._stage(), t = u`<canvas class="freeze" ?hidden=${!this._frozen}></canvas>`;
+    return this.stacked ? u`<dialog
+      class="fs-wrap ${this._isFs ? "fs-active" : ""} ${this._isFs ? this._forceRotate ? "rotate" : "upright" : ""}"
       @close=${this._onDlgClose}
     >
       ${e}${t}${this._renderFsTimeline()}
-    </dialog>` : p`${e}${t}${this._renderFsTimeline()}`;
+    </dialog>` : u`${e}${t}${this._renderFsTimeline()}${this._renderCardChrome()}`;
   }
   _stage() {
     if (!this.nvrId || !this.cameraId)
-      return p`<div class="stage"><div class="msg error">Missing camera / nvr_id.</div></div>`;
-    const e = this.live && !this.scrubbing, t = e && !this.hass?.states[this.cameraId], i = !this.live && this._waiting && ei(this.gaps, this.targetTime), s = !this.live && !this.scrubbing && this._mode === null;
-    return p`
+      return u`<div class="stage"><div class="msg error">Missing camera / nvr_id.</div></div>`;
+    const e = this.live && !this.scrubbing, t = e && !this.hass?.states[this.cameraId], i = !this.live && this._waiting && is(this.gaps, this.targetTime), s = !this.live && !this.scrubbing && this._mode === null, o = this.stacked && this.roundCtrl && this._hostW ? `--upc-vc-top:${this._picCentreY()}px;` : "";
+    return u`
       <div
         class="stage"
-        style=${this.accent ? `--upc-accent:${this.accent}` : ""}
+        style=${(this.accent ? `--upc-accent:${this.accent};` : "") + o}
         @pointermove=${this.scrubbing ? void 0 : this._onStageHover}
       >
         <video class="main ${this._blank ? "blank" : ""}" playsinline preload="auto" muted></video>
-        ${this.scrubbing ? p`
+        ${this._posterOn && this.poster && this._hostW ? this._renderPoster(this.poster) : b}
+        ${this.scrubbing ? u`
               <!-- SPRITE-PREVIEW-2026-08-04: the decoder-free surface. Always in
                    the tree while scrubbing so _drawSprite can paint it
                    synchronously, but only revealed once it holds a frame — until
@@ -4888,7 +7106,7 @@ let f = class extends j {
                 @error=${() => this._onPreviewError("b")}
               ></video>
             ` : b}
-        ${this.scrubbing ? b : this._tapToPlay ? p`<button class="tap-play" @click=${this._onTapToPlay} title="Play">▶</button>` : t ? p`<div class="msg error">Camera entity not found.</div>` : this._error ? p`<div class="msg error">${this._error}</div>` : i ? p`<div class="msg">Footage unavailable — camera was offline.</div>` : s ? p`<div class="msg">Tap the timeline to play from a time.</div>` : this._waiting && this._blank ? p`<div class="overlay"><div class="spinner"></div></div>` : this._waiting ? p`<div class="overlay buffering" aria-label="Loading footage">
+        ${this.scrubbing ? b : this._tapToPlay ? u`<button class="tap-play" @click=${this._onTapToPlay} title="Play">▶</button>` : t ? u`<div class="msg error">Camera entity not found.</div>` : this._error ? u`<div class="msg error">${this._error}</div>` : i ? u`<div class="msg">Footage unavailable — camera was offline.</div>` : s ? u`<div class="msg">Tap the timeline to play from a time.</div>` : this._waiting && this._blank && !this._posterOn ? u`<div class="overlay"><div class="spinner"></div></div>` : this._waiting ? u`<div class="overlay buffering" aria-label="Loading footage">
                             <div class="spinner"></div>
                           </div>` : b}
         ${this.scrubbing ? this._renderCtrlBar(this._ctrlMode, !0) : this._renderCtrlBar(e ? "live" : "follow")}
@@ -4896,7 +7114,7 @@ let f = class extends j {
     `;
   }
 };
-f.styles = rt`
+f.styles = ft`
     :host {
       display: block;
       position: relative; /* the inline fs-wrap dialog fills the host */
@@ -4975,8 +7193,13 @@ f.styles = rt`
        only the CONTROLS are padded in from the screen edges. The gradient
        background (.vctrl) still spans full-width and reaches the bottom edge —
        just the buttons inside get the extra padding. */
-    :host(:fullscreen) .vctrl {
+    :host(:fullscreen) .vctrl,
+    :host([cardfs]) .vctrl:not(.card) {
       padding: 20px 48px 40px;
+    }
+    /* The card-sized fullscreen: the card's own corners clip the picture. */
+    :host([cardfs]) .stage {
+      border-radius: 0;
     }
     video {
       position: absolute;
@@ -4995,6 +7218,69 @@ f.styles = rt`
     /* A new selection waits for its own first frame (see _blank). */
     video.main.blank {
       opacity: 0;
+    }
+    /* The picture a zoom transition flew in, until the video's first frame -
+       then it cross-fades away (see poster). It fills the box the VIDEO will
+       fill (placed in _stage), cropped: an event thumbnail is a square crop,
+       never the camera's shape, and filling the video's box means the video
+       arrives in exactly the shape the picture had. */
+    .poster {
+      position: absolute;
+      object-fit: cover;
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity ${Lt}ms ease-out;
+    }
+    .poster.gone {
+      opacity: 0;
+    }
+    .poster.in {
+      animation: upc-poster-in ${Lt}ms ease-out;
+    }
+    @keyframes upc-poster-in {
+      from {
+        opacity: 0;
+      }
+    }
+    div.poster > canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* A zoom transition is flying this player: only the picture shows. The
+       chrome's own opacity transitions bring it back afterwards. */
+    :host([chromehidden]) .vctrl,
+    :host([chromehidden]) .vcenter,
+    :host([chromehidden]) .vshade,
+    :host([chromehidden]) .vcshade,
+    :host([chromehidden]) .fs-tl,
+    :host([chromehidden]) .fs-top,
+    :host([chromehidden]) .fs-side,
+    :host([chromehidden]) .vtalk-msg,
+    :host([chromehidden]) .overlay,
+    :host([chromehidden]) .tap-play {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: none !important; /* gone at once; back with their own fade */
+    }
+    /* The host's modal is up (the camera screen's calendar, 2026-10-30 - it
+       sat on the play controls): every control, the timeline and the panels
+       fade away, untappable, and come back with their own fades after. */
+    :host([chromeaside]) .vctrl,
+    :host([chromeaside]) .vcenter,
+    :host([chromeaside]) .vshade,
+    :host([chromeaside]) .vcshade,
+    :host([chromeaside]) .fs-tl,
+    :host([chromeaside]) .fs-top,
+    :host([chromeaside]) .fs-side,
+    :host([chromeaside]) .vtalk-msg {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transition:
+        opacity 0.25s ease,
+        visibility 0s linear 0.25s !important;
     }
     /* Scrub-preview leap-frog videos — same deal: the standby one loads and
        seeks the next block/part underneath, then swaps in already decoded. */
@@ -5106,7 +7392,11 @@ f.styles = rt`
         var(--upc-fs-tl-pad, 100px) 0;
       z-index: 5; /* above .vctrl, whose gradient runs under the strip */
       opacity: 0;
-      transition: opacity 0.2s ease;
+      /* An open side panel (cardFs) pushes the strip left by its width. */
+      transform: translateX(calc(-1 * var(--upc-fs-side, 0px)));
+      transition:
+        opacity 0.2s ease,
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
       pointer-events: none;
       /* A drag starting in the padding is handed to the timeline
          (_onStripPress); without this the browser claims the touch as a pan
@@ -5140,6 +7430,50 @@ f.styles = rt`
       opacity: 1;
       pointer-events: auto;
     }
+    /* The phone's, while its events panel is open (_tlAside): faded out where
+       it stands, and not tappable (visibility follows the fade). */
+    .fs-tl.aside {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: none;
+      transition:
+        opacity 0.2s ease,
+        visibility 0s linear 0.2s;
+    }
+    /* The host's other overlay chrome (cardFs): the camera picker along the
+       top, the events panel down the right — above the strip and the controls.
+       The wrappers take no taps themselves (only what the host makes
+       interactive inside does), and fade with the controls; visibility follows
+       the fade so a hidden panel can't be tapped. */
+    .fs-top,
+    .fs-side {
+      position: absolute;
+      z-index: 8; /* .fs-top 9: the camera picker always on top, events too */
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity 0.2s ease,
+        visibility 0s linear 0.2s;
+    }
+    .fs-top {
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9;
+    }
+    .fs-side {
+      top: 0;
+      bottom: 0;
+      right: 0;
+    }
+    .fs-top.show,
+    .fs-side.show {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.2s ease;
+    }
     /* While the strip is up, keep every control clear of it: the bar's gradient
        still spans full width, only its contents move in. Both fullscreen
        flavors set their own padding SHORTHAND at a higher specificity (the
@@ -5147,8 +7481,14 @@ f.styles = rt`
        be spelled out against each of them or it is silently overridden. */
     .vctrl.fs-inset,
     :host(:fullscreen) .vctrl.fs-inset,
+    :host([cardfs]) .vctrl.fs-inset,
     :host([stacked]) .fs-wrap.fs-active .vctrl.fs-inset {
-      padding-right: calc(var(--upc-fs-tl-w, 165px) + var(--upc-fs-tl-gut, 140px) + 12px);
+      padding-right: calc(
+        var(--upc-fs-tl-w, 165px) + var(--upc-fs-tl-gut, 140px) + 12px + var(--upc-fs-side, 0px)
+      );
+      transition:
+        opacity 0.2s ease,
+        padding-right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
       /* Above the strip: its grab area reaches well left of the ruler and would
          otherwise swallow the seek bar and the buttons under it. */
       z-index: 6;
@@ -5199,7 +7539,7 @@ f.styles = rt`
     .vctrl.fs {
       gap: 16px;
     }
-    :host([stacked]) .vctrl.fs {
+    :host([stacked]) .vctrl.fs:not(.card) {
       gap: 12px;
     }
     .vctrl.fs button {
@@ -5218,6 +7558,408 @@ f.styles = rt`
     .vctrl.fs .vtime {
       font-size: 19px;
     }
+    /* ---- Card-sized fullscreen (cardFs) controls, iOS / UniFi-app style ----
+       Round dimmed buttons (no backdrop blur: it stutters even on a laptop,
+       let alone the wall tablet), on a dimmed shade of their own. The light
+       edge keeps a button's outline on dark footage, where its dim disc would
+       vanish. Back / play-pause / forward in the middle; speed, sound, talk
+       and exit along the bottom. Both groups are centred in the area the
+       timeline leaves free and follow it when the events panel opens
+       (--upc-fs-shift). Hidden = not hit-testable (visibility), like the
+       panels. */
+    .vcenter button,
+    .vctrl.card button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 2px solid rgba(255, 255, 255, 0.3); /* 1.5px rounds to 1px on 1x screens */
+      border-radius: 50%;
+      font-family: inherit; /* the skip numbers and "1x": the card's type, not the UA's */
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+      color: #fff;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      /* Speed / sound / talk fade INTO their active colours (accent, white,
+         red) and back on the iOS ease-out curve — quick to start, long soft
+         tail — rather than snapping. */
+      transition:
+        background 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .vcenter button:hover,
+    .vctrl.card button:hover {
+      background: rgba(0, 0, 0, 0.72);
+    }
+    /* Press feedback for the buttons that keep their colour (skips,
+       play-pause, exit; class .press, _pressFlash adds .pressed while held),
+       "iPhone player" style: the button shrinks a little and its disc greys a
+       touch, then springs back with a gentle overshoot; a skip's arrow also
+       spins its way (_spinArc). Each state's transition is the one used to
+       ENTER it: quick in on press, the softer curve out on release. (Chosen
+       over a white flash - jarring - a UIKit dim and an iOS 26 lift.) */
+    .vcenter button.press,
+    .vctrl.card button.press {
+      transition:
+        background 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .vcenter button.press.pressed,
+    .vctrl.card button.press.pressed {
+      transform: scale(0.92);
+      background: rgba(72, 72, 76, 0.72);
+      transition:
+        background 0.08s ease-out,
+        transform 0.08s ease-out;
+    }
+    .vc-skip-icon .arc {
+      transform-box: view-box;
+      transform-origin: 12.5px 12.5px; /* the arrow's circle (11.5px for forward) */
+    }
+    .vc-skip-icon .arc.fwd {
+      transform-origin: 11.5px 12.5px;
+    }
+    /* Unavailable (forward / speed at the live edge): only the glyph fades —
+       the dimmed disc stays, so it still reads on bright footage. */
+    .vcenter button:disabled,
+    .vctrl.card button:disabled {
+      opacity: 1;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: default;
+    }
+    .vcenter {
+      position: absolute;
+      left: 50%;
+      top: var(--upc-vc-top, 50%);
+      z-index: 6; /* above the strip, which spans the whole player */
+      display: flex;
+      align-items: center;
+      gap: var(--upc-vc-gap, 128px); /* fitted to the free area (VC_GAP) */
+      transform: translate(calc(-50% - var(--upc-fs-shift, 0px)), -50%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none; /* only the buttons take taps, not the gaps */
+      transition:
+        opacity 0.2s ease,
+        visibility 0s linear 0.2s,
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        gap 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .vcenter.show {
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 0.2s ease,
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        gap 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    /* The groups' shades — a soft dark ellipse behind the middle row, a deep
+       gradient along the bottom. Own elements BELOW the strip (z 4 < 5), while
+       the buttons sit above it: painted on the buttons' layer they dimmed the
+       timeline's foot (date pill, live arrow, ruler). They fade with the
+       controls and take no taps. */
+    .vshade,
+    .vcshade {
+      position: absolute;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .vshade.show,
+    .vcshade.show {
+      opacity: 1;
+    }
+    /* Sizes below scale with --vc-k: 1 on the camera screen, CLIP_CTRL_SCALE
+       on the multi page's (smaller) clip players. */
+    .vshade {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(170px * var(--vc-k, 1));
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.42) 55%, transparent);
+    }
+    .vcshade {
+      left: 50%;
+      top: var(--upc-vc-top, 50%);
+      width: calc(var(--upc-vc-row, ${ps}px) + 2 * var(--upc-vc-gap, 128px) + 200px * var(--vc-k, 1));
+      height: calc(257px * var(--vc-k, 1)); /* the play button + 80px above and below */
+      transform: translate(calc(-50% - var(--upc-fs-shift, 0px)), -50%);
+      background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.28) 55%, transparent);
+      transition:
+        opacity 0.2s ease,
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .vcenter.show:not(.inert) button {
+      pointer-events: auto;
+    }
+    .vc-skip {
+      width: calc(75px * var(--vc-k, 1));
+      height: calc(75px * var(--vc-k, 1));
+    }
+    .vc-skip-icon {
+      display: block;
+      width: calc(41px * var(--vc-k, 1));
+      height: calc(41px * var(--vc-k, 1));
+      fill: currentColor;
+    }
+    .vc-play {
+      width: calc(97px * var(--vc-k, 1));
+      height: calc(97px * var(--vc-k, 1));
+    }
+    .vc-play ha-icon {
+      --mdc-icon-size: calc(60px * var(--vc-k, 1));
+    }
+    /* The bottom bar is only its centred group (and, on a clip, the seek bar
+       above it): its shade is .vshade, under the strip. It takes no taps itself
+       (the strip under it stays draggable); its buttons and seek bar do. */
+    .vctrl.card {
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: calc(20px * var(--vc-k, 1));
+      padding: calc(20px * var(--vc-k, 1)) calc(48px * var(--vc-k, 1)) calc(40px * var(--vc-k, 1));
+      z-index: 6;
+      pointer-events: none;
+      background: none;
+    }
+    .vctrl.card.show:not(.inert) button,
+    .vctrl.card.show:not(.inert) .vseek {
+      pointer-events: auto;
+    }
+    /* The clip players' seek bar, iPhone-player style: elapsed on the left,
+       what is left on the right, a white bar that thickens while dragged. */
+    .vc-seek {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      gap: calc(14px * var(--vc-k, 1));
+    }
+    /* (.vctrl.card: outranks the fullscreen bar's .vctrl.fs .vtime.) */
+    .vctrl.card .vc-seek .vtime {
+      margin: 0;
+      min-width: 3.2em;
+      font-size: calc(19px * var(--vc-k, 1));
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+    .vctrl.card .vc-seek .vtime.left {
+      text-align: right;
+    }
+    .vc-seek .vseek {
+      margin: 0;
+      height: calc(32px * var(--vc-k, 1));
+    }
+    .vc-seek .vseek-track {
+      height: calc(6px * var(--vc-k, 1));
+      border-radius: calc(3px * var(--vc-k, 1));
+      background: rgba(255, 255, 255, 0.3);
+      transition: height 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .vc-seek .vseek.drag .vseek-track {
+      height: calc(10px * var(--vc-k, 1));
+      border-radius: calc(5px * var(--vc-k, 1));
+    }
+    .vc-seek .vseek-fill {
+      border-radius: inherit;
+      background: rgba(255, 255, 255, 0.92);
+    }
+    .vc-seek .vseek-knob {
+      width: calc(16px * var(--vc-k, 1));
+      height: calc(16px * var(--vc-k, 1));
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+    /* "View in Timeline": a text pill, like the speed pill. */
+    .vctrl.card button.vc-tl {
+      width: auto;
+      padding: 0 calc(22px * var(--vc-k, 1));
+      border-radius: calc(29px * var(--vc-k, 1));
+      font-size: calc(18px * var(--vc-k, 1));
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    /* A clip's shade reaches higher: the seek bar sits above the buttons. */
+    .vshade.seek {
+      height: calc(230px * var(--vc-k, 1));
+    }
+    .vctrl-group {
+      display: flex;
+      align-items: center;
+      gap: calc(28px * var(--vc-k, 1));
+      transform: translateX(calc(-1 * var(--upc-bar-shift, 0px)));
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    /* The camera screen's: centred AS A WHOLE on the middle row's axis,
+       whatever it holds - talk comes with live, exit with somewhere to go
+       back to (user, 2026-10-31: without exit it hung off to the left). Its
+       buttons are all one size, so a button's place is its index: --i of
+       --n, a button and a gap apart around the axis (the group is that axis,
+       0 wide). A change in the count slides them there - transform only -
+       while talk keeps its slot when away (.off) and shrinks out, or grows
+       back, where it stands. */
+    .vctrl-group.axis {
+      display: block;
+      position: relative;
+      width: 0;
+      height: calc(57px * var(--vc-k, 1));
+    }
+    .vg-slot {
+      --x: calc((var(--i) - (var(--n) - 1) / 2) * 85px * var(--vc-k, 1));
+      position: absolute;
+      top: 0;
+      left: calc(-28.5px * var(--vc-k, 1));
+      transform: translateX(var(--x));
+      transition:
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 0.2s ease;
+    }
+    .vg-slot.off {
+      opacity: 0;
+      visibility: hidden; /* not hit-testable */
+      transform: translateX(var(--x)) scale(0.5);
+      transition:
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 0.15s ease,
+        visibility 0s linear 0.15s;
+    }
+    /* No room for the middle row (the phone's upright screen with the events
+       panel open): it steps aside until there is. */
+    .vcenter.crowded,
+    .vcshade.crowded {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .vcenter.crowded button {
+      pointer-events: none !important;
+    }
+    /* The phone's camera screen kept UPRIGHT (portrait footage): the bar runs
+       full width along the bottom, clear of the home indicator, and the
+       timeline and the events panel end above it (--upc-fs-ctrl-h: the bar's
+       measured height, _syncUprightCtrl); both start below the status bar. */
+    :host([upright]) .vctrl.card {
+      padding-bottom: calc(40px * var(--vc-k, 1) + env(safe-area-inset-bottom, 0px));
+    }
+    :host([upright]) .fs-tl,
+    :host([upright]) .fs-side {
+      bottom: var(--upc-fs-ctrl-h, 0px);
+    }
+    :host([upright]) .fs-tl {
+      padding-top: calc(var(--upc-fs-tl-pad, 20px) + env(safe-area-inset-top, 0px));
+    }
+    :host([upright]) .vshade {
+      height: calc(var(--upc-fs-ctrl-h, 0px) + 40px);
+    }
+    /* ...and the picture fills the space ABOVE the bar, where they end, not
+       the whole screen: running on under the bar it met their backgrounds in
+       a step (user, 2026-10-30). Below it all is black, the bar's own. */
+    :host([upright]) video,
+    :host([upright]) canvas.sprite,
+    :host([upright]) canvas.freeze,
+    :host([upright]) .overlay {
+      /* (A height, not a bottom: a <video> or <canvas> left at height auto
+         takes its own aspect's height and sits at the top.) */
+      height: calc(100% - var(--upc-fs-ctrl-h, 0px));
+      box-sizing: border-box;
+    }
+    /* ...whose top row is back / play-pause / forward (the floating middle
+       row's buttons, at their own size - not the bar's). */
+    .vc-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(56px * var(--vc-k, 1));
+    }
+    .vctrl.card .vc-row button.vc-skip {
+      width: calc(75px * var(--vc-k, 1));
+      height: calc(75px * var(--vc-k, 1));
+    }
+    .vctrl.card .vc-row button.vc-play {
+      width: calc(97px * var(--vc-k, 1));
+      height: calc(97px * var(--vc-k, 1));
+    }
+    .vctrl.card .vc-row .vc-play ha-icon {
+      --mdc-icon-size: calc(60px * var(--vc-k, 1));
+    }
+    /* The phone's clip card: its picture at the TOP (a landscape clip's seek
+       bar and buttons sit in the strip below it - see multi-view), the middle
+       row on the picture's centre (--upc-vc-top), and a seek bar a finger
+       can hold: a tall grab area, a bigger knob. */
+    :host([stacked][roundctrl]) video {
+      object-position: 50% 0;
+    }
+    /* ...whose black is the card's own (the picture's box and the strip are
+       separate layers there, see multi-view). */
+    :host([stacked][roundctrl]) .stage,
+    :host([stacked][roundctrl]) video {
+      background: transparent;
+    }
+    :host([stacked][roundctrl]) .overlay {
+      bottom: auto;
+      box-sizing: border-box;
+      height: calc(2 * var(--upc-vc-top, 50%));
+    }
+    /* Its seek bar runs the card's full width (16px in from its edges), the
+       times UNDER it at either end - the iPhone player's layout. */
+    :host([stacked][roundctrl]) .vctrl.card {
+      padding: 0 16px 24px;
+      gap: 12px;
+    }
+    :host([stacked][roundctrl]) .vc-seek {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    :host([stacked][roundctrl]) .vc-seek .vseek {
+      grid-row: 1;
+      grid-column: 1 / -1;
+      height: 40px;
+    }
+    :host([stacked][roundctrl]) .vctrl.card .vc-seek .vtime {
+      grid-row: 2;
+      margin-top: -10px;
+      min-width: 0;
+      font-size: 13px;
+      text-align: right;
+    }
+    :host([stacked][roundctrl]) .vctrl.card .vc-seek .vtime.left {
+      grid-column: 1;
+      text-align: left;
+    }
+    :host([stacked][roundctrl]) .vc-seek .vseek-knob {
+      width: 18px;
+      height: 18px;
+    }
+    :host([stacked][roundctrl]) .vc-seek .vseek-track {
+      height: 5px;
+    }
+    :host([stacked][roundctrl]) .vc-seek .vseek.drag .vseek-track {
+      height: 8px;
+    }
+    .vctrl.card button {
+      width: calc(57px * var(--vc-k, 1));
+      height: calc(57px * var(--vc-k, 1));
+    }
+    .vctrl.card button ha-icon {
+      --mdc-icon-size: calc(33px * var(--vc-k, 1));
+    }
+    /* Speed: a round button like the others (user, 2026-10-30), its "×"
+       smaller so "1×" sits comfortably in it. */
+    .vctrl.card .vctrl-speed {
+      min-width: 0;
+      padding: 0;
+      font-size: calc(20px * var(--vc-k, 1));
+    }
+    .vctrl.card .vctrl-speed .vx {
+      font-size: 0.7em;
+      margin-left: 0.04em;
+    }
+    /* Above 1x: the overlay's own deep accent (its pills, zoom and live
+       buttons, the date pill) — the bright one is meant for thin lines. */
+    .vctrl.card .vctrl-speed.on {
+      background: var(--upc-accent-deep, var(--upc-accent, var(--primary-color, #03a9f4)));
+    }
     /* Speed toggle: a text pill; highlighted (accent) while >1×. */
     .vctrl-speed {
       width: auto;
@@ -5228,6 +7970,70 @@ f.styles = rt`
     }
     .vctrl-speed.on {
       background: var(--upc-accent, var(--primary-color, #03a9f4));
+    }
+    /* Sound ON: the speaker button reversed — white with a black icon — so
+       "you can hear this" reads at a glance against the muted (dark) look. */
+    .vctrl button.vmute {
+      transition:
+        background 0.2s ease,
+        color 0.2s ease;
+    }
+    .vctrl button.vmute.on {
+      background: #fff;
+      color: #000;
+    }
+    .vctrl button.vmute.on:hover {
+      background: #e6e6e6;
+    }
+    /* Talk (cameras with a speaker, live only): a microphone next to the
+       speaker, crossed out like a muted speaker while off, on a red background
+       while talking. */
+    .vctrl button.vtalk {
+      transition: background 0.2s ease;
+    }
+    .vctrl button.vtalk.talking {
+      background: #d9534f;
+    }
+    .vctrl button.vtalk.talking:hover {
+      background: #c9403b;
+    }
+    /* Upright phone fullscreen (the doorbell): with Talk the row holds seven
+       controls, which only fit a ~390px screen slightly tighter. */
+    :host([stacked]) .fs-wrap.fs-active.upright .vctrl.has-talk {
+      gap: 6px;
+    }
+    :host([stacked]) .fs-wrap.fs-active.upright .vctrl.has-talk button {
+      width: 44px;
+      height: 44px;
+    }
+    :host([stacked]) .fs-wrap.fs-active.upright .vctrl.has-talk .vctrl-speed {
+      min-width: 49px;
+      padding: 0 8px;
+    }
+    /* Why talking stopped (no microphone, permission denied, time limit...):
+       above the control bar, fading in and out. */
+    .vtalk-msg {
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--upc-fs-ctrl-h, 64px) + 12px);
+      transform: translate(-50%, 6px);
+      max-width: calc(100% - 32px);
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+      opacity: 0;
+      transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+      pointer-events: none;
+      z-index: 7;
+    }
+    .vtalk-msg.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
     }
     /* Clip time readout, YouTube-style "current / total" (M:SS). */
     .vtime {
@@ -5284,7 +8090,7 @@ f.styles = rt`
     /* Phone: the seek bar is crushed inline between the buttons on a narrow
        video, so give it its own FULL-WIDTH row ABOVE the button row (YouTube /
        Plex style). Tablet/desktop keep the single inline row (they have room). */
-    :host([stacked]) .vctrl {
+    :host([stacked]) .vctrl:not(.card) {
       flex-wrap: wrap;
       /* Roomier controls on phones: inset the buttons/seek from the edges. The
          gradient background still spans the whole bar (it's .vctrl's own
@@ -5316,6 +8122,22 @@ f.styles = rt`
        spans the whole bar (its own background) — only the buttons move in. */
     :host([stacked]) .fs-wrap.fs-active .vctrl {
       padding: 14px 76px 30px;
+    }
+    /* UPRIGHT phone fullscreen (portrait footage — see _rotateForFs): the bar
+       is ONE full-width row on the bottom screen edge, clear of the home
+       indicator. Not inset like the other layouts: the timeline ends ABOVE it
+       (.fs-tl below), so there is nothing to keep clear of — and the inset would
+       crush six controls into half a narrow screen. The .fs-inset selector
+       outranks the inset rule above. */
+    :host([stacked]) .fs-wrap.fs-active.upright .vctrl,
+    :host([stacked]) .fs-wrap.fs-active.upright .vctrl.fs-inset {
+      padding: 14px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    /* ...and the timeline runs down the right edge from below the notch to just
+       above that bar (--upc-fs-ctrl-h: its measured height, _syncUprightCtrl). */
+    .fs-wrap.fs-active.upright .fs-tl {
+      bottom: var(--upc-fs-ctrl-h, 0px);
+      padding-top: calc(var(--upc-fs-tl-pad, 100px) + env(safe-area-inset-top, 0px));
     }
     .overlay {
       position: absolute;
@@ -5388,94 +8210,148 @@ f.TAP_SLOP_PX = 4;
 f.TAP_MAX_MS = 600;
 f.TAP_CLICK_WAIT_MS = 350;
 g([
-  c({ attribute: !1 })
+  p({ attribute: !1 })
 ], f.prototype, "hass", 2);
 g([
-  c()
+  p()
 ], f.prototype, "nvrId", 2);
 g([
-  c()
+  p()
 ], f.prototype, "cameraId", 2);
 g([
-  c({ attribute: !1 })
+  p({ attribute: !1 })
 ], f.prototype, "gaps", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "targetTime", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "scrubbing", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "live", 2);
 g([
-  c({ type: Number })
+  p({ type: Boolean })
+], f.prototype, "canTalk", 2);
+g([
+  p({ type: Number })
 ], f.prototype, "now", 2);
 g([
-  c()
+  p()
 ], f.prototype, "previewDir", 2);
 g([
-  c()
+  p()
 ], f.prototype, "previewMode", 2);
 g([
-  c()
+  p()
 ], f.prototype, "fastPreview", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "tipEnabled", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "clipEndTime", 2);
 g([
-  c()
+  p()
 ], f.prototype, "accent", 2);
 g([
-  c()
+  p()
 ], f.prototype, "liveAudioStart", 2);
 g([
-  c({ type: Boolean, reflect: !0 })
+  p({ type: Boolean, reflect: !0 })
 ], f.prototype, "stacked", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "startFs", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "fsHandoff", 2);
 g([
-  c({ type: Boolean })
+  p({ type: Boolean })
 ], f.prototype, "fsTimeline", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelineWidth", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelineGrabWidth", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelinePadding", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelineGutter", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelineScrim", 2);
 g([
-  c({ type: Number })
+  p({ type: Number })
 ], f.prototype, "fsTimelineScrimExtend", 2);
+g([
+  p({ type: Boolean, reflect: !0, attribute: "cardfs" })
+], f.prototype, "cardFs", 2);
+g([
+  p({ type: Boolean })
+], f.prototype, "cardFsExit", 2);
+g([
+  p({ type: Boolean, reflect: !0, attribute: "roundctrl" })
+], f.prototype, "roundCtrl", 2);
+g([
+  p({ type: Boolean })
+], f.prototype, "closable", 2);
+g([
+  p({ type: Boolean, reflect: !0 })
+], f.prototype, "phone", 2);
+g([
+  p({ type: Boolean, reflect: !0 })
+], f.prototype, "upright", 2);
+g([
+  p({ attribute: !1 })
+], f.prototype, "poster", 2);
+g([
+  p({ type: Boolean, reflect: !0, attribute: "chromehidden" })
+], f.prototype, "chromeHidden", 2);
+g([
+  p({ type: Boolean, reflect: !0, attribute: "chromeaside" })
+], f.prototype, "chromeAside", 2);
+g([
+  m()
+], f.prototype, "_uprightBarH", 2);
+g([
+  m()
+], f.prototype, "_posterOn", 2);
+g([
+  m()
+], f.prototype, "_posterGone", 2);
+g([
+  p({ type: Number })
+], f.prototype, "fsSide", 2);
+g([
+  p({ type: Boolean })
+], f.prototype, "holdCtrl", 2);
+g([
+  m()
+], f.prototype, "_tlReach", 2);
+g([
+  m()
+], f.prototype, "_hostW", 2);
+g([
+  m()
+], f.prototype, "_hostH", 2);
 g([
   m()
 ], f.prototype, "_error", 2);
 g([
-  G(".fs-wrap")
+  tt(".fs-wrap")
 ], f.prototype, "_fsDlg", 2);
 g([
-  G("video.main")
+  tt("video.main")
 ], f.prototype, "_mainVideo", 2);
 g([
-  G("video.preview-a")
+  tt("video.preview-a")
 ], f.prototype, "_previewVidA", 2);
 g([
-  G("video.preview-b")
+  tt("video.preview-b")
 ], f.prototype, "_previewVidB", 2);
 g([
   m()
@@ -5506,6 +8382,15 @@ g([
 ], f.prototype, "_forceRotate", 2);
 g([
   m()
+], f.prototype, "_talk", 2);
+g([
+  m()
+], f.prototype, "_talkMsg", 2);
+g([
+  m()
+], f.prototype, "_talkMsgOn", 2);
+g([
+  m()
 ], f.prototype, "_followRate", 2);
 g([
   m()
@@ -5532,7 +8417,7 @@ g([
   m()
 ], f.prototype, "_previewActive", 2);
 g([
-  G("canvas.sprite")
+  tt("canvas.sprite")
 ], f.prototype, "_spriteCanvas", 2);
 g([
   m()
@@ -5547,842 +8432,47 @@ g([
   m()
 ], f.prototype, "_frozen", 2);
 g([
-  G("canvas.freeze")
+  tt("canvas.freeze")
 ], f.prototype, "_freezeCanvas", 2);
 f = g([
-  ot("upc-media-view")
+  mt("upc-media-view")
 ], f);
-/**
- * @license
- * Copyright 2021 Google LLC
- * SPDX-License-Identifier: BSD-3-Clause
- */
-const kt = te(class extends ee {
+var Pn = Object.defineProperty, Rn = Object.getOwnPropertyDescriptor, N = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? Rn(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && Pn(t, i, o), o;
+};
+const zn = 3e4, Ln = 2 * 6e4, Fn = 136, On = 12, In = 450, _s = 16, qt = 14, fs = (e) => (e.tablet_events_thumbnail_size ?? 145) + 168;
+let B = class extends Z {
   constructor() {
-    super(...arguments), this.key = b;
-  }
-  render(e, t) {
-    return this.key = e, t;
-  }
-  update(e, [t, i]) {
-    return t !== this.key && (Mt(e), this.key = t), i;
-  }
-});
-function Pr(e, t, i) {
-  return e.map((s) => ({ ...s, camera: t, cameraName: i }));
-}
-function Mr(e) {
-  return e.flat().sort((t, i) => i.start - t.start);
-}
-function Ar(e, t) {
-  const i = Math.max(0, Math.floor((t - e) / 1e3));
-  if (i < 60) return "just now";
-  const s = Math.floor(i / 60);
-  if (s < 60) return s === 1 ? "1 minute ago" : `${s} minutes ago`;
-  const r = Math.floor(s / 60);
-  if (r < 24) return r === 1 ? "1 hour ago" : `${r} hours ago`;
-  const o = Math.floor(r / 24);
-  return o === 1 ? "1 day ago" : `${o} days ago`;
-}
-var Cr = Object.defineProperty, Fr = Object.getOwnPropertyDescriptor, F = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Fr(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && Cr(t, i, r), r;
-};
-let A = class extends j {
-  constructor() {
-    super(...arguments), this.bands = [], this.thumbVersion = 0, this.headerText = "Events", this.thumbSize = 0, this.timeSize = 12, this.playingKey = "", this.lastPlayedKey = "", this.keepLastPlayed = !1, this.expanded = !1, this.gridColumns = 2, this.accent = "#fc9df3", this.hideHead = !1, this.gridThumbWidth = 120, this.dateFontSize = 13, this.itemTextSize = 12, this.captions = !1, this.gridCaptions = !1, this._requested = /* @__PURE__ */ new Set(), this._bandByKey = /* @__PURE__ */ new Map(), this._toggle = async () => {
-      if (this.expanded) {
-        const e = this.renderRoot.querySelector(".gridlist");
-        e && await e.animate(
-          [
-            { opacity: 1, transform: "none" },
-            { opacity: 0, transform: "translateY(-10px)" }
-          ],
-          { duration: 400, easing: "ease-in", fill: "forwards" }
-        ).finished.catch(() => {
-        });
-      }
-      this.dispatchEvent(new CustomEvent("toggle-expand", { bubbles: !0, composed: !0 }));
-    };
-  }
-  connectedCallback() {
-    super.connectedCallback(), this.hasUpdated && !this._io && this._setupObserver();
-  }
-  firstUpdated() {
-    this._setupObserver();
-  }
-  _setupObserver() {
-    this._io = new IntersectionObserver((e) => this._onIntersect(e), {
-      root: this._stripEl ?? null,
-      rootMargin: "300px 300px"
-    }), this._observeThumbs();
-  }
-  updated(e) {
-    e.has("expanded") && (this._io?.disconnect(), this._setupObserver(), this._prevExpanded !== void 0 && this._prevExpanded !== this.expanded && this.expanded && this.renderRoot.querySelector(".gridlist")?.animate(
-      [
-        { opacity: 0, transform: "translateY(-10px)" },
-        { opacity: 1, transform: "none" }
-      ],
-      { duration: 400, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-    ), this._prevExpanded = this.expanded), this._observeThumbs();
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback(), this._io?.disconnect(), this._io = void 0;
-  }
-  /** A thumb scrolled into view -> request its thumbnail (once). */
-  _onIntersect(e) {
-    let t = !1;
-    for (const i of e) {
-      if (!i.isIntersecting) continue;
-      const s = i.target.dataset.key;
-      if (!s || this._requested.has(s)) continue;
-      this._requested.add(s);
-      const r = this._bandByKey.get(s);
-      r && this.loader?.get(r), this._io?.unobserve(i.target), t = !0;
-    }
-    t && this.requestUpdate();
-  }
-  _observeThumbs() {
-    this._io && this.renderRoot.querySelectorAll("[data-key]").forEach((e) => {
-      const t = e.dataset.key;
-      this._requested.has(t) || this._io.observe(e);
-    });
-  }
-  // PERF-SCRUB-2026-08-03: memoised formatters — these run once per rendered
-  // ROW, so a strip re-render used to build dozens. Revert: inline
-  // `new Intl.DateTimeFormat(undefined, {...}).format(new Date(t))`.
-  _fmtTime(e) {
-    return ht(e, {
-      hour: "numeric",
-      minute: "2-digit"
-    });
-  }
-  /* Day-divider helpers — same formats as the timeline view's events list. */
-  _fmtDay(e) {
-    return ht(e, {
-      weekday: "short",
-      month: "short",
-      day: "numeric"
-    });
-  }
-  _sameDay(e, t) {
-    const i = new Date(e), s = new Date(t);
-    return i.getFullYear() === s.getFullYear() && i.getMonth() === s.getMonth() && i.getDate() === s.getDate();
-  }
-  /* Expanded-grid item texts: long time (matches the collapsed list) + duration. */
-  _fmtTimeLong(e) {
-    return ht(e, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
-  }
-  _fmtDur(e) {
-    const t = Math.max(1, Math.round(e / 1e3));
-    if (t < 60) return `${t}s`;
-    const i = Math.floor(t / 60), s = t % 60;
-    return s ? `${i}m ${s}s` : `${i}m`;
-  }
-  _select(e) {
-    this.dispatchEvent(
-      new CustomEvent("strip-select", { detail: e, bubbles: !0, composed: !0 })
-    );
-  }
-  /** Bring one clip into view — centred in whatever scrolls it (the grid, the
-   *  tablet column, the phone carousel, or the page itself). Returns false when
-   *  this strip does not hold that clip. */
-  revealKey(e) {
-    if (!e) return !1;
-    const i = this.renderRoot.querySelector(`.thumb[data-key="${CSS.escape(e)}"]`)?.closest("button");
-    return i ? (i.scrollIntoView({ block: "center", inline: "center" }), !0) : !1;
-  }
-  /** One event item — identical in both presentations (the expanded grid only
-   *  changes the layout around it, never the item itself). */
-  _renderClip(e, t, i) {
-    const s = this.playingKey === t || (this.expanded || this.keepLastPlayed) && this.lastPlayedKey === t;
-    return p`
-      <button
-        class="clip ${s ? "playing" : ""}"
-        @click=${() => this._select(e)}
-      >
-        <div class="thumb" data-key=${t}>
-          ${i ? p`<img src=${i} alt=${e.label} loading="lazy" />` : p`<span class="ph"></span>`}
-          <!-- Caption mode moves the time to the line below (with the
-               duration); the compact mode overlays it on the footage. -->
-          ${this.captions ? b : p`<span class="time">${this._fmtTime(e.start)}</span>`}
-        </div>
-        <span class="cam">${e.cameraName}</span>
-        ${this.captions ? p`<span class="sub"
-              >${this._fmtTimeLong(e.start)} ·
-              ${e.ongoing ? "In progress" : this._fmtDur(e.durMs ?? e.end - e.start)}</span
-            >` : b}
-      </button>
-    `;
-  }
-  render() {
-    this._bandByKey.clear();
-    const e = this.thumbSize > 0 ? `${this.thumbSize}px` : "calc((100% - 12px) / 2)", t = se(
-      this.bands,
-      (i) => `${i.type}@${i.start}`,
-      (i, s) => {
-        const r = `${i.type}@${i.start}`;
-        this._bandByKey.set(r, i);
-        const o = this._requested.has(r) ? this.loader?.get(i) : void 0, n = this.expanded && (s === 0 || !this._sameDay(this.bands[s - 1].start, i.start));
-        return p`
-          ${n ? p`<div class="day-divider">
-                <span class="day-label">${this._fmtDay(i.start)}</span>
-              </div>` : b}
-          ${this._renderClip(i, r, o)}
-        `;
-      }
-    );
-    return p`
-      ${this.hideHead ? b : p`<div class="head">
-            <span>${this.headerText}</span>
-            <span class="head-count">${this.bands.length}</span>
-            <button
-              class="expand"
-              title=${this.expanded ? "Show cameras" : "Browse all events"}
-              @click=${this._toggle}
-            >
-              <!-- ONE static icon; :host([expanded]) rotates it 180° (swapping to
-                   chevron-up here would cancel the rotation out = always-down). -->
-              <ha-icon icon="mdi:chevron-down"></ha-icon>
-            </button>
-          </div>`}
-      ${this.bands.length === 0 ? p`<div class="empty">No events</div>` : this.expanded ? p`<div
-              class="gridlist"
-              style="--upc-egrid-cols:${this.gridColumns};--upc-egrid-w:${this.gridThumbWidth}px;--upc-egrid-date:${this.dateFontSize}px;--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(1, this.itemTextSize - 1)}px;--upc-strip-time:${this.timeSize}px;--upc-strip-divider:${this.accent}"
-            >
-              ${t}
-            </div>` : p`<div
-              class="strip"
-              style="--upc-strip-thumb:${e};--upc-strip-time:${this.timeSize}px;--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(
-      1,
-      this.itemTextSize - 1
-    )}px"
-            >
-              ${t}
-            </div>`}
-      ${b}
-    `;
-  }
-};
-A.styles = rt`
-    :host {
-      display: block;
-    }
-    /* Header type matches the camera-name captions/overlays (14px/700). */
-    .head {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 2px 8px;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--secondary-text-color);
-    }
-    .head-count {
-      color: var(--primary-text-color);
-    }
-    /* Carousel <-> grid-list toggle chevron, right after the count. The
-       chevron ROTATES on toggle (one icon + transform) instead of swapping
-       icons — the smooth turn is half the iOS feel. */
-    .expand {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: transparent;
-      padding: 0;
-      margin: 0;
-      color: var(--secondary-text-color);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .expand ha-icon {
-      --mdc-icon-size: 22px;
-      display: block;
-      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-    :host([expanded]) .expand ha-icon {
-      transform: rotate(180deg);
-    }
-    /* iOS-native carousel feel: the SCROLLER runs edge to edge (negative
-       margins escape the ha-card's 12px side padding — matches the padding
-       constant in card.ts styles) while a leading content inset keeps the
-       first thumb 12px off the edge AT REST and scrolls away WITH the content.
-       At rest the thumbs bleed under the right screen edge (shows there's
-       more); fully scrolled, the last thumb settles 12px from the edge. */
-    .strip {
-      display: flex;
-      gap: 12px; /* same as the edge insets — uniform rhythm, and it makes the
-                    auto fit-2 layout symmetric (see thumbW derivation) */
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none; /* hide scrollbar, keep scrolling */
-      -ms-overflow-style: none;
-      margin: 0 -12px;
-      padding: 0 12px 2px;
-    }
-    .strip::-webkit-scrollbar {
-      display: none;
-    }
-    .empty {
-      color: var(--secondary-text-color);
-      font-size: 13px;
-      padding: 8px 2px;
-    }
-    .clip {
-      flex: 0 0 auto;
-      position: relative;
-      width: var(--upc-strip-thumb, 104px);
-      box-sizing: border-box; /* the active card's padding insets inward */
-      border: none;
-      background: transparent;
-      padding: 0;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .thumb {
-      position: relative; /* anchors the .time overlay to the image */
-      width: 100%;
-      aspect-ratio: 16 / 10;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #000;
-      border: 2px solid transparent;
-      box-sizing: border-box;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-    }
-    .clip.playing .thumb {
-      border-color: #fff;
-    }
-    .thumb img,
-    .thumb .ph {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    .thumb img {
-      object-fit: cover;
-    }
-    .thumb .ph {
-      background: var(--divider-color, rgba(255, 255, 255, 0.1));
-    }
-    /* Time overlay reads on any footage thanks to the text shadow (UniFi-style).
-       Anchored to the IMAGE (.thumb is position:relative), not the whole clip
-       button, so it stays on the footage above the caption. */
-    .time {
-      position: absolute;
-      left: 7px;
-      bottom: 6px;
-      font-size: var(--upc-strip-time, 12px);
-      font-weight: 600;
-      color: #fff;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-      pointer-events: none;
-    }
-    /* Camera name BELOW the thumbnail — same type as the live tiles' name
-       overlay (14px/700 white, normal case), so the strip and the grid read
-       as one family. */
-    .cam {
-      display: block;
-      margin-top: 5px;
-      font-size: 14px;
-      font-weight: 700;
-      text-align: left;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      pointer-events: none;
-    }
-    /* ---- expanded grid list: the SAME items as the carousel, just laid out
-       vertically — 2 columns match the carousel's fit-2 width, so the first
-       row doesn't change size when toggling, only the orientation. ---- */
-    :host([expanded]) {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-    :host([expanded]) .head {
-      flex: 0 0 auto;
-    }
-    .gridlist {
-      display: grid;
-      grid-template-columns: repeat(var(--upc-egrid-cols, 2), 1fr);
-      gap: 12px;
-      align-content: start;
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto; /* no-op when unconstrained (stacked: the page scrolls) */
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    .gridlist::-webkit-scrollbar {
-      display: none;
-    }
-    .gridlist .clip {
-      width: 100%; /* the grid column defines the width */
-      display: flex;
-      flex-direction: column; /* thumb on top, camera (+ caption) below */
-    }
-    /* Tablet grid: FIXED-width cells (not 1fr) so the thumb width is exactly
-       --upc-egrid-w — matching the collapsed list thumbnails — instead of
-       stretching to fill (which ignored width changes). */
-    :host([gridcaptions]) .gridlist {
-      grid-template-columns: repeat(auto-fill, var(--upc-egrid-w, 132px));
-      justify-content: start;
-      gap: 14px 12px;
-    }
-    /* Caption mode item texts BELOW the thumb: camera on line 1, time +
-       duration on line 2 — same size across tablet grid and mobile. */
-    :host([captions]) .cam {
-      font-size: var(--upc-egrid-item, 12px);
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .sub {
-      display: block;
-      margin-top: 1px;
-      font-size: var(--upc-egrid-sub, 11px); /* 1px under the camera name */
-      color: #d0d0d0; /* light inactive grey (lighter than theme secondary ~#b0) */
-      text-align: left; /* align with the (left-aligned) camera name above */
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      pointer-events: none;
-    }
-    /* Caption mode: the PLAYING / last-played clip becomes a white FRAMED card
-       (same look as the timeline camera gallery) — the thumbnail is inset by
-       the clip's padding so the white mats it on ALL sides (not just a thin
-       border), and the caption goes dark on the white. Applies to both the
-       tablet grid and the mobile carousel/grid. */
-    :host([captions]) .clip.playing {
-      background: #fff;
-      border-radius: 11px;
-      padding: 5px;
-    }
-    :host([captions]) .clip.playing .thumb {
-      border-color: transparent; /* the frame is the padding now, not a border */
-      border-radius: 7px; /* concentric inside the 11px card */
-      box-shadow: none;
-    }
-    :host([captions]) .clip.playing .cam {
-      color: #000; /* line 1: black on the white card */
-    }
-    :host([captions]) .clip.playing .sub {
-      color: #444; /* line 2: dark-ish grey (was light grey) */
-    }
-    /* Day separator between events from different days — same look as the
-       timeline view's events list (accent rule, white centered date). */
-    .day-divider {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 4px 2px;
-    }
-    .day-divider::before,
-    .day-divider::after {
-      content: '';
-      flex: 1 1 auto;
-      height: 1px;
-      background: var(--upc-strip-divider, #fc9df3);
-    }
-    .day-label {
-      flex: 0 0 auto;
-      font-size: var(--upc-egrid-date, 13px);
-      font-weight: 600;
-      color: #fff;
-      white-space: nowrap;
-    }
-  `;
-F([
-  c({ attribute: !1 })
-], A.prototype, "bands", 2);
-F([
-  c({ attribute: !1 })
-], A.prototype, "loader", 2);
-F([
-  c({ type: Number })
-], A.prototype, "thumbVersion", 2);
-F([
-  c()
-], A.prototype, "headerText", 2);
-F([
-  c({ type: Number })
-], A.prototype, "thumbSize", 2);
-F([
-  c({ type: Number })
-], A.prototype, "timeSize", 2);
-F([
-  c()
-], A.prototype, "playingKey", 2);
-F([
-  c()
-], A.prototype, "lastPlayedKey", 2);
-F([
-  c({ type: Boolean })
-], A.prototype, "keepLastPlayed", 2);
-F([
-  c({ type: Boolean, reflect: !0 })
-], A.prototype, "expanded", 2);
-F([
-  c({ type: Number })
-], A.prototype, "gridColumns", 2);
-F([
-  c()
-], A.prototype, "accent", 2);
-F([
-  c({ type: Boolean })
-], A.prototype, "hideHead", 2);
-F([
-  c({ type: Number })
-], A.prototype, "gridThumbWidth", 2);
-F([
-  c({ type: Number })
-], A.prototype, "dateFontSize", 2);
-F([
-  c({ type: Number })
-], A.prototype, "itemTextSize", 2);
-F([
-  c({ type: Boolean, reflect: !0 })
-], A.prototype, "captions", 2);
-F([
-  c({ type: Boolean, reflect: !0 })
-], A.prototype, "gridCaptions", 2);
-F([
-  G(".strip")
-], A.prototype, "_stripEl", 2);
-A = F([
-  ot("upc-event-strip")
-], A);
-var zr = Object.defineProperty, Rr = Object.getOwnPropertyDescriptor, I = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Rr(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && zr(t, i, r), r;
-};
-const Ne = 0;
-let L = class extends j {
-  constructor() {
-    super(...arguments), this.entries = [], this.stacked = !1, this.newest = {}, this.minuteTick = 0, this.columns = 2, this.scrollMode = !1, this.aspect = "16/9", this.padTop = 0, this._streamReady = !1, this._visible = !0, this._boxW = 0, this._boxH = 0, this._fullscreen = (e, t) => {
-      e.stopPropagation(), this.dispatchEvent(
-        new CustomEvent("tile-fullscreen", { detail: t, bubbles: !0, composed: !0 })
-      );
-    };
-  }
-  connectedCallback() {
-    if (super.connectedCallback(), customElements.get("ha-camera-stream"))
-      this._streamReady = !0;
-    else {
-      const e = window.loadCardHelpers;
-      e?.().then(() => {
-        this._streamReady = !!customElements.get("ha-camera-stream");
-      }), customElements.whenDefined("ha-camera-stream").then(() => {
-        this._streamReady = !0;
-      });
-    }
-    this._ro = new ResizeObserver((e) => {
-      const t = e[e.length - 1].contentRect;
-      t.width && t.height && (t.width !== this._boxW || t.height !== this._boxH) && (this._boxW = t.width, this._boxH = t.height);
-    }), this._ro.observe(this), this._visibilityObserver = new IntersectionObserver((e) => {
-      const t = e[e.length - 1].isIntersecting;
-      t !== this._visible && (t || qt(this.renderRoot), this._visible = t);
-    }), this._visibilityObserver.observe(this);
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback(), this._ro?.disconnect(), this._visibilityObserver?.disconnect(), this._visibilityObserver = void 0, qt(this.renderRoot);
-  }
-  /** Aspect "16/9" -> 16/9 (safe fallback on garbage). */
-  _ratio() {
-    const [e, t] = this.aspect.split("/").map((i) => parseFloat(i));
-    return e > 0 && t > 0 ? e / t : 16 / 9;
-  }
-  /** Tile width that fits `columns` per row AND all rows in the box height. */
-  _tileWidth(e) {
-    const t = Math.max(1, this.entries.length), i = Math.ceil(t / e), s = this._boxW || 320, r = this._boxH || 240, o = (s - (e - 1) * Ne) / e;
-    if (this.scrollMode) return Math.max(80, o);
-    const n = (r - this.padTop - (i - 1) * Ne) / i;
-    return Math.max(80, Math.min(o, n * this._ratio()));
-  }
-  _open(e) {
-    this.dispatchEvent(
-      new CustomEvent("tile-open", { detail: e, bubbles: !0, composed: !0 })
-    );
-  }
-  _renderTile(e) {
-    const t = e.live_camera || e.camera, i = this.hass?.states[t], s = e.name || this.hass?.states[e.camera]?.attributes?.friendly_name || e.camera.split(".")[1] || e.camera, r = this.newest[e.camera];
-    return p`
-      <div class="tile" role="button" @click=${() => this._open(e)}>
-        ${this._visible && this._streamReady && i ? p`<ha-camera-stream
-              .hass=${this.hass}
-              .stateObj=${i}
-              .controls=${!1}
-              .muted=${!0}
-              allow-exoplayer
-            ></ha-camera-stream>` : p`<div class="connecting">
-              ${i ? "Connecting…" : `${t} not found`}
-            </div>`}
-        <span class="name">${s}</span>
-        ${r ? p`<span class="last">${r.label}: ${Ar(r.start, Date.now())}</span>` : ""}
-        <button class="fs-btn" title="Fullscreen" @click=${(o) => this._fullscreen(o, e)}>
-          <ha-icon icon="mdi:fullscreen"></ha-icon>
-        </button>
-      </div>
-    `;
-  }
-  render() {
-    const e = this.stacked ? 1 : this.columns || Math.max(1, this.entries.length), t = this.stacked ? "100%" : `${this._tileWidth(e).toFixed(1)}px`, i = [];
-    for (let r = 0; r < this.entries.length; r += e)
-      i.push(this.entries.slice(r, r + e));
-    const s = this.scrollMode ? 0 : this.padTop;
-    return p`
-      <div
-        class="grid"
-        style="--upc-tile-w:${t};--upc-grid-aspect:${this.aspect};--upc-pad-top:${s}px"
-      >
-        ${i.map((r) => p`<div class="row">${r.map((o) => this._renderTile(o))}</div>`)}
-      </div>
-    `;
-  }
-};
-L.styles = rt`
-    :host {
-      display: block;
-      height: 100%;
-      overflow: hidden; /* wide: fit-to-box sizing — nothing to scroll */
-    }
-    /* Stacked (phone): full-width tiles at natural height — the PAGE
-       (multi-view host) scrolls, not this element. */
-    :host([stacked]) {
-      height: auto;
-      overflow: visible;
-    }
-    /* SCROLL mode (experimental 1-column tablet view): tiles fill the column
-       width at their aspect and THIS element scrolls vertically instead of
-       shrinking to fit — the hidden scrollbar keeps it clean. */
-    :host([scrollmode]) {
-      overflow-y: auto;
-      scrollbar-width: none;
-    }
-    :host([scrollmode])::-webkit-scrollbar {
-      display: none;
-    }
-    .grid {
-      height: 100%;
-      box-sizing: border-box; /* padding-top (below) counts inside the 100% */
-      padding-top: var(--upc-pad-top, 0px); /* fit-mode top reserve (see padTop) */
-      display: flex;
-      flex-direction: column;
-      justify-content: center; /* centers the rows vertically in the box */
-      align-items: center;
-      gap: 0; /* flush tiles — no spacing, like the UniFi app */
-    }
-    :host([stacked]) .grid,
-    :host([scrollmode]) .grid {
-      height: auto; /* content-sized — scrolls instead of fitting */
-      justify-content: flex-start;
-    }
-    .row {
-      display: flex;
-      justify-content: center; /* centers an orphan tile on its row */
-      gap: 0;
-      width: 100%;
-    }
-    .tile {
-      position: relative;
-      flex: 0 0 auto;
-      width: var(--upc-tile-w, 320px);
-      aspect-ratio: var(--upc-grid-aspect, 16/9);
-      border-radius: 0; /* flush, like the UniFi app */
-      overflow: hidden;
-      background: #000;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    :host([stacked]) .tile {
-      border-radius: 10px; /* phone: full-width cards read better rounded */
-    }
-    /* --video-max-height: see the long note in media-view.ts. HA's players cap
-       their inner <video> at calc(100vh - 97px) and let it sit at the top of the
-       box, which pins the picture high and shrinks it whenever a tile is taller
-       than that cap. Same override here so grid tiles letterbox like everything
-       else. */
-    ha-camera-stream {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      --video-max-height: 100%;
-      pointer-events: none; /* controls are off; the tile itself is the tap target */
-    }
-    .connecting {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--secondary-text-color, #9aa0a6);
-      font-size: 13px;
-    }
-    /* Dark-to-transparent scrim along the bottom so the name / motion overlays
-       stay legible over light footage (text-shadow alone washes out). Sits above
-       the video, below the text (z-index 2). */
-    .tile::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 46px;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
-      pointer-events: none;
-      z-index: 1;
-    }
-    /* Overlays read on any footage thanks to the scrim + text shadow. */
-    .name {
-      position: absolute;
-      left: 12px;
-      bottom: 9px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-      pointer-events: none;
-      z-index: 2;
-    }
-    .last {
-      position: absolute;
-      right: 12px;
-      bottom: 9px;
-      font-size: 12px;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.9);
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-      pointer-events: none;
-      z-index: 2;
-    }
-    /* Phone (stacked): the tiles run full-width, so the overlays read a touch
-       small — bump both up 1px. Tablet keeps 14/12. */
-    :host([stacked]) .name {
-      font-size: 15px;
-    }
-    :host([stacked]) .last {
-      font-size: 13px;
-    }
-    /* Per-tile fullscreen button, top-right. Above the scrim/overlays; the
-       stream has pointer-events:none and the tile opens on tap, so the button
-       just stops propagation. */
-    .fs-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      z-index: 3;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      border: none;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.4);
-      color: #fff;
-      cursor: pointer;
-      opacity: 0.85;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .fs-btn:hover {
-      background: rgba(0, 0, 0, 0.6);
-      opacity: 1;
-    }
-    .fs-btn ha-icon {
-      --mdc-icon-size: 20px;
-      display: block;
-    }
-    /* Phone: slightly larger tap target, matching the bumped overlays. */
-    :host([stacked]) .fs-btn {
-      top: 10px;
-      right: 10px;
-      width: 36px;
-      height: 36px;
-    }
-    :host([stacked]) .fs-btn ha-icon {
-      --mdc-icon-size: 22px;
-    }
-  `;
-I([
-  c({ attribute: !1 })
-], L.prototype, "hass", 2);
-I([
-  c({ attribute: !1 })
-], L.prototype, "entries", 2);
-I([
-  c({ type: Boolean, reflect: !0 })
-], L.prototype, "stacked", 2);
-I([
-  c({ attribute: !1 })
-], L.prototype, "newest", 2);
-I([
-  c({ type: Number })
-], L.prototype, "minuteTick", 2);
-I([
-  c({ type: Number })
-], L.prototype, "columns", 2);
-I([
-  c({ type: Boolean, reflect: !0, attribute: "scrollmode" })
-], L.prototype, "scrollMode", 2);
-I([
-  c()
-], L.prototype, "aspect", 2);
-I([
-  c({ type: Number })
-], L.prototype, "padTop", 2);
-I([
-  m()
-], L.prototype, "_streamReady", 2);
-I([
-  m()
-], L.prototype, "_visible", 2);
-I([
-  m()
-], L.prototype, "_boxW", 2);
-I([
-  m()
-], L.prototype, "_boxH", 2);
-L = I([
-  ot("upc-live-grid")
-], L);
-var Lr = Object.defineProperty, Dr = Object.getOwnPropertyDescriptor, B = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Dr(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && Lr(t, i, r), r;
-};
-const Or = 3e4, Ir = 2 * 6e4, Br = 56, Nr = p`<svg viewBox="0 0 24 24">
-  <rect x="4" y="5" width="16" height="5.5" rx="1.5"></rect>
-  <rect x="4" y="13.5" width="16" height="5.5" rx="1.5"></rect>
-</svg>`, Ur = p`<svg viewBox="0 0 24 24">
-  <rect x="4" y="5" width="6.6" height="14" rx="1.5"></rect>
-  <rect x="13.4" y="5" width="6.6" height="14" rx="1.5"></rect>
-</svg>`;
-let D = class extends j {
-  constructor() {
-    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._loader = new si(2, () => {
+    super(...arguments), this.stacked = !1, this._data = /* @__PURE__ */ new Map(), this._strip = [], this._loaded = !1, this._expanded = !1, this._lastPlayedKey = "", this._minuteTick = 0, this._thumbVersion = 0, this._gridView = 2, this._gridUnder = !1, this._closing = !1, this._chromeHidden = !1, this._xfToken = 0, this._lastPlayedCam = "", this._loader = new rs(2, () => {
       this._thumbVersion++;
-    }), this._lastSyncTrigger = 0, this._fetchSeq = 0, this._suspendedForFs = !1, this._savedScroll = [], this._keepLastPlayed = !1, this._onStripSelect = (e) => {
-      this._playBand(e.detail);
-    }, this._onToggleExpand = async () => {
-      if (this.stacked) {
-        this._expanded = !this._expanded, this._expanded && this._closePlayback();
+    }), this._lastSyncTrigger = 0, this._fetchSeq = 0, this._savedScroll = [], this._keepLastPlayed = !1, this._onStripSelect = (e) => {
+      this._openClip(e.detail);
+    }, this._dismiss = async () => {
+      if (!this._playback || this._closing) return;
+      const e = this._wrapEl(), t = e?.querySelector("upc-media-view");
+      if (!e || !t) {
+        this._closePlayback();
         return;
       }
+      const i = ++this._xfToken, s = ct(e, this), o = t.videoBox();
+      if (this._closing = !0, this._chromeHidden = !0, this._gridUnder = !1, this._clearUnder(), await this.updateComplete, i !== this._xfToken) return;
+      const r = this._thumbEl(this._lastPlayedKey);
+      let n;
+      r ? (n = ke(e, ct(r, this), s, o, { out: !0 }), e.querySelector(".card-strip")?.animate([{ opacity: 1 }, { opacity: 0, offset: 0.3 }, { opacity: 0 }], {
+        duration: U,
+        fill: "forwards"
+      })) : n = e.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(0.94)" }], {
+        duration: U,
+        easing: X(),
+        fill: "forwards"
+      }), this.renderRoot.querySelector(".playoverlay .scrim")?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: U, easing: X(), fill: "forwards" });
+      const a = this.renderRoot.querySelector("upc-live-grid");
+      a && (a.getAnimations().forEach((h) => h.cancel()), Dt(a, !0, 700)), await n.finished.catch(() => {
+      }), i === this._xfToken && (this._closing = !1, this._chromeHidden = !1, this._closePlayback());
+    }, this._toggling = !1, this._onToggleExpand = async () => {
+      if (this.stacked) return this._toggleStacked();
       if (this._expanded) {
         const e = this.renderRoot.querySelector(".events-scroll.grid");
         e && await e.animate(
@@ -6393,31 +8483,38 @@ let D = class extends j {
           { duration: 240, easing: "ease-in", fill: "forwards" }
         ).finished.catch(() => {
         }), this._expanded = !1;
-      } else
-        this._closePlayback(), this._expanded = !0;
+      } else {
+        const e = [this.renderRoot.querySelector(".events-pane"), this.renderRoot.querySelector(".tablet .body")];
+        await Promise.all(
+          e.map(
+            (t) => t?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: "ease-in", fill: "forwards" }).finished.catch(() => {
+            })
+          )
+        ), this._closePlayback(), this._expanded = !0;
+      }
     }, this._closePlayback = () => {
       this._playback = void 0, this._eventSpan = void 0;
     }, this._onTileOpen = (e) => {
       const t = e.detail.navigation_path;
       if (t) {
-        $t(t);
+        Vt(t);
         return;
       }
+      let i;
+      const s = e.composedPath()[0], o = s.tileOf?.(e.detail.camera);
+      if (this._saveScroll(), this._suspendedFor = this._openedFrom = "tile", o) {
+        const r = o.getBoundingClientRect();
+        i = { el: o, content: { x: 0, y: 0, w: r.width, h: r.height }, view: this._tileView(s) };
+      }
       this.dispatchEvent(
-        new CustomEvent("camera-open", { detail: e.detail.camera, bubbles: !0, composed: !0 })
+        new CustomEvent("camera-open", { detail: { camera: e.detail.camera, from: i }, bubbles: !0, composed: !0 })
       );
     }, this._onFsHandoff = (e) => {
-      this._saveScroll(), this._suspendedForFs = !0, this._closePlayback(), this.dispatchEvent(
+      this._saveScroll(), this._suspendedFor = this._openedFrom = "clip";
+      const t = e.composedPath()[0], i = { el: t, content: t.videoBox(), poster: t.snapshot() ?? void 0 };
+      this._xfToken++, this._chromeHidden = !0, this._clearUnder(), this.dispatchEvent(
         new CustomEvent("camera-fullscreen-at", {
-          detail: e.detail,
-          bubbles: !0,
-          composed: !0
-        })
-      );
-    }, this._onTileFs = (e) => {
-      this.dispatchEvent(
-        new CustomEvent("camera-fullscreen", {
-          detail: e.detail.camera,
+          detail: { ...e.detail, from: i },
           bubbles: !0,
           composed: !0
         })
@@ -6425,12 +8522,19 @@ let D = class extends j {
     };
   }
   connectedCallback() {
-    super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), Or), this._minuteTimer = setInterval(() => {
+    if (super.connectedCallback(), this._refreshTimer = setInterval(() => void this._fetchAll(), zn), this._minuteTimer = setInterval(() => {
       this._minuteTick++;
-    }, 6e4), this.hasUpdated && (this._suspendedForFs ? (this._suspendedForFs = !1, this._keepLastPlayed = !0, this._revealLastPlayed()) : this._resetToMain(), this._fetchAll());
+    }, 6e4), this.hasUpdated) {
+      if (this._suspendedFor) {
+        const e = this._suspendedFor === "clip";
+        this._suspendedFor = void 0, e && (this._keepLastPlayed = !0), this._revealing = this._revealLastPlayed(e);
+      } else
+        this._resetToMain();
+      this._fetchAll();
+    }
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), clearInterval(this._refreshTimer), clearInterval(this._minuteTimer), clearTimeout(this._syncRefetchTimer), this._loader.cancelAll(), this._suspendedForFs || this._resetToMain();
+    super.disconnectedCallback(), clearInterval(this._refreshTimer), clearInterval(this._minuteTimer), clearTimeout(this._syncRefetchTimer), this._loader.cancelAll(), this._xfToken++, this._gridUnder = !1, this._closing = !1, this._chromeHidden = !1, this._clearUnder(), this._suspendedFor ? this._closePlayback() : this._resetToMain();
   }
   /** Remember every scrolled element in this page, and every scrolled
    *  ancestor (a popup or view that scrolls the page itself). Detaching the
@@ -6438,15 +8542,15 @@ let D = class extends j {
    *  scroll offsets, so "10 pages down, five days back" has to be put back by
    *  hand. The elements themselves survive (the card caches this page). */
   _saveScroll() {
-    const e = [], t = (r) => {
-      for (const o of Array.from(r.querySelectorAll("*")))
-        (o.scrollTop || o.scrollLeft) && e.push([o, o.scrollTop, o.scrollLeft]), o.shadowRoot && t(o.shadowRoot);
+    const e = [], t = (o) => {
+      for (const r of Array.from(o.querySelectorAll("*")))
+        (r.scrollTop || r.scrollLeft) && e.push([r, r.scrollTop, r.scrollLeft]), r.shadowRoot && t(r.shadowRoot);
     };
     t(this.renderRoot), (this.scrollTop || this.scrollLeft) && e.push([this, this.scrollTop, this.scrollLeft]);
     let i = this;
     for (; i; ) {
-      const r = i.parentElement ?? (i.getRootNode().host || null);
-      r instanceof Element && (r.scrollTop || r.scrollLeft) && e.push([r, r.scrollTop, r.scrollLeft]), i = r;
+      const o = i.parentElement ?? (i.getRootNode().host || null);
+      o instanceof Element && (o.scrollTop || o.scrollLeft) && e.push([o, o.scrollTop, o.scrollLeft]), i = o;
     }
     const s = document.scrollingElement;
     s && s.scrollTop && e.push([s, s.scrollTop, s.scrollLeft]), this._savedScroll = e;
@@ -6458,16 +8562,18 @@ let D = class extends j {
       t.scrollTop = i, t.scrollLeft = s;
   }
   /** Back from the fullscreen timeline: put the page back where it was, then
-   *  bring the clip that was playing into view and highlight it — in the grid,
-   *  the tablet column, the phone carousel, whichever this page is showing.
-   *  Restoring the old offsets alone is not enough: the strip had nothing to
-   *  highlight and the exact item is what the viewer is looking for. */
-  async _revealLastPlayed() {
+   *  (`reveal`) bring the clip that was playing into view and highlight it —
+   *  in the grid, the tablet column, the phone carousel, whichever this page
+   *  is showing. Restoring the old offsets alone is not enough: the strip had
+   *  nothing to highlight and the exact item is what the viewer is looking
+   *  for. */
+  async _revealLastPlayed(e = !0) {
     await this.updateComplete;
-    const e = Array.from(this.renderRoot.querySelectorAll("upc-event-strip, upc-events-list"));
-    await Promise.all(e.map((t) => t.updateComplete)), await new Promise((t) => requestAnimationFrame(t)), this._restoreScroll();
-    for (const t of e)
-      if (t.revealKey(this._lastPlayedKey)) break;
+    const t = Array.from(this.renderRoot.querySelectorAll("upc-event-strip, upc-events-list"));
+    if (await Promise.all(t.map((i) => i.updateComplete)), await new Promise((i) => requestAnimationFrame(i)), this._restoreScroll(), !!e) {
+      for (const i of t)
+        if (i.revealKey(this._lastPlayedKey)) break;
+    }
   }
   /** Return to the default main screen: no clip selected (live grid shown), not
    *  in the expanded events browser, default 2-column density, no last-played
@@ -6476,13 +8582,25 @@ let D = class extends j {
     this._closePlayback(), this._expanded = !1, this._lastPlayedKey = "", this._keepLastPlayed = !1, this._gridView = 2;
   }
   updated(e) {
-    e.has("config") && this.config && (this._resetToMain(), this._fetchAll()), e.has("_expanded") && this._expanded && !this.stacked && this.renderRoot.querySelector(".events-scroll.grid")?.animate(
+    e.has("config") && this.config && (this._resetToMain(), this._fetchAll()), (e.has("_strip") || e.has("_loaded") || e.has("_expanded") || e.has("_gridView") || e.has("_playback") || e.has("stacked")) && this.dispatchEvent(
+      new CustomEvent("events-head", {
+        detail: {
+          loaded: this._loaded,
+          count: this._strip.length,
+          expanded: this._expanded,
+          gridView: this._gridView,
+          liveGrid: !this._expanded && !this._playback
+        },
+        bubbles: !0,
+        composed: !0
+      })
+    ), e.has("_expanded") && this._expanded && !this.stacked && this.renderRoot.querySelector(".events-scroll.grid")?.animate(
       [
         { opacity: 0, transform: "translateX(-30px)" },
         { opacity: 1, transform: "none" }
       ],
       { duration: 300, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-    ), e.has("_expanded") && !this._expanded && e.get("_expanded") === !0 && !this.stacked && this.renderRoot.querySelector(".tablet .body")?.animate(
+    ), e.has("_expanded") && !this._expanded && e.get("_expanded") === !0 && !this.stacked && (this.renderRoot.querySelector(".tablet .body")?.animate(
       [
         // The SLIDE finishes early (~offset 0.45 = ~315ms) so it stays snappy,
         // while the OPACITY keeps ramping over the full duration — a longer
@@ -6493,7 +8611,13 @@ let D = class extends j {
         { opacity: 1, transform: "none", offset: 1 }
       ],
       { duration: 700, easing: "ease-out" }
-    );
+    ), this.renderRoot.querySelector(".events-pane")?.animate(
+      [
+        { opacity: 0, transform: "translateX(-30px)" },
+        { opacity: 1, transform: "none" }
+      ],
+      { duration: 300, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+    ));
   }
   /** Normalized `cameras:` entries (strings become { camera }). */
   _entries() {
@@ -6518,54 +8642,176 @@ let D = class extends j {
     const t = ++this._fetchSeq, i = await Promise.all(
       e.map(async (n) => {
         const a = n.camera.split(".")[1];
-        return { e: n, loaded: a ? await Je(`${ie}/${a}`) : void 0 };
+        return { e: n, loaded: a ? await Qi(`${Fe}/${a}`) : void 0 };
       })
     );
     if (t !== this._fetchSeq) return;
-    const s = (this.config?.event_merge_gap_seconds ?? 60) * 1e3, r = /* @__PURE__ */ new Map();
-    let o = !1;
+    const s = (this.config?.event_merge_gap_seconds ?? 60) * 1e3, o = /* @__PURE__ */ new Map();
+    let r = !1;
     for (const { e: n, loaded: a } of i)
-      (!a || a.stale) && (o = !0), a && r.set(n.camera, {
-        bands: Pr(ii(a.entries.map(Ze), s), n.camera, this._name(n)),
+      (!a || a.stale) && (r = !0), a && o.set(n.camera, {
+        bands: ns(os(a.entries.map(Ji), s), n.camera, this._name(n)),
         preMs: a.preMs,
         postMs: a.postMs
       });
-    this._data = r, this._strip = Mr([...r.values()].map((n) => n.bands)), this._thumbVersion++, o && this._requestSync();
+    this._data = o, this._strip = Ko([...o.values()].map((n) => n.bands)), this._loaded = !0, this._thumbVersion++, r && this._requestSync();
   }
   /** Fire the pyscript sync service (throttled; it syncs ALL cameras) and
    *  re-check the manifests a few seconds later. No-ops without pyscript. */
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < Ir || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < Ln || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchAll(), 8e3));
   }
   _playBand(e) {
-    this._playback = e, this._lastPlayedKey = `${e.type}@${e.start}`, this._keepLastPlayed = !1;
+    this._playback = e, this._lastPlayedKey = `${e.type}@${e.start}`, this._lastPlayedCam = e.camera, this._keepLastPlayed = !1;
     const t = this._data.get(e.camera);
     this._eventSpan = {
       start: Math.max(e.start - (t?.preMs ?? 0), 0),
       end: Math.min(e.end + (t?.postMs ?? 0), Date.now())
     };
   }
-  // Change the tablet live-grid density (1 = full-width scroll, 2 = columns).
-  _setGridView(e) {
-    this._gridView = e;
+  // ---- zoom transitions ----------------------------------------------------
+  /** The player's box: in place of the cameras, or the lightbox. */
+  _wrapEl() {
+    return this.renderRoot.querySelector(".playwrap, .playbox");
   }
-  /** Segmented control that resizes the tablet live grid (1 or 2 columns). */
-  _renderGridView(e) {
-    const t = (i, s, r) => p`
-      <button
-        class=${e === i ? "on" : ""}
-        title=${s}
-        @click=${() => this._setGridView(i)}
-      >
-        ${r}
-      </button>
-    `;
-    return p`<div class="grid-view">
-      ${t(1, "Single column", Nr)} ${t(2, "Two columns", Ur)}
-    </div>`;
+  /** A clip's thumbnail where it is on screen: the events list beside the
+   *  cameras, or the events grid. */
+  _thumbEl(e) {
+    return this.renderRoot.querySelector("upc-events-list, upc-event-strip")?.thumbOf(e) ?? null;
+  }
+  /** A clip picked: the player's black box grows out of its thumbnail,
+   *  dissolving out of it (the thumbnail is not the clip's first frame - often
+   *  a square crop round the detection - so it is never shown blown up), and
+   *  the clip fades in on its first frame. Already open on the same camera,
+   *  the clip just fades in there. Tiles stay under the zoom, fading out. */
+  async _openClip(e) {
+    const t = ++this._xfToken, i = this._wrapEl();
+    for (const C of [i, i?.querySelector(".card-strip"), this.renderRoot.querySelector(".playoverlay .scrim")])
+      C?.getAnimations().forEach((W) => W.cancel());
+    const s = `${e.type}@${e.start}`, o = this._thumbEl(s), r = !!this._playback && !this._closing, n = r && this._playback.camera === e.camera, a = r && !n ? this._wrapEl() : null, h = a?.querySelector("upc-media-view"), c = a && h ? this._dissolve(h.snapshot(), a, h.videoBox()) : this._clearUnder(), d = o ? ct(o, this) : null, l = this.stacked && !r && !this._expanded ? this.scrollTop : 0;
+    this._closing = !1, this._gridUnder = !r && !this._expanded, this._chromeHidden = !n, this._playBand(e), await this.updateComplete;
+    const _ = this._wrapEl(), v = _?.querySelector("upc-media-view");
+    if (t !== this._xfToken || !_ || !v) return this._settleOpen(t);
+    if (n) return this._settleOpen(t);
+    await v.updateComplete, l && (this.scrollTop = 0);
+    const w = ct(_, this), T = [];
+    if (l)
+      for (const C of [this.renderRoot.querySelector("upc-event-strip"), _.parentElement])
+        C?.animate([{ transform: `translateY(${-l}px)` }, { transform: "none" }], {
+          duration: U,
+          easing: X()
+        });
+    if (d) {
+      const C = this.stacked ? v.videoBox() : { x: 0, y: 0, w: w.w, h: w.h };
+      T.push(ke(_, { ...d, y: d.y + l }, w, C)), _.querySelector(".card-strip")?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }], {
+        duration: U
+      });
+    } else
+      T.push(
+        _.animate([{ opacity: 0, transform: "scale(0.94)" }, { opacity: 1, transform: "none" }], {
+          duration: U,
+          easing: X()
+        })
+      );
+    c?.ghost?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: U, easing: "ease-in", fill: "forwards" }), this.stacked && c?.box?.animate([{ opacity: 1 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }], {
+      duration: U,
+      fill: "forwards"
+    });
+    const z = this.renderRoot.querySelector(".playoverlay .scrim");
+    z && !r && T.push(z.animate([{ opacity: 0 }, { opacity: 1 }], { duration: U, easing: X() }));
+    const O = this._gridUnder ? this.renderRoot.querySelector("upc-live-grid") : null;
+    O && (O.getAnimations().forEach((C) => C.cancel()), Dt(O, !1, U)), await Promise.all(T.map((C) => C.finished.catch(() => {
+    }))), this._settleOpen(t);
+  }
+  _settleOpen(e) {
+    e === this._xfToken && (this._gridUnder = !1, this._chromeHidden = !1, this._clearUnder());
+  }
+  /** The previous camera's player (`wrap`, `content` its picture box),
+   *  replaced: its black box stays where it was and its last frame dissolves
+   *  on it, UNDER the next player zooming in - the new picture flies in over
+   *  the old one. Cleared once it has landed. */
+  _dissolve(e, t, i) {
+    const s = this.renderRoot.querySelector(".under");
+    if (!s) return;
+    const o = ct(t, s), r = document.createElement("div");
+    return r.className = "backdrop", Object.assign(r.style, { left: `${o.x}px`, top: `${o.y}px`, width: `${o.w}px`, height: `${o.h}px` }), s.replaceChildren(r), e ? (e.className = "ghost", Object.assign(e.style, {
+      left: `${o.x + i.x}px`,
+      top: `${o.y + i.y}px`,
+      width: `${i.w}px`,
+      height: `${i.h}px`
+    }), s.append(e), { box: r, ghost: e }) : { box: r };
+  }
+  _clearUnder() {
+    this.renderRoot?.querySelector(".under")?.replaceChildren();
+  }
+  /** Where the camera screen zooms back to on its way out: the clip it was
+   *  opened from (that camera's), else - and always when a tile opened it -
+   *  the camera's live tile (`view`: the grid it may be half scrolled out of),
+   *  after the page has come back and scrolled to it. */
+  async zoomTarget(e) {
+    const t = this._openedFrom;
+    if (this._openedFrom = void 0, this._suspendedFor = void 0, await this.updateComplete, await this._revealing, t !== "tile" && this._keepLastPlayed && this._lastPlayedCam === e) {
+      const o = this._thumbEl(this._lastPlayedKey);
+      if (o) return { el: o };
+    }
+    const i = this.renderRoot.querySelector("upc-live-grid");
+    if (!i) return null;
+    await i.updateComplete;
+    const s = i.tileOf(e);
+    return s ? { el: s, view: this._tileView(i) } : null;
+  }
+  /** What a live tile can be scrolled out of: the wide grid (it scrolls in
+   *  its one-column mode), or - phone - this page, which scrolls as a whole. */
+  _tileView(e) {
+    return this.stacked ? this : e;
+  }
+  /** The card's heading: events grid <-> cameras. */
+  toggleExpand() {
+    this._onToggleExpand();
+  }
+  /** Phone: carousel + tiles <-> events grid, faded through. What shows fades
+   *  out, the page swaps and goes back to its top; the grid then comes in -
+   *  rising slightly - once the pictures on its first screen are in (asked for
+   *  before it fades out), and the carousel simply fades back in, the tiles
+   *  each on their own first frame (see live-grid). */
+  async _toggleStacked() {
+    if (!this._toggling) {
+      this._toggling = !0;
+      try {
+        const e = !this._expanded, t = this.renderRoot.querySelector("upc-event-strip");
+        e && t?.preload(On);
+        const i = [t, this.renderRoot.querySelector(".body")].map(
+          (o) => o?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: "ease-in", fill: "forwards" })
+        );
+        await Promise.all(i.map((o) => o?.finished.catch(() => {
+        }))), e && this._closePlayback(), this._expanded = e, await this.updateComplete, this.scrollTop = 0, e && await t?.firstScreenReady(In);
+        const s = t?.animate(
+          e ? [
+            { opacity: 0, transform: "translateY(14px)" },
+            { opacity: 1, transform: "none" }
+          ] : [{ opacity: 0 }, { opacity: 1 }],
+          { duration: e ? 380 : 300, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+        );
+        i.forEach((o) => o?.cancel()), await s?.finished.catch(() => {
+        });
+      } finally {
+        this._toggling = !1;
+      }
+    }
+  }
+  /** The card's grid-density control (wide layout): the tablet live grid's
+   *  density, 1 = full-width scroll, 2 = columns. The tiles re-flow (and
+   *  restart their streams): out, switch, back in. */
+  async setGridView(e) {
+    if (e === this._gridView) return;
+    const t = this.renderRoot.querySelector("upc-live-grid");
+    t && await Dt(t, !1, 140).finished.catch(() => {
+    }), this._gridView = e, await this.updateComplete;
+    const i = this.renderRoot.querySelector("upc-live-grid");
+    i && (i.getAnimations().forEach((s) => s.cancel()), Dt(i, !0, 520));
   }
   render() {
     if (!this.hass || !this.config) return b;
@@ -6576,11 +8822,15 @@ let D = class extends j {
       t,
       this.config.thumbnail_concurrency ?? 2
     );
-    const i = this.config.accent_color ?? "#fc9df3", s = this._playback, r = s ? `${s.type}@${s.start}` : "", o = s ? s.camera : "", n = s ? this._data.get(s.camera) : void 0, a = {};
-    for (const h of e) a[h.camera] = this._data.get(h.camera)?.bands[0];
-    return this.stacked ? p`
+    const i = this.config.accent_color ?? "#fc9df3", s = this._playback, o = s ? `${s.type}@${s.start}` : "", r = s ? s.camera : "", n = s ? this._data.get(s.camera) : void 0, a = {};
+    for (const c of e) a[c.camera] = this._data.get(c.camera)?.bands[0];
+    if (!this.stacked) return this._renderTablet(e, i, s, o, r, n, a);
+    const h = s ? this._clipShape(s.camera) : "";
+    return u`
       <upc-event-strip
         captions
+        hideHead
+        .loaded=${this._loaded}
         .bands=${this._strip}
         .loader=${this._loader}
         .thumbVersion=${this._thumbVersion}
@@ -6588,7 +8838,7 @@ let D = class extends j {
         .thumbSize=${this.config.mobile_events_thumbnail_size ?? 0}
         .timeSize=${this.config.strip_time_size ?? 12}
         .itemTextSize=${(this.config.list_text_size ?? 12) + 1}
-        .playingKey=${r}
+        .playingKey=${o}
         .lastPlayedKey=${this._lastPlayedKey}
         .keepLastPlayed=${this._keepLastPlayed}
         .expanded=${this._expanded}
@@ -6597,59 +8847,56 @@ let D = class extends j {
         @strip-select=${this._onStripSelect}
         @toggle-expand=${this._onToggleExpand}
       ></upc-event-strip>
-      ${this._expanded ? s ? p`<div class="playoverlay" @click=${this._closePlayback}>
-              ${kt(
-      o,
-      p`<div class="playbox" @click=${(h) => h.stopPropagation()}>
+      ${this._expanded ? s ? u`<div class="playoverlay" @click=${this._dismiss}>
+              <div class="scrim"></div>
+              ${It(
+      r,
+      u`<div class="playbox" style=${h} @click=${(c) => c.stopPropagation()}>
+                  <div class="card-pic"></div>
+                  <div class="card-strip"></div>
                   ${this._renderPlayer(s, n, i)}
-                  <span class="play-cam">${s.cameraName}</span>
-                  <button class="live-pill" @click=${this._closePlayback}>✕</button>
                 </div>`
     )}
-            </div>` : b : p`<div class="body">
-        ${s ? kt(
-      o,
-      p`<div class="playwrap">
-                ${this._renderPlayer(s, n, i)}
-                <span class="play-cam">${s.cameraName}</span>
-                <button class="live-pill" @click=${this._closePlayback}>✕&nbsp;&nbsp;Live</button>
-              </div>`
-    ) : p`<upc-live-grid
-              class=${this.stacked ? "bleed" : ""}
-              .hass=${this.hass}
-              .entries=${e}
-              .stacked=${this.stacked}
-              .newest=${a}
-              .minuteTick=${this._minuteTick}
-              .aspect=${this.config.grid_aspect ?? "16/9"}
-              @tile-open=${this._onTileOpen}
-              @tile-fullscreen=${this._onTileFs}
-            ></upc-live-grid>`}
+            </div>` : b : u`<div class="body ${s ? "playing" : ""}">
+            <div class="under"></div>
+            ${!s || this._gridUnder || this._closing ? u`<upc-live-grid
+                  class="bleed"
+                  .hass=${this.hass}
+                  .entries=${e}
+                  .stacked=${!0}
+                  .newest=${a}
+                  .minuteTick=${this._minuteTick}
+                  .aspect=${this.config.grid_aspect ?? "16/9"}
+                  @tile-open=${this._onTileOpen}
+                ></upc-live-grid>` : b}
+            ${s ? It(
+      r,
+      u`<div class="playwrap" style=${h}>
+                    <div class="card-pic"></div>
+                    <div class="card-strip"></div>
+                    ${this._renderPlayer(s, n, i)}
+                  </div>`
+    ) : b}
           </div>`}
-    ` : this._renderTablet(e, i, s, r, o, n, a);
+      <div class="foot"></div>
+    `;
+  }
+  /** The phone's clip card for a camera's footage: full width at its aspect,
+   *  plus the control strip below the picture for landscape footage (portrait
+   *  footage is tall enough to carry its controls over its foot). */
+  _clipShape(e) {
+    const t = this.hass?.states?.[e]?.attributes, i = Number(t?.width) || 16, s = Number(t?.height) || 9;
+    return `--upc-clip-ar:${i} / ${s};--upc-clip-strip:${s > i ? 0 : Fn}px`;
   }
   /** Tablet (wide) layout. Collapsed: the timeline-identical events LIST on the
    *  left (ALL cameras merged) + the live grid (or the clip player) on the right
    *  — click an event to play it on the right. Expanded (chevron): the events
    *  become a full-width grid to browse, cameras unmounted. */
-  _renderTablet(e, t, i, s, r, o, n) {
-    const a = this.config, h = a.tablet_events_thumbnail_size ?? 145, u = a.list_text_size ?? 12, d = Math.max(1, u - 1), l = this._gridView === 1 ? 1 : 2, _ = l, v = p`
-      <div class="ev-head">
-        <span>${a.strip_title ?? "Events"}</span>
-        <span class="ev-count">${this._strip.length}</span>
-        <button
-          class="ev-chev"
-          title=${this._expanded ? "Show cameras" : "Browse all events"}
-          @click=${this._onToggleExpand}
-        >
-          <ha-icon icon="mdi:chevron-right"></ha-icon>
-        </button>
-      </div>
-    `;
-    return this._expanded ? p`
+  _renderTablet(e, t, i, s, o, r, n) {
+    const a = this.config, h = a.tablet_events_thumbnail_size ?? 145, c = a.tablet_events_grid_thumbnail_size ?? Math.round(h * 1.5), d = a.list_text_size ?? 12, l = Math.max(1, d - 1), _ = this._gridView === 1 ? 1 : 2;
+    return this._expanded ? u`
         <div class="tablet expanded">
           <div class="events-pane">
-            ${v}
             <div class="events-scroll grid">
               <upc-event-strip
                 expanded
@@ -6664,37 +8911,35 @@ let D = class extends j {
                 .lastPlayedKey=${this._lastPlayedKey}
                 .keepLastPlayed=${this._keepLastPlayed}
                 .expanded=${!0}
-                .gridThumbWidth=${h}
+                .gridThumbWidth=${c}
                 .dateFontSize=${a.date_font_size ?? 13}
-                .itemTextSize=${u}
+                .itemTextSize=${d}
                 .accent=${t}
                 @strip-select=${this._onStripSelect}
               ></upc-event-strip>
             </div>
           </div>
-          ${i ? p`<div class="playoverlay" @click=${this._closePlayback}>
-                ${kt(
-      r,
-      p`<div class="playbox" @click=${(y) => y.stopPropagation()}>
-                    ${this._renderPlayer(i, o, t)}
-                    <span class="play-cam">${i.cameraName}</span>
-                    <button class="live-pill" @click=${this._closePlayback}>✕</button>
+          ${i ? u`<div class="playoverlay" @click=${this._dismiss}>
+                <div class="scrim"></div>
+                ${It(
+      o,
+      u`<div class="playbox" @click=${(v) => v.stopPropagation()}>
+                    ${this._renderPlayer(i, r, t)}
                   </div>`
     )}
               </div>` : b}
         </div>
-      ` : p`
+      ` : u`
       <div class="tablet">
-        <div class="events-pane" style="flex-basis:${h + 168}px">
-          ${v}
+        <div class="events-pane" style="flex-basis:${fs(a)}px">
           <div class="events-scroll">
             <upc-events-list
               .bands=${this._strip}
               .loader=${this._loader}
               .thumbVersion=${this._thumbVersion}
-              .textSize=${u}
+              .textSize=${d}
               .textColor=${a.list_text_color ?? ""}
-              .durationSize=${d}
+              .durationSize=${l}
               .durationColor=${a.list_duration_color ?? ""}
               .showCamera=${!0}
               .line1White=${!0}
@@ -6713,27 +8958,19 @@ let D = class extends j {
           </div>
         </div>
         <div class="body">
-          ${i ? kt(
-      r,
-      p`<div class="playwrap">
-                  ${this._renderPlayer(i, o, t)}
-                  <span class="play-cam">${i.cameraName}</span>
-                  <button class="live-pill" @click=${this._closePlayback}>✕&nbsp;&nbsp;Live</button>
-                </div>`
-    ) : p`<upc-live-grid
-                  .hass=${this.hass}
-                  .entries=${e}
-                  .stacked=${!1}
-                  .newest=${n}
-                  .minuteTick=${this._minuteTick}
-                  .columns=${l}
-                  .scrollMode=${l === 1}
-                  .padTop=${l === 1 ? 0 : Br}
-                  .aspect=${this.config.grid_aspect ?? "16/9"}
-                  @tile-open=${this._onTileOpen}
-                  @tile-fullscreen=${this._onTileFs}
-                ></upc-live-grid>
-                ${this._renderGridView(_)}`}
+          <div class="under"></div>
+          ${!i || this._gridUnder || this._closing ? u`<upc-live-grid
+                .hass=${this.hass}
+                .entries=${e}
+                .stacked=${!1}
+                .newest=${n}
+                .minuteTick=${this._minuteTick}
+                .columns=${_}
+                .scrollMode=${_ === 1}
+                .aspect=${this.config.grid_aspect ?? "16/9"}
+                @tile-open=${this._onTileOpen}
+              ></upc-live-grid>` : b}
+          ${i ? It(o, u`<div class="playwrap">${this._renderPlayer(i, r, t)}</div>`) : b}
         </div>
       </div>
     `;
@@ -6745,7 +8982,8 @@ let D = class extends j {
       start: Math.max(e.start - (t?.preMs ?? 0), 0),
       end: Math.min(e.end + (t?.postMs ?? 0), Date.now())
     };
-    return p`<upc-media-view
+    return u`<upc-media-view
+      style="--upc-accent-deep:${Ie(i, 0.58) || i}"
       .hass=${this.hass}
       .nvrId=${this._nvrIdFor(e.camera)}
       .cameraId=${e.camera}
@@ -6759,16 +8997,37 @@ let D = class extends j {
       .accent=${i}
       .now=${Date.now()}
       .fsHandoff=${!0}
+      .roundCtrl=${!0}
+      .closable=${!0}
+      .chromeHidden=${this._chromeHidden}
       @fullscreen-handoff=${this._onFsHandoff}
+      @player-close=${this._dismiss}
     ></upc-media-view>`;
   }
 };
-D.styles = rt`
+B.styles = ft`
     :host {
       display: flex;
       flex-direction: column;
       gap: 20px; /* clear separation between the event strip and the live grid */
       min-height: 0;
+    }
+    /* What a camera switch leaves UNDER the next player while it zooms in
+       (see _dissolve): the old player's black box and its last frame (one
+       GPU-side copy, fading out), where they were. */
+    .under {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .under > .backdrop {
+      position: absolute;
+      background: #000;
+      border-radius: 10px; /* the player's stage */
+    }
+    .under > .ghost {
+      position: absolute;
+      object-fit: contain;
     }
     /* Stacked (phone): ONE page scroll — the strip and the camera tiles are
        normal flow content and scroll away together (hidden scrollbar). The
@@ -6807,20 +9066,56 @@ D.styles = rt`
     :host([stacked]) .body {
       flex: 0 0 auto; /* natural height — part of the page scroll */
     }
+    /* ...while a clip plays: the rest of the page under the strip (its card's
+       height is capped to it - a portrait clip at full width can be taller). */
+    :host([stacked]) .body.playing {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     upc-live-grid,
     .playwrap {
       position: absolute;
       inset: 0;
     }
-    /* Stacked: grid and player sit in normal flow at their natural height. */
+    /* Stacked: the grid sits in normal flow at its natural height. */
     :host([stacked]) upc-live-grid {
       position: static;
       height: auto;
     }
+    /* The phone's clip card: edge to edge like the tiles, black, in the clip's
+       own shape (--upc-clip-ar: full width at its aspect) plus - landscape
+       footage - a strip below the picture for its seek bar and buttons
+       (--upc-clip-strip; the picture is drawn at the top, see media-view), so
+       they have room and leave the picture alone. Positioned: it paints over
+       tiles still under it. */
     :host([stacked]) .playwrap {
       position: relative;
       inset: auto;
-      aspect-ratio: 16 / 9; /* full-width player pane while a clip plays */
+      margin: 0 -12px;
+      aspect-ratio: var(--upc-clip-ar, 16 / 9);
+      padding-bottom: var(--upc-clip-strip, 0px);
+      max-height: calc(100% - var(--upc-clip-strip, 0px));
+    }
+    /* Its black: the picture's box, and the control strip below it - a layer
+       of its own, so a zoom flies the picture alone (the strip fades in once
+       it lands and out as it leaves). The strip reaches up behind the
+       picture's rounded foot, so at rest they read as one card. */
+    .card-pic,
+    .card-strip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      background: #000;
+    }
+    .card-pic {
+      top: 0;
+      bottom: var(--upc-clip-strip, 0px);
+      border-radius: 10px;
+    }
+    .card-strip {
+      bottom: 0;
+      height: calc(var(--upc-clip-strip, 0px) + 10px);
+      border-radius: 0 0 10px 10px;
     }
     /* Stacked: the live tiles run EDGE TO EDGE — escape the ha-card's
        12px side padding (matches the padding constant in card.ts styles). */
@@ -6833,47 +9128,29 @@ D.styles = rt`
       right: auto;
       margin: 0 -12px; /* static flow: escape the padding via margins */
     }
+    /* Tiles kept under a clip's card zooming open or shut (see _gridUnder)
+       ride out of the flow from the top of the body, fading. */
+    :host([stacked]) .body.playing upc-live-grid.bleed {
+      position: absolute;
+      top: 0;
+      left: -12px;
+      right: -12px;
+      margin: 0;
+    }
+    /* The page's foot: clear of the screen's rounded bottom corners (and the
+       home indicator) - with the gap before it, max(20px, the safe area). */
+    :host([stacked]) .foot {
+      flex: 0 0 auto;
+      height: max(0px, calc(env(safe-area-inset-bottom, 0px) - 20px));
+    }
     upc-media-view {
       position: absolute;
       inset: 0;
     }
-    /* Back-to-live pill over the playback surface (top-right, above the video
-       but clear of its bottom controls). Matches the dark floating pills. */
-    .live-pill {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 9px 16px;
-      border: none;
-      border-radius: 22px;
-      cursor: pointer;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
-      background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-      z-index: 3;
-      -webkit-tap-highlight-color: transparent;
-    }
-    /* Which camera's clip is playing (top-left, mirrors the tiles' name spot). */
-    .play-cam {
-      position: absolute;
-      top: 14px;
-      left: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-      pointer-events: none;
-      z-index: 3;
-    }
     /* Expanded-grid playback: a lightbox OVER the grid (the grid stays put).
-       position:fixed resolves against the nearest transformed ancestor — the
-       mobile view's fixed card / the bubble popup — so the scrim covers the
-       card/popup; with no such ancestor it covers the viewport (also fine). */
+       position:fixed resolves against the nearest containing ancestor — the
+       mobile view's fixed card, the wide card (contain: layout, card.ts) — so
+       the scrim covers the card, not the sidebar beside it. */
     .playoverlay {
       position: fixed;
       inset: 0;
@@ -6882,6 +9159,11 @@ D.styles = rt`
       align-items: center;
       justify-content: center;
       padding: 16px;
+    }
+    /* Its dimming: a layer of its own, so it fades by opacity alone. */
+    .playoverlay > .scrim {
+      position: absolute;
+      inset: 0;
       background: rgba(0, 0, 0, 0.6);
     }
     .playbox {
@@ -6897,6 +9179,18 @@ D.styles = rt`
     .tablet .playoverlay {
       container-type: size;
     }
+    /* Phone: the same card as in place of the tiles (full width, the clip's
+       shape and control strip), centred in the page under the header - which
+       stays visible, dimmed - and clear of the screen's foot. */
+    :host([stacked]) .playoverlay {
+      padding: calc(env(safe-area-inset-top, 0px) + 68px) 0 max(20px, env(safe-area-inset-bottom, 0px));
+    }
+    :host([stacked]) .playbox {
+      width: 100%;
+      aspect-ratio: var(--upc-clip-ar, 16 / 9);
+      padding-bottom: var(--upc-clip-strip, 0px);
+      max-height: calc(100% - var(--upc-clip-strip, 0px));
+    }
     .tablet .playbox {
       width: min(90cqw, 90cqh * 16 / 9);
     }
@@ -6907,7 +9201,7 @@ D.styles = rt`
     .tablet {
       display: flex;
       flex-direction: row;
-      gap: 16px;
+      gap: ${_s}px;
       flex: 1 1 auto;
       min-height: 0;
       height: 100%;
@@ -6920,40 +9214,6 @@ D.styles = rt`
     }
     .tablet.expanded .events-pane {
       flex: 1 1 auto; /* expanded: the events grid fills the whole page */
-    }
-    .ev-head {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 2px 8px;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--secondary-text-color);
-      flex: 0 0 auto;
-    }
-    .ev-count {
-      color: var(--primary-text-color);
-    }
-    .ev-chev {
-      /* Sits right after the "Events N" text (no margin-left:auto) so it stays
-         with the title in BOTH the narrow list and the full-width grid. */
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: transparent;
-      padding: 4px;
-      color: var(--secondary-text-color);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .ev-chev ha-icon {
-      --mdc-icon-size: 22px;
-      display: block;
-      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-    .tablet.expanded .ev-chev ha-icon {
-      transform: rotate(180deg); /* chevron-right -> chevron-left (collapse) */
     }
     .events-scroll {
       position: relative; /* upc-events-list fills it via absolute inset:0 */
@@ -6974,159 +9234,139 @@ D.styles = rt`
       position: relative;
       min-height: 0;
     }
-    /* Grid-density control — a segmented button floating over the top-RIGHT of
-       the live grid (rows / 2-col). The active step reads white. Sits LEFT of
-       the top tile's fullscreen button (which keeps the corner). */
-    .grid-view {
-      position: absolute;
-      top: 8px;
-      right: 48px;
-      z-index: 4;
-      display: inline-flex;
-      gap: 2px;
-      padding: 3px;
-      border-radius: 11px;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(2px);
-    }
-    .grid-view button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 40px; /* portrait — a bit taller than wide */
-      padding: 0;
-      border: none;
-      border-radius: 9px;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.55);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition:
-        color 0.15s,
-        background 0.15s;
-    }
-    .grid-view button:hover {
-      color: rgba(255, 255, 255, 0.85);
-    }
-    .grid-view button.on {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-    }
-    .grid-view svg {
-      width: 21px;
-      height: 26px; /* portrait glyph to fill the taller button */
-      fill: currentColor;
-      display: block;
+    /* ...and the live cameras fill the whole right of the card, like the UniFi
+       app: GRID_EDGE clear of the pane's top and of the card's right and bottom
+       edges (12 = the card's padding, card.ts styles). The left needs nothing -
+       the events pane's own padding already separates them. height:auto lets
+       the insets size it (the grid's own height:100% would win over bottom).
+       The grid-density control lives in the card's header row. */
+    .tablet upc-live-grid {
+      top: ${qt}px;
+      right: ${qt - 12}px;
+      bottom: ${qt - 12}px;
+      height: auto;
     }
   `;
-B([
-  c({ attribute: !1 })
-], D.prototype, "hass", 2);
-B([
-  c({ attribute: !1 })
-], D.prototype, "config", 2);
-B([
-  c({ type: Boolean, reflect: !0 })
-], D.prototype, "stacked", 2);
-B([
+N([
+  p({ attribute: !1 })
+], B.prototype, "hass", 2);
+N([
+  p({ attribute: !1 })
+], B.prototype, "config", 2);
+N([
+  p({ type: Boolean, reflect: !0 })
+], B.prototype, "stacked", 2);
+N([
   m()
-], D.prototype, "_data", 2);
-B([
+], B.prototype, "_data", 2);
+N([
   m()
-], D.prototype, "_strip", 2);
-B([
+], B.prototype, "_strip", 2);
+N([
   m()
-], D.prototype, "_playback", 2);
-B([
+], B.prototype, "_loaded", 2);
+N([
   m()
-], D.prototype, "_expanded", 2);
-B([
+], B.prototype, "_playback", 2);
+N([
   m()
-], D.prototype, "_lastPlayedKey", 2);
-B([
+], B.prototype, "_expanded", 2);
+N([
   m()
-], D.prototype, "_minuteTick", 2);
-B([
+], B.prototype, "_lastPlayedKey", 2);
+N([
   m()
-], D.prototype, "_thumbVersion", 2);
-B([
+], B.prototype, "_minuteTick", 2);
+N([
   m()
-], D.prototype, "_gridView", 2);
-B([
+], B.prototype, "_thumbVersion", 2);
+N([
   m()
-], D.prototype, "_keepLastPlayed", 2);
-B([
+], B.prototype, "_gridView", 2);
+N([
   m()
-], D.prototype, "_eventSpan", 2);
-D = B([
-  ot("upc-multi-view")
-], D);
-var Vr = Object.defineProperty, Hr = Object.getOwnPropertyDescriptor, T = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Hr(t, i) : t, o = e.length - 1, n; o >= 0; o--)
-    (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && Vr(t, i, r), r;
+], B.prototype, "_gridUnder", 2);
+N([
+  m()
+], B.prototype, "_closing", 2);
+N([
+  m()
+], B.prototype, "_chromeHidden", 2);
+N([
+  m()
+], B.prototype, "_keepLastPlayed", 2);
+N([
+  m()
+], B.prototype, "_eventSpan", 2);
+B = N([
+  mt("upc-multi-view")
+], B);
+var Dn = Object.defineProperty, Bn = Object.getOwnPropertyDescriptor, E = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? Bn(t, i) : t, r = e.length - 1, n; r >= 0; r--)
+    (n = e[r]) && (o = (s ? n(t, i, o) : n(o)) || o);
+  return s && o && Dn(t, i, o), o;
 };
-const Wr = 3e4, jr = 2 * 6e4, qr = "3.0.0", Gr = 2e3, Yr = 1e3, Xr = 33, Kr = 1.3, Zr = 1.15;
-let ut = 0, Ue = "", S = class extends j {
+const Un = 3e4, Vi = 0.4, Nn = u`<svg viewBox="0 0 24 24">
+  <rect x="4" y="5" width="16" height="5.5" rx="1.5"></rect>
+  <rect x="4" y="13.5" width="16" height="5.5" rx="1.5"></rect>
+</svg>`, Hn = u`<svg viewBox="0 0 24 24">
+  <rect x="4" y="5" width="6.6" height="14" rx="1.5"></rect>
+  <rect x="13.4" y="5" width="6.6" height="14" rx="1.5"></rect>
+</svg>`, Vn = 6e4, Wn = 100, qn = 52, jn = 40, Gn = 72, Kn = 84, $e = 12, Yn = 24, bt = 28, Xn = 150, Zn = 160, Jn = 500, Qn = 2 * 6e4, ta = "3.1.0", ea = 2e3, ia = 1e3, sa = 33, oa = 1.3, ra = 1.15;
+let Et = 0, Wi = "", $ = class extends Z {
   constructor() {
-    super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._drillFs = !1, this._swapDir = 0, this._playerFs = !1, this._playerRotated = !1, this._galleryOpen = !1, this._calOpen = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._loader = new si(2, () => {
+    super(...arguments), this._gaps = [], this._targetTime = Date.now(), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._now = Date.now(), this._nvrId = "", this._mode = "timeline", this._activeCamera = "", this._swapDir = 0, this._xf = null, this._panelChromeHidden = !1, this._xfToken = 0, this._galleryOpen = !1, this._eventsOpen = !1, this._eventsMounted = !1, this._calOpen = !1, this._zoomPanel = !1, this._calCursor = { y: 0, m: 0 }, this._hostWidth = 0, this._hostHeight = 0, this._thumbVersion = 0, this._clipEnd = 0, this._manifestBands = [], this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._loader = new rs(2, () => {
       this._thumbVersion++;
-    }), this._inited = !1, this._goBack = () => {
+    }), this._inited = !1, this._gapsAt = 0, this._gapsDir = "", this._multiHead = {
+      loaded: !1,
+      count: 0,
+      expanded: !1,
+      gridView: 2,
+      liveGrid: !0
+    }, this._toggleMultiEvents = () => {
+      this.renderRoot.querySelector("upc-multi-view")?.toggleExpand();
+    }, this._goBack = () => {
       if (this._isMulti && this._drill) {
-        this._drillOut();
+        this._xf !== "out" && this._zoomOut();
         return;
       }
       const e = this._config?.back_button_path;
       if (e) {
-        $t(e);
+        Vt(e);
         return;
       }
       const t = this._config?.back_fallback_path || `/${window.location.pathname.split("/")[1] ?? ""}`;
       if (window.history.length <= 1) {
-        $t(t);
+        Vt(t);
         return;
       }
       const i = window.location.href;
       window.history.back(), window.setTimeout(() => {
-        window.location.href === i && this.isConnected && $t(t);
+        window.location.href === i && this.isConnected && Vt(t);
       }, 400);
     }, this._onMediaFsExit = () => {
-      this._drillFs && this._drillOut(!0);
-    }, this._onPlayerFs = (e) => {
-      this._playerFs = e.detail.fs, this._playerRotated = e.detail.rotated;
-    }, this._pageBgApplied = !1, this._scrubPreviewScheduler = new ls(
-      Xr,
+      this._goBack();
+    }, this._pageBgApplied = !1, this._scrubPreviewScheduler = new To(
+      sa,
       (e) => {
         this._targetTime = e;
       }
-    ), this._onVideoPointerDown = (e) => {
-      this._cameraEntries().length && (this._videoDrag = { x: e.clientX, y: e.clientY, id: e.pointerId, done: !1 });
-    }, this._onVideoPointerMove = (e) => {
-      const t = this._videoDrag;
-      if (!t || t.done || e.pointerId !== t.id) return;
-      const i = e.clientX - t.x, s = e.clientY - t.y;
-      Math.abs(s) > 50 && Math.abs(s) > Math.abs(i) && (t.done = !0, this._galleryOpen = s > 0);
-    }, this._onVideoPointerEnd = (e) => {
-      this._videoDrag?.id === e.pointerId && (this._videoDrag = void 0);
-    }, this._toggleGallery = () => {
-      this._galleryOpen = !this._galleryOpen;
-    }, this._toggleCal = () => {
+    ), this._toggleCal = () => {
+      if (this._calOpen && this.renderRoot?.querySelector(".cal-pop.fs")?.getAnimations().length) {
+        this._calToken++, this._calClosing = !1, this.renderRoot.querySelector(".cal-pop.fs")?.getAnimations().forEach((t) => t.cancel()), window.addEventListener("pointerdown", this._outsideCalClose, !0);
+        return;
+      }
       if (this._calOpen) {
         this._closeCal();
         return;
       }
-      const e = new Date(this._domain ? P(this._domain, this._phFrac()) : Date.now());
+      const e = new Date(this._domain ? A(this._domain, this._phFrac()) : Date.now());
       this._calCursor = { y: e.getFullYear(), m: e.getMonth() }, this._calOpen = !0, window.addEventListener("pointerdown", this._outsideCalClose, !0);
-    }, this._outsideCalClose = (e) => {
+    }, this._calToken = 0, this._calClosing = !1, this._outsideCalClose = (e) => {
       const t = e.composedPath(), i = this.renderRoot.querySelector(".cal-pop"), s = this.renderRoot.querySelector(".date-pill");
-      i && t.includes(i) || s && t.includes(s) || (e.preventDefault(), e.stopPropagation(), ri(), this._closeCal());
+      i && t.includes(i) || s && t.includes(s) || (e.preventDefault(), e.stopPropagation(), we(), this._closeCal());
     }, this._onLivePlaying = (e) => {
-      this._livePaused = !e.detail.playing, e.detail.playing && this._liveMode && !this._scrubbing && this._domain && (this._now = Date.now(), this._domain = U(this._now, M(this._domain), this._phFrac()));
-    }, this._modeSwapDir = 0, this._showTimeline = () => {
-      this._setMode("timeline");
-    }, this._showEvents = () => {
-      this._setMode("list");
+      this._livePaused = !e.detail.playing, e.detail.playing && this._liveMode && !this._scrubbing && this._domain && (this._now = Date.now(), this._domain = j(this._now, L(this._domain), this._phFrac()));
     }, this._onScrubStart = () => {
       this._cancelSettle(), this._scrubPreviewScheduler.reset(), this._scrubbing = !0;
     }, this._onScrubCancel = () => {
@@ -7144,25 +9384,37 @@ let ut = 0, Ue = "", S = class extends j {
     }, this._onLive = () => {
       if (!this._domain) return;
       this._scrubPreviewScheduler.reset(), this._cancelSettle(), this._now = Date.now();
-      const e = this._domain, t = U(this._now, M(e), this._phFrac());
-      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, Yr), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clearClip();
+      const e = this._domain, t = j(this._now, L(e), this._phFrac());
+      this._domain = t, this._targetTime = this._now, this._glideRulers(e, t, ia), this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clearClip();
     }, this._onRewind = (e) => {
-      if (!this._domain) return;
-      this._scrubPreviewScheduler.reset(), this._cancelSettle(), this._liveMode = !1, this._livePaused = !1, this._scrubbing = !1, this._playingBand = void 0, this._clearClip(), this._targetTime = e.detail.time;
-      const t = this._domain, i = U(e.detail.time, M(t), this._phFrac());
-      this._domain = i, this._glideRulers(t, i);
+      this._rewindTo(e.detail.time);
+    }, this._onPanelEventSelected = (e) => {
+      this._rewindTo(Math.min(e.detail.start, Date.now())), this._playingBand = e.detail;
     }, this._onPlaybackTime = (e) => {
       if (this._liveMode || this._scrubbing || !this._domain) return;
-      const t = this._domain, i = U(e.detail.time, M(t), this._phFrac());
+      const t = this._domain, i = j(e.detail.time, L(t), this._phFrac());
       this._domain = i, Math.abs(
-        P(i, this._phFrac()) - P(t, this._phFrac())
-      ) >= Gr && this._glideRulers(t, i);
+        A(i, this._phFrac()) - A(t, this._phFrac())
+      ) >= ea && this._glideRulers(t, i);
     }, this._onPlaybackSeek = (e) => {
       if (!this._domain) return;
-      const t = this._domain, i = U(e.detail.time, M(t), this._phFrac());
+      const t = this._domain, i = j(e.detail.time, L(t), this._phFrac());
       this._domain = i, this._glideRulers(t, i);
-    }, this._onEventSelected = (e) => {
-      this._playBand(e.detail);
+    }, this._toggleEvents = () => {
+      this._eventsOpen = !this._eventsOpen;
+    }, this._toggleCamSheet = () => {
+      if (this._galleryOpen) {
+        this._closeCamSheet();
+        return;
+      }
+      this._galleryOpen = !0, window.addEventListener("pointerdown", this._outsideSheetClose, !0);
+    }, this._outsideSheetClose = (e) => {
+      const t = e.composedPath(), i = this.renderRoot.querySelector(".fs-cams-body"), s = this.renderRoot.querySelector(".fs-cams-handle");
+      if (!this._galleryOpen || !i) {
+        window.removeEventListener("pointerdown", this._outsideSheetClose, !0);
+        return;
+      }
+      t.includes(i) || s && t.includes(s) || (e.preventDefault(), e.stopPropagation(), we(), this._closeCamSheet());
     };
   }
   /** Events both views render: the manifest's raw NVR events, gap-merged into
@@ -7180,10 +9432,13 @@ let ut = 0, Ue = "", S = class extends j {
       e = e.camera ? e : { ...e, camera: t };
     } else if (!e.camera)
       throw new Error('unifi-protect-timeline-card: "camera" (a camera entity_id) is required');
-    this._config = e, this._activeCamera = e.camera, this._drill = void 0, this._galleryOpen = !1, this._closeCal(), this._inited = !1;
+    this._config = e, e.debug && fo(() => this.hass), this._activeCamera = e.camera, this._drill = void 0, this._galleryOpen = !1, this._closeCal(), this._inited = !1;
   }
   get _isMulti() {
     return this._config?.card_version === "multi";
+  }
+  _setMultiGridView(e) {
+    this.renderRoot.querySelector("upc-multi-view")?.setGridView(e);
   }
   getCardSize() {
     return 6;
@@ -7194,34 +9449,143 @@ let ut = 0, Ue = "", S = class extends j {
   /** `at`: open at that moment and play on from it instead of opening live —
    *  the multi page's clip player hands off here when its fullscreen button is
    *  pressed, so the fullscreen timeline continues the clip where it was. */
-  _drillTo(e, t = !1, i) {
-    this._drill = e, this._drillFs = t, this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._gaps = [], this._gapRange = void 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._resetToLive(), i !== void 0 && this._domain && i < Date.now() - 3e3 && (this._liveMode = !1, this._targetTime = i, this._domain = U(i, M(this._domain), this._phFrac())), this._fetchGaps(!0), this._fetchManifest(), this._swapDir = t ? 0 : 1;
+  _drillTo(e, t = !1, i, s) {
+    this._xfToken++, this._xf = null, this._drill = e, this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._gaps = [], this._gapsAt = 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._resetToLive(), i !== void 0 && this._domain && i < Date.now() - 3e3 && (this._liveMode = !1, this._targetTime = i, this._domain = j(i, L(this._domain), this._phFrac())), this._fetchGaps(!0), this._fetchManifest(), s ? (this._swapDir = 0, this._zoomIn(s)) : this._swapDir = t ? 0 : 1;
+  }
+  /** What a camera-screen flight moves - the tablet's panel itself, the
+   *  phone's frame inside it - and the angle it stands at (90: sideways). */
+  _flyer(e) {
+    const t = e.querySelector(":scope > .frame");
+    return t ? { el: t, angle: e.classList.contains("turned") ? 90 : 0 } : { el: e, angle: 0 };
+  }
+  /** A screen rect in the coordinates of a flyer's own layer (its .hero,
+   *  which fills it): plain offsets, or - the phone's sideways frame - turned
+   *  back with it. */
+  _layerBox(e, t) {
+    const i = e.el.getBoundingClientRect();
+    return e.angle ? or(t, i, e.el.offsetWidth, e.el.offsetHeight) : { x: t.left - i.left, y: t.top - i.top, w: t.width, h: t.height };
+  }
+  /** A camera picked in the camera screen's picker: its picture flies out of
+   *  the tile into the screen as the picker closes, and stays there (the
+   *  player's poster) until the camera's first frame. */
+  async _pickCamera(e, t) {
+    if (e === this._activeCamera) {
+      this._closeCamSheet();
+      return;
+    }
+    const i = t.querySelector("img"), s = i?.currentSrc || i?.src, o = this.renderRoot.querySelector("ha-card.panel"), r = o ? this._flyer(o) : void 0, n = i && s && r ? this._layerBox(r, i.getBoundingClientRect()) : null, a = ++this._xfToken;
+    if (this._panelPoster = void 0, this._selectCamera(e), this._closeCamSheet(), !n || !s || !r) return;
+    await this.updateComplete;
+    const h = this.renderRoot.querySelector("ha-card.panel"), c = h?.querySelector("upc-media-view"), d = h?.querySelector(".hero");
+    if (a !== this._xfToken || !h || !c || !d) return;
+    const l = this._flyer(h);
+    if (l.angle !== r.angle) {
+      l.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: U, easing: "ease-out" });
+      return;
+    }
+    await c.updateComplete;
+    const _ = c.videoBox(), v = document.createElement("img");
+    v.src = s, v.className = "ghost", Object.assign(v.style, { left: `${_.x}px`, top: `${_.y}px`, width: `${_.w}px`, height: `${_.h}px` }), d.append(v), await ke(v, n, _, { x: 0, y: 0, w: _.w, h: _.h }).finished.catch(() => {
+    }), a === this._xfToken && (this._panelPoster = s), setTimeout(() => v.remove(), 300);
+  }
+  /** The camera screen zooms open out of `from` (see _xf) - turning as it
+   *  grows, into the phone's sideways screen. */
+  async _zoomIn(e) {
+    const t = ++this._xfToken, i = this.getBoundingClientRect(), s = er(e, this), o = e.view ? ct(e.view, this) : null, r = o && yi(s, o) || s, n = { x: r.x + i.left, y: r.y + i.top, w: r.w, h: r.h };
+    this._panelPoster = e.poster, this._panelChromeHidden = !0, this._xf = "in", await this.updateComplete;
+    const a = this.renderRoot.querySelector("ha-card.panel"), h = a?.querySelector("upc-media-view");
+    if (t !== this._xfToken || !a || !h) return this._settleZoom(t);
+    await h.updateComplete;
+    const c = this._flyer(a), d = e.poster ? h.videoBox() : { x: 0, y: 0, w: c.el.offsetWidth, h: c.el.offsetHeight }, l = xi(c.el, n, d, c.angle);
+    this.renderRoot.querySelector(".xf-dim")?.animate([{ opacity: 0 }, { opacity: Vi }], { duration: U, easing: X(), fill: "forwards" }), await l.finished.catch(() => {
+    }), this._settleZoom(t);
+  }
+  _settleZoom(e) {
+    e === this._xfToken && (this._xf = null, this._panelChromeHidden = !1);
+  }
+  /** The camera screen zooms back into where it came from (the clip it was
+   *  opened from, else its camera's live tile) - or, with neither on screen,
+   *  shrinks away - over the multi page coming back under it. */
+  async _zoomOut() {
+    const e = ++this._xfToken, t = this._activeCamera, i = this.renderRoot.querySelector("ha-card.panel"), s = i?.querySelector("upc-media-view");
+    if (!i || !s) {
+      this._drillOut(!0);
+      return;
+    }
+    const o = this._flyer(i), r = s.videoBox();
+    this._panelChromeHidden = !0, this._xf = "out", await this.updateComplete;
+    const n = this.renderRoot.querySelector("upc-multi-view"), a = n ? await n.zoomTarget(t) : null;
+    if (e !== this._xfToken) return;
+    const h = a ? wi(a.el.getBoundingClientRect()) : null, c = h && a?.view ? yi(h, wi(a.view.getBoundingClientRect())) : h;
+    let d;
+    if (c)
+      d = xi(o.el, c, r, o.angle, { out: !0 });
+    else {
+      const l = `rotate(${o.angle}deg)`;
+      d = o.el.animate(
+        [
+          { opacity: 1, transform: `${l} scale(1)` },
+          { opacity: 0, transform: `${l} scale(0.94)` }
+        ],
+        { duration: U, easing: X(), fill: "forwards" }
+      );
+    }
+    this.renderRoot.querySelector(".xf-dim")?.animate([{ opacity: Vi }, { opacity: 0 }], { duration: U, easing: X(), fill: "forwards" }), await d.finished.catch(() => {
+    }), e === this._xfToken && (this._xf = null, this._panelChromeHidden = !1, this._panelPoster = void 0, this._drillOut(!0));
   }
   /** Drilled timeline → back to the multi page (slide in from the left). */
   _drillOut(e = !1) {
-    this._drill = void 0, this._drillFs = !1, this._activeCamera = this._config?.camera ?? "", this._loader.cancelAll(), this._swapDir = e ? 0 : -1;
+    this._drill = void 0, this._activeCamera = this._config?.camera ?? "", this._loader.cancelAll(), this._swapDir = e ? 0 : -1;
   }
-  /** Where the playhead sits down the strip. Lower in a phone's fullscreen
-   *  overlay so the active event's thumbnail clears the top fade (see
-   *  PHONE_FS_PLAYHEAD_FRAC). ONE value for the card's domain math and for both
-   *  timelines — they must agree, or the marker and the footage drift apart.
-   *  The card column's timeline follows the overlay while it is up; it is
-   *  behind the fullscreen player, so nobody sees it move. */
+  /** Where the playhead sits down the strip. Lower on the phone's camera
+   *  screen so the active event's thumbnail clears the top fade (see
+   *  PHONE_FS_PLAYHEAD_FRAC). ONE value for the card's domain math and the
+   *  timeline — they must agree, or the marker and the footage drift apart. */
   _phFrac() {
-    return this._playerFs && this._isStacked() ? qi : zt;
+    return this._hostWidth && this._phoneScreen() ? oo : ie;
+  }
+  /** The phone's camera screen (stacked layout) turns sideways for landscape
+   *  footage on an upright phone - you turn the phone to watch (iOS can't lock
+   *  the orientation from a web page) - and stays upright for PORTRAIT footage,
+   *  which would play sideways in a small band. Decided by the camera's own
+   *  resolution (its entity's width/height, else the video's), never per
+   *  camera; unknown footage turns. A landscape window never turns. */
+  _phoneTurned() {
+    if (!this._isStacked() || window.innerHeight <= window.innerWidth) return !1;
+    const e = this._footageSize(this._activeCamera || this._config?.camera || "");
+    return !(e && e[1] > e[0]);
+  }
+  /** A camera's footage size: its entity's resolution (what the player shows),
+   *  else the camera screen's video once it has a frame. */
+  _footageSize(e) {
+    const t = this.hass?.states?.[e]?.attributes, i = Number(t?.width) || 0, s = Number(t?.height) || 0;
+    return i > 0 && s > 0 ? [i, s] : this.renderRoot?.querySelector("ha-card.panel upc-media-view")?.footageSize();
+  }
+  _canTalk(e) {
+    const t = this.hass?.entities, i = this._talkCache;
+    if (i && i.entities === t && i.camera === e) return i.can;
+    const s = yo(this.hass, e);
+    return this._talkCache = { entities: t, camera: e, can: s }, s;
+  }
+  /** The phone's camera screen kept UPRIGHT (portrait footage, see
+   *  _phoneTurned): the ruler runs down the right edge of a ~390px-wide screen
+   *  instead of along the turned screen's ~840px one, so its lane is slimmer. */
+  _fsUpright() {
+    return this._isStacked() && !this._phoneTurned();
   }
   /** Clearance the fullscreen ruler keeps from the top/bottom screen edges.
    *  Per layout — see the block in render(), its only caller. */
   _fsPad() {
-    return this._config?.fs_timeline_padding ?? (this._isStacked() ? 20 : 60);
+    return this._config?.fs_timeline_padding ?? (this._phoneScreen() ? 20 : 60);
   }
   /** The lane between the ruler and the right screen edge — it has to fit the
    *  zoom control and the jump-to-live arrow with room to breathe. On a phone
    *  that edge is also iOS's system-gesture strip: a button sitting in it never
    *  receives the touch at all, so the lane is wide enough to keep the whole
-   *  control column clear of it. */
+   *  control column clear of it. (Upright, that edge is a plain screen edge —
+   *  iOS's strip is the bottom one — so the lane only has to fit the controls.) */
   _fsGutter() {
-    return this._config?.fs_timeline_gutter ?? (this._isStacked() ? 110 : 140);
+    return this._config?.fs_timeline_gutter !== void 0 ? this._config.fs_timeline_gutter : this._fsUpright() ? qn : this._phoneScreen() ? 110 : 140;
   }
   static getStubConfig() {
     return {
@@ -7232,6 +9596,7 @@ let ut = 0, Ue = "", S = class extends j {
       strip_title: "Events",
       mobile_events_thumbnail_size: 0,
       tablet_events_thumbnail_size: 145,
+      tablet_events_grid_thumbnail_size: 218,
       strip_time_size: 12,
       grid_aspect: "16/9",
       page_background: "",
@@ -7270,6 +9635,8 @@ let ut = 0, Ue = "", S = class extends j {
       recorded_color: "#6e476a",
       future_color: "#7a7a84",
       show_footage_gaps: !0,
+      talk_button: !0,
+      debug: !1,
       gap_color: "#4a4a52",
       thumb_size: 87,
       thumb_size_active: 105,
@@ -7305,43 +9672,31 @@ let ut = 0, Ue = "", S = class extends j {
     const e = this._config?.page_background;
     if (!e) return;
     const t = document.documentElement;
-    ut === 0 && (Ue = t.style.backgroundColor), ut++, t.style.backgroundColor = e, this._pageBgApplied = !0;
+    Et === 0 && (Wi = t.style.backgroundColor), Et++, t.style.backgroundColor = e, this._pageBgApplied = !0;
   }
   _removePageBackground() {
-    this._pageBgApplied && (this._pageBgApplied = !1, ut--, ut <= 0 && (ut = 0, document.documentElement.style.backgroundColor = Ue));
+    this._pageBgApplied && (this._pageBgApplied = !1, Et--, Et <= 0 && (Et = 0, document.documentElement.style.backgroundColor = Wi));
   }
   connectedCallback() {
     super.connectedCallback(), this._applyPageBackground(), this._tick = setInterval(() => this._onTick(), 1e3), this._bandInterval = setInterval(() => {
       this._isMulti && !this._drill || (this._fetchGaps(!0), this._fetchManifest());
-    }, Wr), this._hostRo = new ResizeObserver((e) => {
-      const t = Math.round(e[e.length - 1].contentRect.width);
-      t && t !== this._hostWidth && (this._hostWidth = t);
+    }, Un), this._hostRo = new ResizeObserver((e) => {
+      const t = e[e.length - 1].contentRect, i = Math.round(t.width), s = Math.round(t.height);
+      i && i !== this._hostWidth && (this._hostWidth = i), s && s !== this._hostHeight && (this._hostHeight = s);
     }), this._hostRo.observe(this), this.hasUpdated && this._config && !this._isMulti && (this._resetToLive(), this._fetchGaps(!0), this._fetchManifest());
   }
   disconnectedCallback() {
     super.disconnectedCallback(), this._removePageBackground(), clearInterval(this._tick), clearInterval(this._bandInterval), clearTimeout(this._syncRefetchTimer), clearTimeout(this._scrubSettleTimer);
     const e = this._pendingScrubCommit;
-    this._pendingScrubCommit = void 0, e?.(), this._scrubPreviewScheduler.reset(), this._hostRo?.disconnect(), window.removeEventListener("pointerdown", this._outsideCalClose, !0), this._loader.cancelAll();
+    this._pendingScrubCommit = void 0, e?.(), this._scrubPreviewScheduler.reset(), this._hostRo?.disconnect(), window.removeEventListener("pointerdown", this._outsideCalClose, !0), window.removeEventListener("pointerdown", this._outsideSheetClose, !0), this._loader.cancelAll();
   }
   updated(e) {
-    if ((e.has("hass") || e.has("_config")) && this.hass && this._config && !this._inited && this._init(), this._swapDir) {
+    if ((e.has("hass") || e.has("_config")) && this.hass && this._config && !this._inited && this._init(), e.has("_xf") && (this._xf ? this.setAttribute("xf", this._xf) : this.removeAttribute("xf")), e.has("_calOpen") && this._calOpen && this._calFlight(!0), this._swapDir) {
       const t = this._swapDir;
       this._swapDir = 0, this.renderRoot.querySelector("ha-card")?.animate(
         [{ transform: `translateX(${t * 100}%)` }, { transform: "translateX(0)" }],
         { duration: 450, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
       );
-    }
-    if (e.has("_mode") && this._modeSwapDir) {
-      const t = this._modeSwapDir;
-      this._modeSwapDir = 0;
-      const i = this.renderRoot.querySelector(".mode-body");
-      i && (i.getAnimations().forEach((s) => s.cancel()), i.animate(
-        [
-          { opacity: 0, transform: `translateX(${t * 18}px)` },
-          { opacity: 1, transform: "none" }
-        ],
-        { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-      ));
     }
   }
   _init() {
@@ -7352,7 +9707,7 @@ let ut = 0, Ue = "", S = class extends j {
    *  live no matter how it was entered (first mount, in-card drill from the
    *  multi page, or a cached subview re-shown). Camera data re-fetches. */
   _resetToLive() {
-    this._mode = "timeline", this._galleryOpen = !1, this._calOpen = !1, this._now = Date.now(), this._domain = U(this._now, this._initialSpan(), this._phFrac()), this._targetTime = this._now, this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clearClip();
+    this._mode = "timeline", this._closeCamSheet(), this._eventsOpen = !1, this._calOpen = !1, this._now = Date.now(), this._domain = j(this._now, this._initialSpan(), this._phFrac()), this._targetTime = this._now, this._scrubbing = !1, this._liveMode = !0, this._livePaused = !1, this._playingBand = void 0, this._clearClip();
   }
   /** Server-side cache dir: explicit config, else /protect_thumbs/<cam id>.
    *  The explicit dir only applies to the CONFIG camera — when the gallery strip
@@ -7362,7 +9717,7 @@ let ut = 0, Ue = "", S = class extends j {
     if (this._config?.thumbnail_cache_dir && this._activeCamera === this._config.camera)
       return this._config.thumbnail_cache_dir;
     const e = this._activeCamera?.split(".")[1];
-    return e ? `${ie}/${e}` : "";
+    return e ? `${Fe}/${e}` : "";
   }
   /** Scrub-preview cache dir (pyscript protect_scrub job): explicit config for
    *  the CONFIG camera, else /protect_scrub/<object_id> — same per-camera
@@ -7372,7 +9727,7 @@ let ut = 0, Ue = "", S = class extends j {
     if (this._config?.scrub_preview_dir && this._activeCamera === this._config.camera)
       return this._config.scrub_preview_dir;
     const e = this._activeCamera?.split(".")[1];
-    return e ? `${Bi}/${e}` : "";
+    return e ? `${Js}/${e}` : "";
   }
   /** Load the event manifest (the NVR's own event list, mirrored by the pyscript
    *  sync job). Cheap static file. If it's missing or stale (job not running /
@@ -7381,12 +9736,12 @@ let ut = 0, Ue = "", S = class extends j {
   async _fetchManifest() {
     const e = this._cacheDir();
     if (!e) return;
-    const t = this._activeCamera, i = await Je(e);
+    const t = this._activeCamera, i = await Qi(e);
     if (t === this._activeCamera) {
       if (i) {
         this._preMs = i.preMs, this._postMs = i.postMs;
         const s = (this._config?.event_merge_gap_seconds ?? 60) * 1e3;
-        this._manifestBands = ii(i.entries.map(Ze), s), this._thumbVersion++;
+        this._manifestBands = os(i.entries.map(Ji), s), this._thumbVersion++;
       }
       (!i || i.stale) && this._requestSync();
     }
@@ -7396,17 +9751,17 @@ let ut = 0, Ue = "", S = class extends j {
   _requestSync() {
     if (!this.hass) return;
     const e = Date.now();
-    e - this._lastSyncTrigger < jr || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
+    e - this._lastSyncTrigger < Qn || (this._lastSyncTrigger = e, this.hass.callWS({ type: "call_service", domain: "pyscript", service: "protect_thumbs_sync" }).catch(() => {
     }), clearTimeout(this._syncRefetchTimer), this._syncRefetchTimer = setTimeout(() => void this._fetchManifest(), 8e3));
   }
   /** Initial visible span: default_timeline_zoom (0–100) wins, else minutes. */
   _initialSpan() {
     const e = this._config?.default_timeline_zoom;
     if (e != null) {
-      const t = Math.max(0, Math.min(100, e)), i = Math.round((1 - t / 100) * (V.length - 1));
-      return V[i];
+      const t = Math.max(0, Math.min(100, e)), i = Math.round((1 - t / 100) * (q.length - 1));
+      return q[i];
     }
-    return this._config?.default_span_minutes != null ? Gi(this._config.default_span_minutes * st) : V[0];
+    return this._config?.default_span_minutes != null ? ro(this._config.default_span_minutes * $t) : q[0];
   }
   _resolveNvrId() {
     return this._config?.nvr_id ? this._config.nvr_id : this.hass?.entities?.[this._activeCamera || this._config.camera]?.config_entry_id ?? "";
@@ -7416,6 +9771,15 @@ let ut = 0, Ue = "", S = class extends j {
    *  option is absent -> single-camera card, no strip, no drag gesture. */
   _cameraEntries() {
     return (this._config?.cameras ?? []).map((t) => typeof t == "string" ? { camera: t } : t).filter((t) => !!t?.camera);
+  }
+  /** The camera screen's events panel's items: this camera's events as the
+   *  multi page's grid shows them (camera name, time · duration) - re-made
+   *  only when the events or the camera change. */
+  _panelBands(e) {
+    const t = this._panelBandsMemo;
+    if (t?.bands === this._viewBands && t.camera === e) return t.out;
+    const i = ns(this._viewBands, e, this._cameraName(e));
+    return this._panelBandsMemo = { bands: this._viewBands, camera: e, out: i }, i;
   }
   /** Display name for a camera: config override -> friendly_name -> object_id. */
   _cameraName(e) {
@@ -7429,14 +9793,75 @@ let ut = 0, Ue = "", S = class extends j {
    *  (the cache dir follows the camera). Deliberately does NOT close the strip
    *  — only dragging UP on the video does. */
   _selectCamera(e) {
-    e !== this._activeCamera && (this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._gaps = [], this._gapRange = void 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._liveMode || !this._domain ? this._onLive() : (this._cancelSettle(), this._playingBand = void 0, this._clearClip(), this._livePaused = !1, this._scrubbing = !1, this._targetTime = Math.min(P(this._domain, this._phFrac()), Date.now())), this._fetchGaps(!0), this._fetchManifest());
+    e !== this._activeCamera && (this._activeCamera = e, this._nvrId = this._resolveNvrId(), this._loader.cancelAll(), this._manifestBands = [], this._gaps = [], this._gapsAt = 0, this._preMs = 0, this._postMs = 0, this._lastSyncTrigger = 0, this._liveMode || !this._domain ? this._onLive() : (this._cancelSettle(), this._playingBand = void 0, this._clearClip(), this._livePaused = !1, this._scrubbing = !1, this._targetTime = Math.min(A(this._domain, this._phFrac()), Date.now())), this._fetchGaps(!0), this._fetchManifest());
   }
   _closeCal() {
-    this._calOpen = !1, window.removeEventListener("pointerdown", this._outsideCalClose, !0);
+    window.removeEventListener("pointerdown", this._outsideCalClose, !0);
+    const e = this.renderRoot?.querySelector(".cal-pop.fs");
+    if (!e || !this._calOpen) {
+      this._calOpen = !1;
+      return;
+    }
+    const t = ++this._calToken;
+    this._calClosing = !0, (this._calFlight(!1) ?? e.animate([{ opacity: 1, scale: "1" }, { opacity: 0, scale: "0.92" }], {
+      duration: 170,
+      easing: "ease-in",
+      fill: "forwards"
+    })).finished.catch(() => {
+    }).then(() => {
+      t === this._calToken && (this._calOpen = !1, this._calClosing = !1);
+    });
   }
+  // the calendar on its way out
+  /** The phone's calendar (.cal-modal) between its date pill and the middle
+   *  of the screen: opening, it grows out of the pill and the backdrop dims
+   *  in; closing, it shrinks back into the pill as the backdrop clears.
+   *  Undefined where there is no modal (the tablet's pops over its pill). */
+  _calFlight(e) {
+    const t = this.renderRoot.querySelector(".cal-modal"), i = t?.querySelector(".cal-pop"), s = this.renderRoot.querySelector("ha-card.panel");
+    if (!t || !i || !s) return;
+    const o = e ? "none" : "forwards";
+    t.style.pointerEvents = e ? "" : "none";
+    const r = t.querySelector(".cal-scrim");
+    r?.getAnimations().forEach((c) => c.cancel()), i.getAnimations().forEach((c) => c.cancel()), r?.animate([{ opacity: e ? 0 : 1 }, { opacity: e ? 1 : 0 }], {
+      duration: e ? Math.round(Xt * 0.7) : Zt,
+      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      fill: o
+    });
+    const n = this.renderRoot.querySelector(".date-pill.fs")?.getBoundingClientRect(), a = { x: i.offsetLeft, y: i.offsetTop, w: i.offsetWidth, h: i.offsetHeight }, h = n?.width ? this._layerBox(this._flyer(s), n) : { x: a.x + a.w * 0.04, y: a.y + a.h * 0.04, w: a.w * 0.92, h: a.h * 0.92 };
+    return tr(i, h, a, { x: 0, y: 0, w: a.w, h: a.h }, e);
+  }
+  /** Previous / next month: the month on show slides away and the new one
+   *  slides in behind it, from the side it comes from - a copy of the old
+   *  title and days leaves while the real ones, already showing the new
+   *  month, come in (so quick taps simply chain). */
   _calShift(e) {
-    const t = new Date(this._calCursor.y, this._calCursor.m + e, 1);
-    this._calCursor = { y: t.getFullYear(), m: t.getMonth() };
+    const t = this.renderRoot.querySelector(".cal-pop");
+    t?.querySelectorAll(".cal-ghost").forEach((r) => r.remove());
+    const i = t ? Array.from(t.querySelectorAll(".cal-title, .cal-days")) : [], s = 28 * e;
+    for (const r of i) {
+      const n = r.cloneNode(!0);
+      n.classList.add("cal-ghost"), Object.assign(n.style, { left: `${r.offsetLeft}px`, top: `${r.offsetTop}px`, width: `${r.offsetWidth}px` }), t.append(n), n.animate(
+        [
+          { opacity: 1, transform: "none" },
+          { opacity: 0, transform: `translateX(${-s}px)` }
+        ],
+        { duration: 200, easing: "ease-in", fill: "forwards" }
+      ).finished.catch(() => {
+      }).then(() => n.remove());
+    }
+    const o = new Date(this._calCursor.y, this._calCursor.m + e, 1);
+    this._calCursor = { y: o.getFullYear(), m: o.getMonth() }, this.updateComplete.then(() => {
+      for (const r of i)
+        r.getAnimations().forEach((n) => n.cancel()), r.animate(
+          [
+            { opacity: 0, transform: `translateX(${s}px)` },
+            { opacity: 0, transform: `translateX(${s}px)`, offset: 0.25 },
+            { opacity: 1, transform: "none" }
+          ],
+          { duration: 340, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+        );
+    });
   }
   /** Calendar day tap.
    *  Timeline view: jump the playhead to NOON of that day (today's noon may
@@ -7450,56 +9875,53 @@ let ut = 0, Ue = "", S = class extends j {
     const s = new Date(e, t, i, 0, 0, 0, 0).getTime();
     if (this._mode === "list") {
       this.renderRoot.querySelector("upc-events-list")?.scrollToDay(s);
-      const n = s + 864e5;
-      if (n > Date.now()) {
+      const h = s + 864e5;
+      if (h > Date.now()) {
         this._onLive();
         return;
       }
-      let a;
-      for (const h of this._viewBands)
-        h.start >= s && h.start < n && (!a || h.start > a.start) && (a = h);
-      a && this._playBand(a);
+      let c;
+      for (const d of this._viewBands)
+        d.start >= s && d.start < h && (!c || d.start > c.start) && (c = d);
+      c && this._playBand(c);
       return;
     }
-    const r = new Date(e, t, i, 12, 0, 0, 0).getTime();
-    if (r >= Date.now() - 2e4) {
+    const o = new Date(e, t, i, 12, 0, 0, 0).getTime(), r = Math.min(Date.now(), new Date(e, t, i + 1).getTime()), n = ai(this._gaps) !== void 0 ? hi(this._gaps, s, r, o) ?? o : o;
+    if (n >= Date.now() - 2e4) {
       this._onLive();
       return;
     }
-    this._playingBand = void 0, this._clearClip(), this._scrubbing = !1, this._livePaused = !1, this._liveMode = !1, this._targetTime = r, this._domain = U(r, M(this._domain), this._phFrac()), this._fetchGaps(!1);
+    this._playingBand = void 0, this._clearClip(), this._scrubbing = !1, this._livePaused = !1, this._liveMode = !1, this._targetTime = n, this._domain = j(n, L(this._domain), this._phFrac()), this._fetchGaps(!1);
   }
   // ---- live tick & band fetching -----------------------------------------
   _onTick() {
-    this._now = Date.now(), this._liveMode && !this._scrubbing && !this._livePaused && this._domain && (this._domain = U(this._now, M(this._domain), this._phFrac()));
+    this._now = Date.now(), this._liveMode && !this._scrubbing && !this._livePaused && this._domain && (this._domain = j(this._now, L(this._domain), this._phFrac()));
   }
-  /** Fetch camera-offline (footage-gap) spans for a large buffer around the
-   *  visible window, guard-gated so panning inside the buffer is free. This is
-   *  a cheap HA history query, NOT an NVR call. (Events themselves come from
-   *  the manifest — see _fetchManifest.) */
+  /** Fetch the camera's recording gaps (the grey "no footage" spans) from its
+   *  scrub index — every span the NVR holds no footage for, across the whole
+   *  cache window, so panning needs no refetch. One small static file, NOT an
+   *  NVR call, re-read at most every GAPS_REFRESH_MS (the job rewrites it every
+   *  15 s) unless forced. (Events themselves come from the manifest — see
+   *  _fetchManifest.) */
   async _fetchGaps(e = !1) {
     if (!this.hass || !this._domain || !(this._config?.show_footage_gaps ?? !0)) return;
-    const t = M(this._domain), i = Math.max(t * 2, 180 * st), s = this._domain.start - i, r = Math.min(this._domain.end + i, this._now + 1e3), o = i * 0.5, n = !!this._gapRange && this._domain.start - o >= this._gapRange.start && this._domain.end + o <= this._gapRange.end;
-    if (!e && n) return;
-    this._gapRange = { start: s, end: r };
-    const a = this._activeCamera || this._config.camera, h = await os(this.hass, a, s, r, this._nvrId);
-    a === this._activeCamera && (this._gaps = h);
-  }
-  // 1 = switching to Events, -1 = to Timeline
-  async _setMode(e) {
-    if (this._mode === e) return;
-    const t = e === "list", i = this.renderRoot.querySelector(".mode-body");
-    i && await i.animate(
-      [
-        { opacity: 1, transform: "none" },
-        { opacity: 0, transform: `translateX(${(t ? -1 : 1) * 18}px)` }
-      ],
-      { duration: 140, easing: "ease-in", fill: "forwards" }
-    ).finished.catch(() => {
-    }), this._modeSwapDir = t ? 1 : -1, this._mode = e;
+    const t = this._scrubDir(), i = Date.now();
+    if (!e && t === this._gapsDir && i - this._gapsAt < Vn) return;
+    this._gapsDir = t, this._gapsAt = i;
+    const s = await po(t);
+    t === this._scrubDir() && (this._gaps = s);
   }
   /** Supersede a pending settle (a newer action decides the state instead). */
   _cancelSettle() {
     clearTimeout(this._scrubSettleTimer), this._pendingScrubCommit = void 0;
+  }
+  /** Continuous footage from `t` — no clip, no seek bar, playing on — with the
+   *  ruler gliding there. */
+  _rewindTo(e) {
+    if (!this._domain) return;
+    this._scrubPreviewScheduler.reset(), this._cancelSettle(), this._liveMode = !1, this._livePaused = !1, this._scrubbing = !1, this._playingBand = void 0, this._clearClip(), this._targetTime = e;
+    const t = this._domain, i = j(e, L(t), this._phFrac());
+    this._domain = i, this._glideRulers(t, i);
   }
   _glideRulers(e, t, i) {
     for (const s of this._timelines) s.glideDomain(e, t, i);
@@ -7512,7 +9934,7 @@ let ut = 0, Ue = "", S = class extends j {
    *  timeline never gets here — tapping a thumbnail there seeks the ruler and
    *  keeps playing the continuous footage. */
   _playBand(e) {
-    this._domain && (this._scrubPreviewScheduler.reset(), this._cancelSettle(), this._scrubbing = !1, this._liveMode = !1, this._playingBand = e, this._clipEnd = Math.min(e.end + this._postMs, Date.now()), this._targetTime = Math.max(e.start - this._preMs, 0), this._domain = U(e.start, M(this._domain), this._phFrac()));
+    this._domain && (this._scrubPreviewScheduler.reset(), this._cancelSettle(), this._scrubbing = !1, this._liveMode = !1, this._playingBand = e, this._clipEnd = Math.min(e.end + this._postMs, Date.now()), this._targetTime = Math.max(e.start - this._preMs, 0), this._domain = j(e.start, L(this._domain), this._phFrac()));
   }
   /** Leave event playback: no event end (the media view plays on regardless). */
   _clearClip() {
@@ -7522,27 +9944,57 @@ let ut = 0, Ue = "", S = class extends j {
    *  (title, optional back button) as the single card, with <upc-multi-view>
    *  (event strip + live grid / clip playback) filling the rest. */
   _renderMulti() {
-    const e = this._config, t = this._isStacked(), i = e.height || (t ? "100dvh" : "80vh"), s = (e.title_font_weight ? `--upc-title-weight:${e.title_font_weight};` : "") + (e.title_font_size ? `--upc-title-size:${e.title_font_size}px;` : "") + (e.title_font_color ? `--upc-title-color:${e.title_font_color};` : "");
-    return p`
-      <ha-card class=${t ? "multi-stacked" : ""} style=${`height:${i}`}>
+    const e = this._config, t = this._isStacked(), i = e.height || (t ? "100dvh" : "80vh"), s = (e.title_font_weight ? `--upc-title-weight:${e.title_font_weight};` : "") + (e.title_font_size ? `--upc-title-size:${e.title_font_size}px;` : "") + (e.title_font_color ? `--upc-title-color:${e.title_font_color};` : ""), o = this._multiHead, r = e.back_button ? u`<button
+          class="back-btn"
+          aria-label="Back"
+          style=${`--upc-back-size:${e.back_button_size ?? 38}px`}
+          @click=${this._goBack}
+        >
+          <ha-icon icon="mdi:chevron-left"></ha-icon>
+        </button>` : b, n = (h, c, d) => u`
+      <button
+        class=${o.gridView === h ? "on" : ""}
+        title=${c}
+        @click=${() => this._setMultiGridView(h)}
+      >
+        ${d}
+      </button>
+    `, a = u`<button
+      class="head-link"
+      title=${o.expanded ? "Show cameras" : "Browse all events"}
+      @click=${this._toggleMultiEvents}
+    >
+      <span class="title-text">${e.strip_title ?? "Events"}</span>
+      <span class="head-count ${o.loaded ? "" : "pending"}">(${o.count})</span>
+      <span class="head-chev ${o.expanded ? "open" : ""} ${o.loaded ? "" : "pending"}">
+        <ha-icon icon="mdi:chevron-right"></ha-icon>
+      </span>
+    </button>`;
+    return u`
+      <ha-card class=${t ? "multi-stacked" : "multi-wide"} style=${`height:${i}`}>
         <div class="header" style=${s}>
-          ${e.back_button ? p`<button
-                class="back-btn"
-                aria-label="Back"
-                style=${`--upc-back-size:${e.back_button_size ?? 38}px`}
-                @click=${this._goBack}
-              >
-                <ha-icon icon="mdi:chevron-left"></ha-icon>
-              </button>` : b}
-          <span class="title-text">${e.title ?? "Cameras"}</span>
+          ${t ? u`${r}${a}` : (
+      // Wide layout: the heading sits over the events pane, and the live
+      // cameras' density control over the cameras.
+      u`<div class="head-events" style=${`flex-basis:${fs(e)}px`}>
+                  ${r} ${a}
+                </div>
+                <div class="head-cams">
+                  <div class="grid-view ${o.liveGrid ? "" : "hidden"}">
+                    ${n(1, "Single column", Nn)} ${n(2, "Two columns", Hn)}
+                  </div>
+                </div>`
+    )}
         </div>
         <upc-multi-view
           .hass=${this.hass}
           .config=${e}
           .stacked=${t}
-          @camera-open=${(r) => this._drillTo(r.detail)}
-          @camera-fullscreen=${(r) => this._drillTo(r.detail, !0)}
-          @camera-fullscreen-at=${(r) => this._drillTo(r.detail.camera, !0, r.detail.time)}
+          @events-head=${(h) => {
+      this._multiHead = h.detail;
+    }}
+          @camera-open=${(h) => this._drillTo(h.detail.camera, !1, void 0, h.detail.from)}
+          @camera-fullscreen-at=${(h) => this._drillTo(h.detail.camera, !0, h.detail.time, h.detail.from)}
         ></upc-multi-view>
       </ha-card>
     `;
@@ -7556,15 +10008,28 @@ let ut = 0, Ue = "", S = class extends j {
     const e = this._config?.layout ?? "auto";
     return e === "stacked" ? !0 : e === "columns" ? !1 : this._hostWidth === 0 || this._hostWidth < (this._config?.layout_breakpoint ?? 600);
   }
-  /** One gallery tile: snapshot (HA camera proxy) + uppercase name. */
-  _renderCamTile(e, t) {
-    const i = this.hass.states[e.camera]?.attributes?.entity_picture, s = this._galleryOpen ? Math.floor(this._now / 1e4) : 0, r = i ? `${i}${i.includes("?") ? "&" : "?"}upc=${s}` : void 0, o = this._cameraName(e.camera);
-    return p`<button
+  /** A phone's screen, for the camera screen's SIZES: the stacked layout, or
+   *  a card too short for the tablet's (a phone held in landscape with its
+   *  rotation unlocked - the same ~844 x 390 the sideways screen gets). */
+  _phoneScreen() {
+    return this._isStacked() || this._hostHeight > 0 && this._hostHeight < Jn;
+  }
+  /** One gallery tile: snapshot (HA camera proxy) + uppercase name. `closes`:
+   *  picking it also closes the picker (the wide layout's camera sheet). */
+  _renderCamTile(e, t, i = !1) {
+    const s = this.hass.states[e.camera]?.attributes?.entity_picture, o = this._galleryOpen ? Math.floor(this._now / 1e4) : 0, r = s ? `${s}${s.includes("?") ? "&" : "?"}upc=${o}` : void 0, n = this._cameraName(e.camera);
+    return u`<button
       class="cam-tile ${e.camera === t ? "active" : ""}"
-      @click=${() => this._selectCamera(e.camera)}
+      @click=${(a) => {
+      if (i) {
+        this._pickCamera(e.camera, a.currentTarget);
+        return;
+      }
+      this._selectCamera(e.camera);
+    }}
     >
-      ${r ? p`<img src=${r} alt=${o} />` : p`<div class="cam-ph"></div>`}
-      <span class="cam-name">${o}</span>
+      ${r ? u`<img src=${r} alt=${n} />` : u`<div class="cam-ph"></div>`}
+      <span class="cam-name">${n}</span>
     </button>`;
   }
   /** Days (encoded y*10000 + m*100 + d) that have at least one event — the
@@ -7582,55 +10047,60 @@ let ut = 0, Ue = "", S = class extends j {
    *  active view: Timeline = [today - calendar_days, today] (the footage
    *  window); Events = only days that actually HAVE events (the manifest
    *  window, ~7 days). The playhead's day is highlighted. Tapping a day is
-   *  mode-aware too (see _selectCalDay). */
-  _renderCalendar() {
-    const { y: e, m: t } = this._calCursor, i = /* @__PURE__ */ new Date();
-    i.setHours(0, 0, 0, 0);
-    const s = new Date(i);
-    s.setDate(s.getDate() - (this._config?.calendar_days ?? 30));
-    const r = new Date(e, t, 1), o = r.getDay(), n = new Date(e, t + 1, 0).getDate(), a = new Date(this._domain ? P(this._domain, this._phFrac()) : Date.now()), h = (k) => a.getFullYear() === e && a.getMonth() === t && a.getDate() === k, u = Tt({
+   *  mode-aware too (see _selectCalDay). `fs`: the wide camera screen's, opening
+   *  up from the date pill at the foot of the overlay ruler. `modal`: the
+   *  phone's, in the middle of its screen (always six week rows, so a month
+   *  change never resizes it). */
+  _renderCalendar(e = !1, t = !1) {
+    const { y: i, m: s } = this._calCursor, o = /* @__PURE__ */ new Date();
+    o.setHours(0, 0, 0, 0);
+    const r = new Date(o);
+    r.setDate(r.getDate() - (this._config?.calendar_days ?? 30));
+    const n = new Date(i, s, 1), a = n.getDay(), h = new Date(i, s + 1, 0).getDate(), c = new Date(this._domain ? A(this._domain, this._phFrac()) : Date.now()), d = (y) => c.getFullYear() === i && c.getMonth() === s && c.getDate() === y, l = Wt({
       month: "long",
       year: "numeric"
-    }).format(r), d = Array.from(
+    }).format(n), _ = Array.from(
       { length: 7 },
-      (k, H) => Tt({ weekday: "narrow" }).format(new Date(2023, 0, H + 1))
-    ), l = this._mode === "list" ? this._eventDayKeys() : void 0, _ = !!l && l.size > 0, v = e * 12 + t;
-    let y = s.getFullYear() * 12 + s.getMonth();
-    if (_) {
-      let k = 1 / 0;
-      for (const H of l) H < k && (k = H);
-      y = Math.floor(k / 1e4) * 12 + Math.floor(k % 1e4 / 100);
+      (y, S) => Wt({ weekday: "narrow" }).format(new Date(2023, 0, S + 1))
+    ), v = this._mode === "list" ? this._eventDayKeys() : void 0, w = !!v && v.size > 0, T = this._gaps, z = ai(T), O = Date.now(), C = (y) => {
+      const S = y.getTime(), V = Math.min(O, new Date(y.getFullYear(), y.getMonth(), y.getDate() + 1).getTime());
+      return S < V && hi(T, S, V, S) !== void 0;
+    }, W = i * 12 + s, G = z !== void 0 ? new Date(z) : r;
+    let H = G.getFullYear() * 12 + G.getMonth();
+    if (w) {
+      let y = 1 / 0;
+      for (const S of v) S < y && (y = S);
+      H = Math.floor(y / 1e4) * 12 + Math.floor(y % 1e4 / 100);
     }
-    const z = v > y, O = v < i.getFullYear() * 12 + i.getMonth(), N = [];
-    for (let k = 0; k < o; k++) N.push(p`<span class="cal-cell"></span>`);
-    for (let k = 1; k <= n; k++) {
-      const H = new Date(e, t, k), Y = _ ? l.has(e * 1e4 + t * 100 + k) : H <= i && H >= s;
-      N.push(
-        p`<button
-          class="cal-cell cal-day ${h(k) ? "sel" : ""}"
-          ?disabled=${!Y}
-          @click=${() => this._selectCalDay(e, t, k)}
+    const et = W > H, Y = W < o.getFullYear() * 12 + o.getMonth(), I = [];
+    for (let y = 0; y < a; y++) I.push(u`<span class="cal-cell"></span>`);
+    for (let y = 1; y <= h; y++) {
+      const S = new Date(i, s, y), V = w ? v.has(i * 1e4 + s * 100 + y) : z !== void 0 ? C(S) : S <= o && S >= r;
+      I.push(
+        u`<button
+          class="cal-cell cal-day ${d(y) ? "sel" : ""}"
+          ?disabled=${!V}
+          @click=${() => this._selectCalDay(i, s, y)}
         >
-          ${k}
+          ${y}
         </button>`
       );
     }
-    return p`<div class="cal-pop ${this._isStacked() ? "" : "wide"}">
+    if (t) for (; I.length < 42; ) I.push(u`<span class="cal-cell"></span>`);
+    return u`<div class="cal-pop ${e ? "fs" : this._isStacked() ? "" : "wide"}">
       <div class="cal-head">
-        <span class="cal-title">${u}</span>
+        <span class="cal-title">${l}</span>
         <span>
-          <button class="cal-chev" ?disabled=${!z} @click=${() => this._calShift(-1)}>
+          <button class="cal-chev" ?disabled=${!et} @click=${() => this._calShift(-1)}>
             <ha-icon icon="mdi:chevron-left"></ha-icon>
           </button>
-          <button class="cal-chev" ?disabled=${!O} @click=${() => this._calShift(1)}>
+          <button class="cal-chev" ?disabled=${!Y} @click=${() => this._calShift(1)}>
             <ha-icon icon="mdi:chevron-right"></ha-icon>
           </button>
         </span>
       </div>
-      <div class="cal-grid">
-        ${d.map((k) => p`<span class="cal-cell cal-wk">${k}</span>`)}
-        ${N}
-      </div>
+      <div class="cal-grid">${_.map((y) => u`<span class="cal-cell cal-wk">${y}</span>`)}</div>
+      <div class="cal-grid cal-days">${I}</div>
     </div>`;
   }
   /** The scrubber, in either of its two placements: the card's own timeline
@@ -7642,45 +10112,47 @@ let ut = 0, Ue = "", S = class extends j {
    *  that event and plays the continuous footage from there. Bounded event
    *  CLIPS are the Events list's job alone — no timeline starts one. The
    *  overlay differs only in look: mirrored onto the screen edge, chrome scaled
-   *  for across-the-room reading, and its own jump-to-live arrow. */
-  _renderScrubber(e) {
-    const t = this._config, i = t.tick_size, s = typeof i == "number" ? i : { small: 4, medium: 8, large: 14 }[i ?? "medium"] ?? 8, r = this._isStacked();
-    return p`
+   *  for across-the-room reading, and its own jump-to-live arrow. `foot`: what
+   *  the overlay carries at the foot of its ruler (the wide camera screen's
+   *  date pill). */
+  _renderScrubber(e, t = b) {
+    const i = this._config, s = i.tick_size, o = typeof s == "number" ? s : { small: 4, medium: 8, large: 14 }[s ?? "medium"] ?? 8, r = this._phoneScreen();
+    return u`
       <upc-scrubber-timeline
         slot=${e ? "fs-timeline" : b}
         ?mirror=${e}
         .zoomUi=${!0}
         .gutter=${e ? this._fsGutter() : 0}
-        .rotated=${e && this._playerRotated}
+        .rotated=${e && this._phoneTurned()}
         .liveArrow=${e}
         .compact=${r}
         .playheadFrac=${this._phFrac()}
         .domain=${this._domain}
         .bands=${this._viewBands}
-        .gaps=${t.show_footage_gaps ?? !0 ? this._gaps : []}
-        .gapColor=${t.gap_color ?? "#4a4a52"}
+        .gaps=${i.show_footage_gaps ?? !0 ? this._gaps : []}
+        .gapColor=${i.gap_color ?? "#4a4a52"}
         .now=${this._now}
         .hass=${this.hass}
         .nvrId=${this._nvrId}
-        .cameraId=${this._activeCamera || t.camera}
+        .cameraId=${this._activeCamera || i.camera}
         .loader=${this._loader}
         .thumbVersion=${this._thumbVersion}
         .fontSize=${Math.round(
-      (t.timeline_font_size ?? 12) * (e ? r ? Zr : Kr : 1)
+      (i.timeline_font_size ?? 12) * (e ? r ? ra : oa : 1)
     )}
-        .fontColor=${t.timeline_font_color ?? "#d0d0d0"}
-        .accentColor=${t.accent_color ?? "#fc9df3"}
+        .fontColor=${i.timeline_font_color ?? "#d0d0d0"}
+        .accentColor=${i.accent_color ?? "#fc9df3"}
         .tickColor=${e ? (
       // The card's tick color is picked against the timeline column's dark
       // background; over bright footage it disappears. The overlay's ruler
       // matches its own labels instead (light, like the UniFi app).
-      t.timeline_font_color ?? "#d0d0d0"
-    ) : t.tick_color ?? "#4f4f4f"}
-        .tickSize=${s}
-        .recordedColor=${t.recorded_color ?? "#6e476a"}
-        .futureColor=${t.future_color ?? "#7a7a84"}
-        .thumbSize=${t.thumb_size ?? 87}
-        .thumbSizeActive=${t.thumb_size_active ?? 105}
+      i.timeline_font_color ?? "#d0d0d0"
+    ) : i.tick_color ?? "#4f4f4f"}
+        .tickSize=${o}
+        .recordedColor=${i.recorded_color ?? "#6e476a"}
+        .futureColor=${i.future_color ?? "#7a7a84"}
+        .thumbSize=${e && this._fsUpright() ? Math.min(i.thumb_size ?? 87, Gn) : i.thumb_size ?? 87}
+        .thumbSizeActive=${e && this._fsUpright() ? Math.min(i.thumb_size_active ?? 105, Kn) : i.thumb_size_active ?? 105}
         .live=${this._liveMode}
         .livePaused=${this._livePaused}
         .indent=${e ? 0 : r ? 75 : 60}
@@ -7690,18 +10162,19 @@ let ut = 0, Ue = "", S = class extends j {
         @scrub-end=${this._onScrubEnd}
         @scrub-cancel=${this._onScrubCancel}
         @domain-change=${this._onDomainChange}
-      ></upc-scrubber-timeline>
+        >${t}</upc-scrubber-timeline
+      >
     `;
   }
   render() {
-    return this._config ? this._isMulti ? p`${Ii(this._drill ? b : this._renderMulti())}${this._drill ? this._renderSingle() : b}` : this._renderSingle() : b;
+    return this._config ? this._isMulti ? u`${Xs(this._drill && !this._xf ? b : this._renderMulti())}${this._xf ? u`<div class="xf-dim"></div>` : b}${this._drill ? this._renderSingle() : b}` : this._renderSingle() : b;
   }
   /** The single-camera page: a camera card, or the multi page drilled in. */
   _renderSingle() {
     if (!this._config) return b;
-    if (!this._domain) return p`<ha-card><div class="header">Loading…</div></ha-card>`;
+    if (!this._domain) return u`<ha-card><div class="header">Loading…</div></ha-card>`;
     if (!this._nvrId)
-      return p`
+      return u`
         <ha-card>
           <div class="header">${this._config.title ?? "UniFi Protect Timeline"}</div>
           <div style="padding:8px;color:var(--error-color)">
@@ -7719,147 +10192,207 @@ let ut = 0, Ue = "", S = class extends j {
     );
     const t = this._config.show_footage_gaps ?? !0 ? this._gaps : [];
     this._loader.setGaps(t);
-    const i = this._config.accent_color ?? "#fc9df3", s = this._config.fs_timeline ?? !0, r = this._isStacked(), o = this._config.fs_timeline_width ?? (r ? 120 : 165), n = this._fsPad(), a = this._fsGutter(), h = this._config.fs_timeline_grab_width ?? 0, u = this._config.fs_timeline_scrim ?? 0.88, d = this._config.fs_timeline_scrim_extend ?? (r ? 130 : 170), l = Tt({
+    const i = this._config.accent_color ?? "#fc9df3", s = this._phoneScreen(), o = this._fsUpright(), r = Wt({
       month: "short",
       day: "numeric"
-    }).format(new Date(P(this._domain, this._phFrac()))), _ = this._isStacked(), v = this._config.tablet_events_thumbnail_size ?? 145, y = this._config.list_text_size ?? 12, z = Math.max(1, y - 1), O = v + 168, N = (_ ? "" : `flex-basis:${O}px;min-width:${O}px;`) + `--upc-accent:${i};--upc-arrow:${this._config.arrow_color ?? "rgba(0,0,0,0.6)"};--upc-arrow-bottom:${this._config.live_arrow_bottom ?? 14}px;--upc-date-size:${this._config.date_font_size ?? 13}px;--upc-date-color:${this._config.date_font_color ?? "#ffffff"};`, k = this._cameraEntries(), H = k.length ? this._cameraName(e) : this._config.title ?? "UniFi Protect Timeline", Y = this._config.video_ratio ?? 0.45, gt = Math.max(15, Math.min(85, Y > 1 ? Y : Y * 100)), dt = `height:${this._config.height || (_ ? "100dvh" : "80vh")}`, W = _ ? `--upc-video-frac:${gt}%` : "", $ = this._config.list_divider_color || i, R = (this._config.toggle_bg ? `--upc-toggle-bg:${this._config.toggle_bg};` : "") + (this._config.toggle_active_bg ? `--upc-toggle-active-bg:${this._config.toggle_active_bg};` : "") + (this._config.toggle_active_color ? `--upc-toggle-active-color:${this._config.toggle_active_color};` : "") + (this._config.toggle_text_color ? `--upc-toggle-text:${this._config.toggle_text_color};` : ""), q = _ && this._config.video_aspect ? `flex:0 0 auto;aspect-ratio:${this._config.video_aspect};width:100%;` : "", K = (k.length ? `--upc-title-weight:${this._config.camera_name_font_weight ?? 600};` : this._config.title_font_weight ? `--upc-title-weight:${this._config.title_font_weight};` : "") + (this._config.title_font_size ? `--upc-title-size:${this._config.title_font_size}px;` : "") + (this._config.title_font_color ? `--upc-title-color:${this._config.title_font_color};` : "");
-    return p`
-      <ha-card style=${dt}>
-        <div class="header" style=${K}>
-          ${this._config.back_button || this._drill ? p`<button
-                class="back-btn"
-                aria-label="Back"
-                style=${`--upc-back-size:${this._config.back_button_size ?? 38}px`}
-                @click=${this._goBack}
-              >
-                <ha-icon icon="mdi:chevron-left"></ha-icon>
-              </button>` : b}
-          <span class="title-text">${H}</span>
-          ${k.length ? p`<button
-                class="strip-toggle"
-                @click=${this._toggleGallery}
-                title=${this._galleryOpen ? "Hide cameras" : "Show cameras"}
-              >
-                <ha-icon
-                  icon=${this._galleryOpen ? "mdi:chevron-up" : "mdi:chevron-down"}
-                ></ha-icon>
-              </button>` : b}
-        </div>
-
-        ${k.length ? p`<div
-              class="cam-strip ${this._galleryOpen ? "open" : ""}"
-              style="--upc-cam-tile-w:${v}px"
+    }).format(new Date(A(this._domain, this._phFrac())));
+    return this._renderPanel(e, t, i, r, {
+      width: this._config.fs_timeline_width ?? (o ? Wn : s ? 120 : 165),
+      pad: this._fsPad(),
+      gutter: this._fsGutter(),
+      grab: this._config.fs_timeline_grab_width ?? 0,
+      // 0 = the whole player
+      scrim: this._config.fs_timeline_scrim ?? 0.88,
+      scrimExtend: this._config.fs_timeline_scrim_extend ?? (o ? jn : s ? 130 : 170)
+    });
+  }
+  _closeCamSheet() {
+    this._galleryOpen = !1, window.removeEventListener("pointerdown", this._outsideSheetClose, !0);
+  }
+  /** The camera screen: the player fills the card in its card-sized
+   *  fullscreen (media-view `cardFs`) — the overlay ruler down the right, the
+   *  controls along the bottom, the exit button back to the multi page — and
+   *  the rest of the old timeline view comes into it as overlay chrome that
+   *  shows and hides with the controls: the camera picker sliding down from a
+   *  chevron at the top (`fs-top`), the events list sliding in from a chevron
+   *  on the right edge and pushing the ruler left (`fs-side`; a row winds the
+   *  timeline to its event), and the date pill + calendar at the foot of the
+   *  ruler (the timeline's own `foot` slot).
+   *  PHONE (stacked layout): the same screen scaled down, in a frame of its
+   *  own (.frame) - turned 90° clockwise for landscape footage on an upright
+   *  phone (laid out the card's height wide and its width tall, so it fills
+   *  the card once turned: you turn the phone to watch), upright for portrait
+   *  footage (see _phoneTurned). */
+  _renderPanel(e, t, i, s, o) {
+    const r = this._config, n = this._cameraEntries(), a = Ie(i, 0.58) || i, h = this._phoneScreen(), c = this._phoneTurned(), d = this._fsUpright(), l = r.list_text_size ?? 12, _ = r.tablet_events_grid_thumbnail_size ?? Math.round((r.tablet_events_thumbnail_size ?? 145) * 1.5), v = Math.min(this._hostWidth || 390, this._hostHeight || 844), w = h ? Math.round((v - 36) / 2) : _, T = w + (h ? 2 * $e : 2 * Yn), z = d ? Zn : h ? Xn : _;
+    this._eventsOpen && (this._eventsMounted = !0);
+    const O = `height:${r.height || (this._isStacked() ? "100dvh" : "80vh")};--upc-accent:${i};--upc-accent-deep:${a};--upc-date-size:${r.date_font_size ?? 13}px;--upc-date-color:${r.date_font_color ?? "#ffffff"};--upc-fs-pad:${o.pad}px`, C = u`<upc-media-view
+          .hass=${this.hass}
+          .nvrId=${this._nvrId}
+          .cameraId=${e}
+          .gaps=${t}
+          .targetTime=${this._targetTime}
+          .scrubbing=${this._scrubbing}
+          .live=${this._liveMode}
+          .canTalk=${(r.talk_button ?? !0) && this._canTalk(e)}
+          .stacked=${!1}
+          .phone=${h}
+          .upright=${d}
+          .previewDir=${this._scrubDir()}
+          .fastPreview=${r.scrub_fast_preview ?? "speed"}
+          .accent=${i}
+          .clipEndTime=${this._clipEnd}
+          .now=${this._now}
+          .liveAudioStart=${r.live_audio_start ?? "muted"}
+          .cardFs=${!0}
+          .cardFsExit=${!!this._drill || !!r.back_button}
+          .poster=${this._panelPoster}
+          .chromeHidden=${this._panelChromeHidden}
+          .chromeAside=${this._calOpen && !this._calClosing}
+          .holdCtrl=${this._galleryOpen || this._eventsOpen || this._calOpen}
+          .fsSide=${this._eventsOpen ? T : 0}
+          .fsTimeline=${!0}
+          .fsTimelineWidth=${o.width}
+          .fsTimelinePadding=${o.pad}
+          .fsTimelineGutter=${o.gutter}
+          .fsTimelineGrabWidth=${o.grab}
+          .fsTimelineScrim=${o.scrim}
+          .fsTimelineScrimExtend=${o.scrimExtend}
+          @playback-time=${this._onPlaybackTime}
+          @playback-seek=${this._onPlaybackSeek}
+          @live-playing=${this._onLivePlaying}
+          @go-live=${this._onLive}
+          @rewind=${this._onRewind}
+          @fs-exit=${this._onMediaFsExit}
+          @zoom-panel=${(Y) => this._zoomPanel = Y.detail.open}
+        >
+          ${this._renderScrubber(
+      !0,
+      u`<div slot="foot" class="fs-datebox">
+              <button class="date-pill fs" @click=${this._toggleCal} title="Jump to date">
+                <ha-icon icon="mdi:calendar-month-outline"></ha-icon>
+                <span>${s}</span>
+              </button>
+            </div>`
+    )}
+          ${n.length > 1 ? u`<div slot="fs-top" class="fs-cams ${this._galleryOpen ? "open" : ""}">
+                <div class="fs-cams-body">
+                  <div class="fs-cams-row" style=${`--upc-cam-tile-w:${z}px`}>
+                    ${n.map((Y) => this._renderCamTile(Y, e, !0))}
+                  </div>
+                </div>
+                <div class="fs-cams-foot">
+                  <button
+                    class="fs-chev fs-cams-handle"
+                    title=${this._galleryOpen ? "Hide cameras" : "Cameras"}
+                    @click=${this._toggleCamSheet}
+                  >
+                    <svg viewBox="0 0 40 14"><polyline points="4,3 20,11 36,3"></polyline></svg>
+                  </button>
+                </div>
+              </div>` : b}
+          <div
+            slot="fs-side"
+            class="fs-events ${this._eventsOpen ? "open" : ""} ${this._zoomPanel ? "zooming" : ""}"
+            style=${`--upc-side-w:${T}px`}
+          >
+            <button
+              class="fs-chev fs-events-handle"
+              title=${this._eventsOpen ? "Hide events" : "Events"}
+              @click=${this._toggleEvents}
             >
-              <div class="cam-strip-inner">
-                ${k.map((ni) => this._renderCamTile(ni, e))}
-              </div>
-            </div>` : b}
-
-        <div class="row ${_ ? "stacked" : ""}" style=${W}>
-          <div class="timeline-col" style=${N}>
-            <div class="view-toggle" style=${R}>
-              <button
-                class="seg ${this._mode === "timeline" ? "active" : ""}"
-                @click=${this._showTimeline}
-              >
-                Timeline
-              </button>
-              <button
-                class="seg ${this._mode === "list" ? "active" : ""}"
-                @click=${this._showEvents}
-              >
-                Events
-              </button>
-            </div>
-
-            <div class="mode-body">
-              ${this._mode === "timeline" ? this._renderScrubber(!1) : p`
-                    <upc-events-list
-                      .bands=${this._viewBands}
+              <svg viewBox="0 0 14 40"><polyline points="11,4 3,20 11,36"></polyline></svg>
+            </button>
+            <div class="fs-events-body">
+              ${this._eventsMounted ? u`<div class="fs-events-list">
+                    <upc-event-strip
+                      expanded
+                      hideHead
+                      captions
+                      fs
+                      ?gridCaptions=${!h}
+                      .bands=${this._panelBands(e)}
                       .loader=${this._loader}
                       .thumbVersion=${this._thumbVersion}
-                      .textSize=${y}
-                      .textColor=${this._config.list_text_color ?? ""}
-                      .durationSize=${z}
-                      .durationColor=${this._config.list_duration_color ?? ""}
-                      .thumbWidth=${v}
-                      .line1White=${!0}
-                      .activeTextSize=${this._config.list_active_text_size ?? 12}
-                      .activeTextColor=${this._config.list_active_text_color ?? "#000"}
-                      .activeDurationSize=${this._config.list_active_duration_size ?? 12}
-                      .activeDurationColor=${this._config.list_active_duration_color ?? "#000"}
-                      .activeBg=${this._config.list_active_bg ?? this._config.list_highlight_color ?? "#fff"}
+                      .timeSize=${r.strip_time_size ?? 12}
                       .playingKey=${this._playingBand ? `${this._playingBand.type}@${this._playingBand.start}` : ""}
-                      .dateFontSize=${this._config.date_font_size ?? 13}
-                      .dateFontColor=${this._config.date_font_color ?? "#ffffff"}
-                      .dividerColor=${$}
-                      @event-selected=${this._onEventSelected}
-                    ></upc-events-list>
-                  `}
+                      .expanded=${!0}
+                      .gridColumns=${1}
+                      .gridThumbWidth=${w}
+                      .dateFontSize=${r.date_font_size ?? 13}
+                      .itemTextSize=${h ? l + 1 : l}
+                      .accent=${r.list_divider_color || i}
+                      @strip-select=${this._onPanelEventSelected}
+                    ></upc-event-strip>
+                  </div>` : b}
             </div>
-
-            <button class="date-pill" @click=${this._toggleCal} title="Jump to date">
-              <ha-icon icon="mdi:calendar-month-outline"></ha-icon>
-              <span>${l}</span>
-            </button>
-            ${this._calOpen ? this._renderCalendar() : b}
-            ${this._mode === "timeline" && !this._liveMode ? p`<button class="live-arrow" @click=${this._onLive} title="Jump to live">
-                  ↑
-                </button>` : b}
           </div>
-
-          <div
-            class="video-col"
-            style=${q}
-            @pointerdown=${this._onVideoPointerDown}
-            @pointermove=${this._onVideoPointerMove}
-            @pointerup=${this._onVideoPointerEnd}
-            @pointercancel=${this._onVideoPointerEnd}
-          >
-            <upc-media-view
-              .hass=${this.hass}
-              .nvrId=${this._nvrId}
-              .cameraId=${e}
-              .gaps=${t}
-              .targetTime=${this._targetTime}
-              .scrubbing=${this._scrubbing}
-              .live=${this._liveMode}
-              .stacked=${this._isStacked()}
-              .previewDir=${this._scrubDir()}
-              .fastPreview=${this._config.scrub_fast_preview ?? "speed"}
-              .accent=${i}
-              .clipEndTime=${this._clipEnd}
-              .now=${this._now}
-              .liveAudioStart=${this._config.live_audio_start ?? "muted"}
-              .startFs=${this._drillFs}
-              .fsTimeline=${s}
-              .fsTimelineWidth=${o}
-              .fsTimelinePadding=${n}
-              .fsTimelineGutter=${a}
-              .fsTimelineGrabWidth=${h}
-              .fsTimelineScrim=${u}
-              .fsTimelineScrimExtend=${d}
-              @playback-time=${this._onPlaybackTime}
-              @playback-seek=${this._onPlaybackSeek}
-              @live-playing=${this._onLivePlaying}
-              @go-live=${this._onLive}
-              @rewind=${this._onRewind}
-              @fs-exit=${this._onMediaFsExit}
-              @fs-change=${this._onPlayerFs}
-            >
-              ${s && this._playerFs ? this._renderScrubber(!0) : b}
-            </upc-media-view>
-          </div>
-        </div>
-      </ha-card>
-    `;
+        </upc-media-view>`, W = this._calOpen ? u`<div class="cal-modal"><div class="cal-scrim"></div>${this._renderCalendar(!0, !0)}</div>` : b;
+    if (!h)
+      return u`<ha-card class="panel" style=${O}>${C}<div class="hero"></div>${W}</ha-card>`;
+    const G = this._hostWidth, H = this._hostHeight, et = c && G && H ? `width:${H}px;height:${G}px;left:${(G - H) / 2}px;top:${(H - G) / 2}px` : "";
+    return u`<ha-card class="panel phone ${c ? "turned" : d ? "upright" : ""}" style=${O}>
+      <div class="frame" style=${et}>${C}<div class="hero"></div>${W}</div>
+    </ha-card>`;
   }
 };
-S.styles = rt`
+$.styles = ft`
     :host {
       /* custom elements default to inline — inline boxes measure width 0 in
          ResizeObserver, which would wedge layout:auto in stacked mode */
       display: block;
+    }
+    /* A zoom between the multi page and the camera screen (see _xf): both are
+       mounted, one over the other. The page that stays sets the height; the
+       other rides on top of it ('in': the camera screen over the multi page,
+       which stays under; 'out': the camera screen leaving over it). The host
+       holds them (layout containment: a containing block without touching
+       its own position - on the phone it is pinned fixed to the screen). */
+    :host([xf]) {
+      contain: layout;
+    }
+    :host([xf='in']) ha-card.multi-wide,
+    :host([xf='in']) ha-card.multi-stacked {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+    /* ...and a stacking context of its own, or its overlays (a clip player's
+       controls at z 6) paint over the camera screen. */
+    :host([xf]) ha-card.multi-wide,
+    :host([xf]) ha-card.multi-stacked {
+      z-index: 0;
+    }
+    :host([xf='out']) ha-card.multi-wide,
+    :host([xf='out']) ha-card.multi-stacked {
+      position: relative;
+    }
+    /* The containing block of the page's fixed lightbox: its scrim covers the
+       card - in a popup or a view alike - never the sidebar beside it. */
+    ha-card.multi-wide {
+      contain: layout;
+    }
+    :host([xf]) ha-card.panel {
+      position: relative;
+      z-index: 2;
+      /* Only the player flies, not the card's own background around it. */
+      background: transparent;
+      box-shadow: none;
+    }
+    :host([xf='out']) ha-card.panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+    .xf-dim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
     }
     ha-card {
       padding: 12px;
@@ -7884,6 +10417,78 @@ S.styles = rt`
     ha-card.multi-stacked .header {
       padding: 0 12px; /* header keeps the visual inset the card padding gave it */
     }
+    /* Wide multi page: the header row lines up with the page below it - the
+       heading over the events pane (.head-events, the pane's width), the
+       grid-density control centred over the cameras (.head-cams, ending where
+       the camera grid does). */
+    ha-card.multi-wide .header {
+      padding-top: 10px; /* a little more air above the heading */
+      gap: ${_s}px;
+    }
+    .head-events {
+      flex: 0 0 auto; /* flex-basis = the events pane's width (inline) */
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .head-cams {
+      flex: 1 1 auto;
+      align-self: stretch; /* the title's line: the control centres on it */
+      position: relative;
+      margin-right: ${qt - 12}px; /* 12 = the card padding above */
+    }
+    /* Segmented control: rows / 2 columns. Absolutely centred so its height
+       doesn't grow the header row; fades out while the cameras are away
+       (events grid open, a clip playing). The active step reads white. */
+    .grid-view {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 11px;
+      background: rgba(0, 0, 0, 0.5);
+      transition:
+        opacity 0.24s,
+        visibility 0.24s;
+    }
+    .grid-view.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .grid-view button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 40px; /* portrait — a bit taller than wide */
+      padding: 0;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        color 0.15s,
+        background 0.15s;
+    }
+    .grid-view button:hover {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .grid-view button.on {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+    }
+    .grid-view svg {
+      width: 21px;
+      height: 26px; /* portrait glyph to fill the taller button */
+      fill: currentColor;
+      display: block;
+    }
     .header {
       display: flex;
       align-items: center;
@@ -7899,6 +10504,54 @@ S.styles = rt`
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    /* Multi page, wide layout: "Events (N) >" as the heading - ONE button that
+       opens/closes the events grid, in the title's own type and colour; the
+       count is set smaller in brackets so it doesn't read as part of the title.
+       The chevron turns to point back while the events grid is open. */
+    .head-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 0 0 0 8px; /* the title's ink starts where the list rows' text does */
+      margin: 0;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit; /* a <button> doesn't inherit it - the count and icon are sized in em */
+      cursor: pointer;
+      outline: none; /* a tap left a focus ring round the whole heading */
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* The count is centred on the title (not on its baseline, where the smaller
+       type looked dropped). */
+    .head-count {
+      flex: 0 0 auto;
+      font-size: 0.625em;
+      font-weight: 500;
+      transition: opacity 0.3s ease-out;
+    }
+    /* Until the events are in, the count (and the chevron after it) wait,
+       invisible - then fade in together, so nothing reads "(0)" first. */
+    .head-count.pending,
+    .head-chev.pending {
+      opacity: 0;
+    }
+    .head-chev {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      height: 1em; /* the 1.15em icon overflows it rather than growing the header row */
+      transition: opacity 0.3s ease-out;
+    }
+    .head-chev ha-icon {
+      --mdc-icon-size: 1.15em;
+      display: block;
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .head-chev.open ha-icon {
+      transform: rotate(180deg);
     }
     /* In-card back button — a chevron in a dark circle (matches the dashboards'
        bubble back button). Sized by --upc-back-size (back_button_size). */
@@ -8235,6 +10888,17 @@ S.styles = rt`
       gap: 4px;
       justify-items: center;
     }
+    /* The days: a grid of their own under the weekdays, so a month change
+       slides them (and the title) alone - see _calShift, whose leaving copies
+       are .cal-ghost. */
+    .cal-days {
+      margin-top: 4px;
+    }
+    .cal-ghost {
+      position: absolute;
+      margin: 0;
+      pointer-events: none;
+    }
     .cal-cell {
       width: 100%;
       max-width: 44px;
@@ -8268,6 +10932,434 @@ S.styles = rt`
       background: var(--upc-accent, var(--primary-color, #03a9f4));
       color: #fff;
       font-weight: 700;
+    }
+    /* ---- Wide layout: the camera screen IS the player (see _renderPanel).
+       Everything below is slotted into the media view, which places it. ---- */
+    ha-card.panel {
+      position: relative; /* the .hero layer's box */
+      padding: 0;
+      overflow: hidden; /* the card's corners clip the picture and the panels */
+      transition: background-color 0.24s ease-out;
+    }
+    /* Pictures in flight (a camera picked in the picker flying into the
+       screen): over everything in the camera screen, taking no taps. */
+    ha-card.panel .hero {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+    ha-card.panel .hero > .ghost {
+      position: absolute;
+      object-fit: cover;
+    }
+    ha-card.panel upc-media-view {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    /* The phone's camera screen: edge to edge, in a frame of its own (what a
+       zoom flies) - turned sideways about its centre for landscape footage,
+       the frame laid out the other way round (inline size) so it fills the
+       card once turned. */
+    ha-card.panel.phone {
+      border-radius: 0;
+    }
+    ha-card.panel.phone > .frame {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    ha-card.panel.phone.turned > .frame {
+      inset: auto;
+      transform: rotate(90deg);
+      transform-origin: 50% 50%;
+    }
+    /* Its chrome, sized for a phone: the picker's tiles and names, the
+       chevrons, the events column's margins. */
+    ha-card.panel.phone .fs-cams {
+      transform: translateY(calc(-100% + 40px));
+    }
+    ha-card.panel.phone .fs-cams.open {
+      transform: none;
+    }
+    ha-card.panel.phone .fs-cams-body {
+      padding: 12px 12px 2px;
+    }
+    ha-card.panel.phone .fs-cams-foot {
+      height: 40px;
+    }
+    /* Open, it covers the top of the ruler: the rest of the screen dims
+       under it, like under the calendar - the sheet is over everything, not
+       on top of some of it. */
+    ha-card.panel.phone .fs-cams-foot::before {
+      height: 200vmax;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.55) 90px);
+    }
+    ha-card.panel.phone .fs-cams-row {
+      gap: 12px;
+    }
+    ha-card.panel.phone .fs-cams .cam-name {
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    ha-card.panel.phone .fs-cams .cam-tile.active {
+      padding: 5px;
+      border-radius: 12px;
+    }
+    ha-card.panel.phone .fs-cams .cam-tile.active img,
+    ha-card.panel.phone .fs-cams .cam-tile.active .cam-ph {
+      border-radius: 7px;
+    }
+    ha-card.panel.phone .fs-cams-handle {
+      width: 64px;
+      height: 34px;
+      margin-top: 4px;
+    }
+    ha-card.panel.phone .fs-cams-handle svg {
+      width: 32px;
+      height: 12px;
+    }
+    ha-card.panel.phone .fs-events-handle {
+      width: 32px;
+      height: 64px;
+      transition: opacity 0.2s ease;
+    }
+    /* The zoom slider opens right beside it: the chevron steps out of its
+       way until it closes. */
+    ha-card.panel.phone .fs-events.zooming .fs-events-handle {
+      opacity: 0;
+      pointer-events: none;
+    }
+    ha-card.panel.phone .fs-events-handle svg {
+      width: 12px;
+      height: 32px;
+    }
+    ha-card.panel.phone .fs-events-list {
+      left: ${$e}px;
+      right: ${$e}px;
+    }
+    /* Sideways, the frame's right edge is the screen's BOTTOM - iOS's
+       system-gesture strip, where a button never gets the touch - so the
+       events chevron keeps clear of it. */
+    ha-card.panel.phone.turned .fs-events-handle {
+      right: calc(100% + 10px + env(safe-area-inset-bottom, 0px));
+    }
+    /* Upright, the top edge is under the status bar / camera cutout: the
+       picker's chevron and tiles and the events list start below it; the
+       picker shows two tiles to a row. */
+    ha-card.panel.phone.upright .fs-cams {
+      transform: translateY(calc(-100% + 40px + env(safe-area-inset-top, 0px)));
+    }
+    ha-card.panel.phone.upright .fs-cams.open {
+      transform: none;
+    }
+    ha-card.panel.phone.upright .fs-cams-body {
+      padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    }
+    ha-card.panel.phone.upright .fs-cams-row {
+      flex-wrap: wrap;
+      row-gap: 10px;
+    }
+    /* Upright the events list scrolls between the top and the control bar:
+       it fades out at both ends (user, 2026-10-31: the items were cut off
+       sharply there), its first and last items clear of the fades at rest -
+       the first one also below the cameras chevron, which stays put. */
+    ha-card.panel.phone.upright .fs-events-list {
+      top: calc(var(--upc-fs-pad, 20px) + env(safe-area-inset-top, 0px));
+      --upc-fs-list-pad-top: ${bt}px;
+      --upc-fs-list-pad-bottom: ${bt}px;
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 ${bt}px,
+        #000 calc(100% - ${bt}px),
+        transparent
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 ${bt}px,
+        #000 calc(100% - ${bt}px),
+        transparent
+      );
+    }
+    /* Sideways it scrolls on to the top of the screen (the frame's top: no
+       safe area there), its first item where it was at rest. */
+    ha-card.panel.phone.turned .fs-events-list {
+      top: 0;
+      --upc-fs-list-pad-top: var(--upc-fs-pad, 20px);
+    }
+    /* The date pill's calendar, compact: it opens over the pill inside a
+       ~390px-tall screen (sideways) - and upright it hangs from the pill's
+       right edge, which sits near the screen's. */
+    ha-card.panel.phone .cal-pop.fs {
+      width: 262px; /* 7 x 30px cells + 6 x 4px gaps + 2 x 14px padding */
+      padding: 12px 14px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-head {
+      margin-bottom: 4px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-title {
+      font-size: 15px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-chev {
+      width: 32px;
+      height: 32px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-chev ha-icon {
+      --mdc-icon-size: 22px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-cell {
+      max-width: 30px;
+      font-size: 14px;
+    }
+    ha-card.panel.phone .cal-pop.fs .cal-wk {
+      height: 20px;
+      font-size: 12px;
+    }
+    ha-card.panel.phone.upright .cal-pop.fs {
+      left: auto;
+      right: 0;
+      translate: none;
+      transform-origin: 85% 100%;
+    }
+    /* The camera screen's calendar (phone and tablet): in the middle of the
+       screen over the picture dimmed, the player's chrome faded away (user,
+       2026-10-28/30: it covered the ruler, then the tablet's play controls)
+       - it flies out of the date pill and back (_calFlight). Solid: nothing
+       shows through it. */
+    .cal-modal {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cal-scrim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    ha-card.panel .cal-modal > .cal-pop.fs {
+      position: relative;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      translate: none;
+      animation: none;
+      background: rgb(28, 28, 30);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    /* Panel handles: thin, rounded UniFi/Apple-style chevrons straight on the
+       footage, a soft shadow keeping them readable on any picture. Each turns
+       to point back while its panel is open. */
+    .fs-chev {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      pointer-events: auto;
+      outline: none;
+      isolation: isolate; /* its shade (::before) stays behind its glyph */
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* A soft dark shade behind each chevron, so it reads on bright footage
+       too (user, 2026-10-31) - the same kind of radial shade the play
+       controls sit on; no blur. */
+    .fs-chev::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      z-index: -1;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.32) 55%, transparent);
+      pointer-events: none;
+    }
+    .fs-chev svg {
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85));
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    /* Camera picker: a sheet sliding down from the top edge. Closed, only its
+       foot — the chevron, top middle — is on screen. Same shadow as the
+       timeline strip, falling from the top: solid under the tiles, fading out
+       below them. The active camera reads in the overlay's deep accent. */
+    .fs-cams {
+      display: flex;
+      flex-direction: column;
+      transform: translateY(calc(-100% + 46px)); /* the foot's height */
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .fs-cams.open {
+      transform: none;
+    }
+    .fs-cams-body {
+      padding: 18px 16px 4px;
+      background: rgba(0, 0, 0, 0.88);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: auto;
+    }
+    .fs-cams-foot {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      height: 46px;
+    }
+    .fs-cams-foot::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .fs-cams.open .fs-cams-body,
+    .fs-cams.open .fs-cams-foot::before {
+      opacity: 1;
+    }
+    .fs-cams-row {
+      display: flex;
+      gap: 14px;
+      justify-content: safe center;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .fs-cams-row::-webkit-scrollbar {
+      display: none;
+    }
+    /* Read across the room: bigger names, and a heavier frame on the active
+       camera than the timeline view's 5px. */
+    .fs-cams .cam-name {
+      font-size: 18px;
+      margin-top: 6px;
+    }
+    .fs-cams .cam-tile.active {
+      background: var(--upc-accent-deep, rgb(106, 66, 102));
+      padding: 9px;
+      border-radius: 16px;
+    }
+    .fs-cams .cam-tile.active img,
+    .fs-cams .cam-tile.active .cam-ph {
+      border-radius: 8px; /* concentric inside the 16px frame */
+    }
+    .fs-cams .cam-tile.active .cam-name {
+      color: #fff;
+      margin-top: 6px;
+    }
+    .fs-cams-handle {
+      position: relative; /* above the foot's shadow */
+      width: 88px;
+      height: 40px;
+      margin-top: 6px; /* clear of the top edge */
+    }
+    .fs-cams-handle svg {
+      width: 40px;
+      height: 14px;
+    }
+    .fs-cams.open .fs-cams-handle svg {
+      transform: rotate(180deg);
+    }
+    /* Events: a panel sliding in from the right edge while the strip and the
+       controls make way (media-view fsSide). Closed, only its handle — hung off
+       its left edge — is on screen, at the middle of the right edge. The
+       strip's shadow carries on left of it, so the two read as one. */
+    .fs-events {
+      position: relative;
+      width: var(--upc-side-w, 337px);
+      height: 100%;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .fs-events.open {
+      transform: none;
+    }
+    .fs-events-body {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      pointer-events: auto;
+    }
+    .fs-events-list {
+      position: absolute; /* the events (upc-event-strip) fill it */
+      top: var(--upc-fs-pad, 60px); /* starts level with the ruler */
+      bottom: 0;
+      left: 12px;
+      right: 12px;
+    }
+    .fs-events-list > upc-event-strip {
+      height: 100%;
+    }
+    .fs-events-handle {
+      position: absolute;
+      right: calc(100% + 10px); /* clear of the right edge (or the open panel) */
+      top: 50%;
+      width: 40px;
+      height: 88px;
+      transform: translateY(-50%);
+    }
+    .fs-events-handle svg {
+      width: 14px;
+      height: 40px;
+    }
+    .fs-events.open .fs-events-handle svg {
+      transform: rotate(180deg);
+    }
+    /* Date pill at the foot of the overlay ruler (the timeline's foot slot:
+       level with the jump-to-live arrow, centred under the playhead pill) —
+       the timeline view's pill in the overlay's colours. Its calendar opens
+       upward, centred over it. */
+    .fs-datebox {
+      position: relative;
+    }
+    .date-pill.fs {
+      position: relative;
+      left: auto;
+      bottom: auto;
+      color: #fff;
+      background: var(--upc-accent-deep, rgba(0, 0, 0, 0.6));
+      white-space: nowrap;
+      outline: none;
+    }
+    .cal-pop.fs {
+      left: 50%;
+      right: auto;
+      translate: -50% 0; /* (not transform: the pop-in animates scale) */
+      bottom: calc(100% + 12px);
+      width: 366px; /* 7×44px cells + 6×4px gaps + 2×16px padding */
+      background: rgba(0, 0, 0, 0.82);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      /* Pops out of the date pill under it, iOS-menu style (and shrinks back
+         into it - _closeCal). */
+      transform-origin: 50% 100%;
+      animation: upc-cal-in 0.34s cubic-bezier(0.25, 0.8, 0.3, 1);
+    }
+    @keyframes upc-cal-in {
+      from {
+        opacity: 0;
+        scale: 0.9;
+      }
+    }
+    .cal-pop.fs .cal-day.sel {
+      color: #000; /* on the bright accent */
     }
     /* Stacked layout (phones): video on top, timeline/events full-width below.
        DOM order stays timeline-col -> video-col (so 'columns' is unchanged); we
@@ -8307,81 +11399,99 @@ S.styles = rt`
       display: inline-block;
     }
   `;
-T([
-  c({ attribute: !1 })
-], S.prototype, "hass", 2);
-T([
+E([
+  p({ attribute: !1 })
+], $.prototype, "hass", 2);
+E([
   m()
-], S.prototype, "_config", 2);
-T([
+], $.prototype, "_config", 2);
+E([
   m()
-], S.prototype, "_domain", 2);
-T([
+], $.prototype, "_domain", 2);
+E([
   m()
-], S.prototype, "_gaps", 2);
-T([
+], $.prototype, "_gaps", 2);
+E([
   m()
-], S.prototype, "_targetTime", 2);
-T([
+], $.prototype, "_targetTime", 2);
+E([
   m()
-], S.prototype, "_scrubbing", 2);
-T([
+], $.prototype, "_scrubbing", 2);
+E([
   m()
-], S.prototype, "_liveMode", 2);
-T([
+], $.prototype, "_liveMode", 2);
+E([
   m()
-], S.prototype, "_livePaused", 2);
-T([
+], $.prototype, "_livePaused", 2);
+E([
   m()
-], S.prototype, "_now", 2);
-T([
+], $.prototype, "_now", 2);
+E([
   m()
-], S.prototype, "_nvrId", 2);
-T([
+], $.prototype, "_nvrId", 2);
+E([
   m()
-], S.prototype, "_mode", 2);
-T([
+], $.prototype, "_mode", 2);
+E([
   m()
-], S.prototype, "_activeCamera", 2);
-T([
+], $.prototype, "_activeCamera", 2);
+E([
   m()
-], S.prototype, "_drill", 2);
-T([
+], $.prototype, "_drill", 2);
+E([
   m()
-], S.prototype, "_playerFs", 2);
-T([
+], $.prototype, "_xf", 2);
+E([
   m()
-], S.prototype, "_playerRotated", 2);
-T([
+], $.prototype, "_panelPoster", 2);
+E([
   m()
-], S.prototype, "_galleryOpen", 2);
-T([
+], $.prototype, "_panelChromeHidden", 2);
+E([
   m()
-], S.prototype, "_calOpen", 2);
-T([
+], $.prototype, "_galleryOpen", 2);
+E([
   m()
-], S.prototype, "_calCursor", 2);
-T([
+], $.prototype, "_eventsOpen", 2);
+E([
   m()
-], S.prototype, "_hostWidth", 2);
-T([
+], $.prototype, "_calOpen", 2);
+E([
   m()
-], S.prototype, "_thumbVersion", 2);
-T([
+], $.prototype, "_zoomPanel", 2);
+E([
   m()
-], S.prototype, "_playingBand", 2);
-T([
+], $.prototype, "_calCursor", 2);
+E([
   m()
-], S.prototype, "_clipEnd", 2);
-T([
+], $.prototype, "_hostWidth", 2);
+E([
   m()
-], S.prototype, "_manifestBands", 2);
-T([
-  Fi("upc-scrubber-timeline")
-], S.prototype, "_timelines", 2);
-S = T([
-  ot("unifi-protect-timeline-card")
-], S);
+], $.prototype, "_hostHeight", 2);
+E([
+  m()
+], $.prototype, "_thumbVersion", 2);
+E([
+  m()
+], $.prototype, "_playingBand", 2);
+E([
+  m()
+], $.prototype, "_clipEnd", 2);
+E([
+  m()
+], $.prototype, "_manifestBands", 2);
+E([
+  m()
+], $.prototype, "_multiHead", 2);
+E([
+  Ws("upc-scrubber-timeline")
+], $.prototype, "_timelines", 2);
+E([
+  m()
+], $.prototype, "_calClosing", 2);
+$ = E([
+  mt("unifi-protect-timeline-card")
+], $);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "unifi-protect-timeline-card",
@@ -8390,10 +11500,10 @@ window.customCards.push({
   preview: !1
 });
 console.info(
-  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${qr} `,
+  `%c UNIFI-PROTECT-TIMELINE-CARD %c v${ta} `,
   "color:#fff;background:#03a9f4;font-weight:700;border-radius:3px 0 0 3px;padding:2px 4px",
   "color:#03a9f4;background:#222;border-radius:0 3px 3px 0;padding:2px 4px"
 );
 export {
-  S as UnifiProtectTimelineCard
+  $ as UnifiProtectTimelineCard
 };

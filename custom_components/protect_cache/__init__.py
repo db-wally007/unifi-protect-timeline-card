@@ -25,6 +25,13 @@ Three jobs:
    keyframes (`scrub.py`):
        action protect_cache.scrub_sync   (the job also runs itself every 15 s)
 
+4. Talk: the card's microphone to a camera's speaker (`talk.py`):
+       GET    /api/protect_talk/ws     (websocket, signed path)
+       action protect_cache.talk_test   (a short quiet tone, no browser needed)
+
+5. Field telemetry from cards with `debug: true` (`debug.py`):
+       POST   /api/protect_cache/debug -> config/.cache/protect_debug/
+
 The event/thumbnail cache is written by pyscript/protect_thumbs.py.
 
 Until 3.0 this component also hosted clip sessions (export -> faststart remux
@@ -41,8 +48,10 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
+from .debug import async_setup_debug
 from .nvr_stream import async_setup_nvr_stream
 from .scrub import async_setup_scrub
+from .talk import async_setup_talk
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,6 +95,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     # The NVR's own playback/live streams for the card's player (see nvr_stream.py).
     async_setup_nvr_stream(hass)
+    # The card's Talk button: microphone -> camera speaker (see talk.py).
+    async_setup_talk(hass)
+    # Field telemetry from cards with `debug: true` (see debug.py).
+    async_setup_debug(hass)
     # Scrub-preview photos from the NVR's keyframes (see scrub.py).
     await async_setup_scrub(hass, config)
     return True

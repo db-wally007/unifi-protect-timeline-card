@@ -51,6 +51,15 @@ const MIRROR_EVT_GAP = 8; // track -> thumbnails
 // top of it — the playhead line stretches to follow it either way.
 const PILL_GAP = 20;
 const PILL_DODGE_GAP = 12;
+const PILL_EDGE_MARGIN = 8; // mirror: the pill never closer than this to the strip's left edge
+const PILL_CLAMP_MAX_W = 400; // ...checked only on overlays narrower than this (upright phone)
+// Zoom slider: its track stops this far from either end, so the knob (30px)
+// fits there; a press maps onto the track between (see _zoomSliderFromEvent).
+const ZOOM_RAIL_INSET = 16;
+const ZOOM_CLOSE_MS = 180; // the flyout shrinking back into the magnifier
+// A strip with more room than this below its magnifier is a phone held
+// upright: its flyout takes half of that (see _zoomPanelGeom).
+const ZOOM_TALL_STRIP = 400;
 
 /** Resolved x positions for one draw pass (see the two blocks above). */
 interface Geo {
@@ -130,7 +139,7 @@ export function swallowNextTap(): void {
  *  bright line on the timeline, which leaves white text on a FILLED pill of it
  *  barely legible — the overlay's pills and arrow use this deeper mix instead.
  *  Non-hex accents (a CSS var, a named color) return '' and are left alone. */
-function darken(color: string, f: number): string {
+export function darken(color: string, f: number): string {
   const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
   if (!m) return '';
   const hex =
@@ -233,6 +242,7 @@ export class ScrubberTimeline extends LitElement {
   private _dpr = 1;
   private _width = 0;
   private _height = 0;
+  private _pillW = 0; // playhead pill width, measured on a narrow overlay only
   private _setupTs = 0; // (re)mount time — gates the resize scale-preserve
   private _frame = 0;
   private _rect?: DOMRect;
@@ -343,33 +353,62 @@ export class ScrubberTimeline extends LitElement {
     }
     /* Expanded zoom flyout: vertical slider pill, + on top, − at the bottom
        (UniFi mobile; plain glyphs — the loupe icons read too small). Fully
-       custom slider — native vertical range inputs are unreliable on iOS. */
+       custom slider — native vertical range inputs are unreliable on iOS.
+       iOS-style since 2026-10-30 (user: the knob was "too small, not
+       animated and hard to control using a finger"): it grows out of the
+       magnifier and shrinks back into it (_closeZoom), a thick track fills
+       with the accent up to a big white knob that springs from step to step
+       and swells while held, and the buttons give under the finger. */
     .zoom-panel {
       position: absolute;
       top: 14px;
       right: 8px;
-      width: 44px;
+      margin-right: -4px; /* centred on the magnifier, which is 8px narrower */
+      width: 52px;
       /* A FIXED length, not a percentage of the ruler: this is one control and
          it must be the same size wherever it appears, but the card column's
          ruler and the fullscreen one are wildly different heights, so a
          percentage made the in-card flyout markedly the smaller of the two.
          224px is what 35% used to resolve to on a tablet's fullscreen ruler,
-         so the overlay there is unchanged and the card column now matches it. */
-      height: 224px;
+         so the overlay there is unchanged and the card column now matches it.
+         (Set inline by _zoomPanelGeom - the phone's full screen runs it the
+         ruler's length; this is the fallback.) */
+      height: 236px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 0;
+      padding: 4px 0;
       box-sizing: border-box;
-      border-radius: 22px;
+      border-radius: 26px;
       background: rgba(0, 0, 0, 0.6);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
       z-index: 9;
+      /* It grows out of the magnifier (its top lines up with the panel's):
+         from the magnifier's centre and size - set per placement, see
+         _zoomPanelGeom. */
+      transform-origin: 50% var(--zoy, 22px);
+      animation: upc-zoom-open 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes upc-zoom-open {
+      from {
+        opacity: 0;
+        transform: scale(var(--zsx, 0.85), var(--zsy, 0.19));
+      }
+    }
+    /* The magnifier coming back as the flyout shrinks into it. */
+    .zoom-fab {
+      animation: upc-zoom-fab-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes upc-zoom-fab-in {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
     }
     .zpbtn {
       flex: 0 0 auto;
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border: none;
       border-radius: 50%;
       background: transparent;
@@ -378,11 +417,21 @@ export class ScrubberTimeline extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 400;
       line-height: 1;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      transition:
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background 0.25s ease;
+    }
+    .zpbtn:active {
+      transform: scale(0.86);
+      background: rgba(255, 255, 255, 0.14);
+      transition:
+        transform 0.08s ease-out,
+        background 0.08s ease-out;
     }
     .zslider {
       position: relative;
@@ -392,28 +441,67 @@ export class ScrubberTimeline extends LitElement {
       cursor: pointer;
       touch-action: none;
     }
-    .zslider::before {
-      /* the thin track line */
-      content: '';
+    /* The track (inset so the knob fits at either end), filled with the
+       accent from the bottom up to the knob: how far in it is zoomed. */
+    .zrail {
       position: absolute;
       left: 50%;
-      top: 8px;
-      bottom: 8px;
-      width: 4px;
-      transform: translateX(-50%);
-      border-radius: 2px;
-      background: rgba(255, 255, 255, 0.25);
+      top: ${ZOOM_RAIL_INSET}px;
+      bottom: ${ZOOM_RAIL_INSET}px;
+      width: 6px;
+      margin-left: -3px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.22);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .zfill {
+      position: absolute;
+      inset: 0;
+      background: var(--upc-accent, var(--primary-color, #03a9f4));
+      transform-origin: 50% 100%;
+      transform: scaleY(var(--zfill, 0));
+    }
+    /* The knob rides a carrier as tall as the track: translateY in % of the
+       carrier is then exactly the knob's place on it (transform only). */
+    .zcarrier {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: ${ZOOM_RAIL_INSET}px;
+      bottom: ${ZOOM_RAIL_INSET}px;
+      transform: translateY(var(--zpos, 0%));
+      pointer-events: none;
     }
     .zthumb {
       position: absolute;
       left: 50%;
-      transform: translate(-50%, -50%);
-      width: 22px;
-      height: 16px;
-      border-radius: 5px;
-      background: var(--upc-accent, var(--primary-color, #03a9f4));
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
-      pointer-events: none;
+      top: 0;
+      width: 30px;
+      height: 30px;
+      margin: -15px 0 0 -15px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 0 0.5px rgba(0, 0, 0, 0.12);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    /* A step taken by a tap or a button springs there; while dragged the
+       knob keeps up with the finger, swollen, the track thicker. */
+    .zcarrier,
+    .zfill {
+      transition: transform 0.38s cubic-bezier(0.34, 1.3, 0.64, 1);
+    }
+    .zslider.drag .zcarrier,
+    .zslider.drag .zfill {
+      transition: transform 0.12s ease-out;
+    }
+    .zslider.drag .zthumb {
+      transform: scale(1.2);
+    }
+    .zslider.drag .zrail {
+      transform: scaleX(1.5);
     }
     .scrub {
       position: relative;
@@ -764,8 +852,54 @@ export class ScrubberTimeline extends LitElement {
     :host([mirror][compact]) .zoom-panel {
       top: calc(var(--upc-ph-y, 33px) - 19px);
     }
+    /* (Centred on the phone's smaller magnifier; its length: _zoomPanelGeom.) */
+    :host([mirror][compact]) .zoom-panel {
+      margin-right: -7px;
+    }
+    /* The jump-to-live arrow shares the lane, at its foot: it steps aside
+       while the slider runs down over it. */
+    .live-arrow {
+      transition: opacity 0.2s ease;
+    }
+    .live-arrow.under-zoom {
+      opacity: 0;
+      pointer-events: none;
+    }
     :host([mirror]) .zoom-fab {
       background: var(--upc-accent-deep, var(--upc-accent, var(--primary-color, #03a9f4)));
+    }
+    /* The host's slot at the foot of the overlay ruler (the card's date pill):
+       level with the jump-to-live arrow across the strip, and centred under
+       the playhead pill. The pill is right-anchored with a content width, so
+       the foot stacks the slotted element on an invisible copy of it — the
+       same box, at the pill's resting spot (not its dodge or its swell) —
+       and centres it there. */
+    .tl-foot {
+      position: absolute;
+      right: var(--upc-pill-base-right, ${EVENT_X0}px);
+      bottom: 8px;
+      height: 44px; /* the live arrow's row */
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      z-index: 9;
+      pointer-events: none;
+    }
+    .tl-foot > .live-pill,
+    slot[name='foot']::slotted(*) {
+      grid-area: 1 / 1;
+    }
+    .tl-foot > .live-pill {
+      position: static;
+      transform: none;
+      animation: none;
+      visibility: hidden;
+    }
+    .tl-foot > .live-pill::after {
+      display: none;
+    }
+    slot[name='foot']::slotted(*) {
+      pointer-events: auto;
     }
     :host([mirror]) .live-arrow {
       position: absolute;
@@ -801,6 +935,9 @@ export class ScrubberTimeline extends LitElement {
     // the element. (hasUpdated is false on the very first connect; firstUpdated
     // handles that.)
     if (this.hasUpdated) this._setup();
+    // A host that heard "open" from an earlier one (gone with its slider
+    // open - see disconnectedCallback) hears it is closed now.
+    this._emitZoomPanel();
   }
 
   protected firstUpdated(): void {
@@ -843,10 +980,43 @@ export class ScrubberTimeline extends LitElement {
     if (ScrubberTimeline._redrawProps.some((p) => changed.has(p))) {
       this._scheduleDraw();
     }
+    // The pill clamp in render(): only a NARROW overlay can push the pill off
+    // its left edge, so only there is the pill measured (a forced layout).
+    if (this.mirror && this._width > 0 && this._width < PILL_CLAMP_MAX_W) {
+      const w = (this.renderRoot.querySelector('.live-pill') as HTMLElement | null)?.offsetWidth ?? 0;
+      if (w && w !== this._pillW) {
+        this._pillW = w;
+        this.requestUpdate(); // re-place with the real width
+      }
+    } else {
+      this._pillW = 0;
+    }
+    // Overlay: tell the host how far in from the ruler's right edge the
+    // timeline reaches at rest (to the left edge of the resting time pill, the
+    // foot's invisible copy) — the host centres its controls in what is left.
+    // Measured only when the anchor it depends on moves, never per scrub frame.
+    if (this.mirror && this._evtAnchor !== this._reachAnchor) {
+      const ghost = this.renderRoot.querySelector('.tl-foot > .live-pill') as HTMLElement | null;
+      const w = ghost?.textContent?.trim() ? ghost.offsetWidth : 0; // empty = no clock yet
+      if (w) {
+        this._reachAnchor = this._evtAnchor;
+        this.dispatchEvent(
+          new CustomEvent('timeline-reach', {
+            detail: { px: this._evtAnchor + PILL_GAP + w },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    }
   }
+  private _reachAnchor = -1; // _evtAnchor the last timeline-reach was sent for
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._zoomOpen = false; // (no one to tell: it is out of the tree)
+    this._zoomCloseToken++; // ...and a close in flight has nothing left to do
+    window.removeEventListener('pointerdown', this._outsideZoomClose, true);
     const el = this._scrubEl;
     if (el) {
       el.removeEventListener('pointerdown', this._onPointerDown);
@@ -990,6 +1160,15 @@ export class ScrubberTimeline extends LitElement {
     this._onPointerDown(e);
   }
 
+  // A two-finger pinch in progress: the fingers' distance and the span when
+  // it began (see _onPointerMove).
+  private _pinch?: { dist: number; span: number };
+
+  private _pinchDist(): number {
+    const [a, b] = [...this._pointers.values()];
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 1;
+  }
+
   private _onPointerDown = (e: PointerEvent): void => {
     const el = this._scrubEl;
     // A PRIMARY pointer going down means no other pointer is active (a mouse is
@@ -1014,8 +1193,14 @@ export class ScrubberTimeline extends LitElement {
     this._moved = false;
     this._hoverBand = undefined;
     this._hoverGap = undefined;
+    // A second finger: a pinch (see _onPointerMove) - never a tap.
+    if (this._pointers.size === 2) {
+      this._moved = true;
+      this._pinch = { dist: Math.max(1, this._pinchDist()), span: spanOf(this.domain) };
+      this.dispatchEvent(new CustomEvent('zoom-change', { bubbles: true, composed: true }));
+    }
     // Single-finger / mouse drag = scroll. Only the first pointer drives it;
-    // extra fingers are ignored (zoom is buttons only).
+    // a third finger is ignored.
     if (this._pointers.size === 1) {
       this._dragStartY = this._localY(e);
       this._dragStartDomain = { ...this.domain };
@@ -1031,6 +1216,17 @@ export class ScrubberTimeline extends LitElement {
     }
     if (!this._pointers.has(e.pointerId)) return;
     this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Two fingers: zoom about the playhead (iOS pinch, beside the slider) -
+    // spreading them shows less time, pinching more. The playhead's time stays
+    // put, so nothing seeks and playback carries on.
+    if (this._pointers.size === 2 && this._pinch) {
+      const want = (this._pinch.span * this._pinch.dist) / Math.max(1, this._pinchDist());
+      const span = Math.min(SPAN_STEPS[SPAN_STEPS.length - 1], Math.max(SPAN_STEPS[0], want));
+      this._cancelMomentum();
+      this._cancelSeek();
+      this._setDomain(domainForPlayhead(playheadTimeOf(this.domain, this.playheadFrac), span, this.playheadFrac));
+      return;
+    }
     if (this._pointers.size !== 1 || !this._dragStartDomain) return;
 
     // Everything below works in the element's own vertical axis (see _localY).
@@ -1100,6 +1296,7 @@ export class ScrubberTimeline extends LitElement {
     if (!this._pointers.has(e.pointerId)) return;
     const wasMulti = this._pointers.size >= 2;
     this._pointers.delete(e.pointerId);
+    if (this._pointers.size < 2) this._pinch = undefined;
     try {
       this._scrubEl.releasePointerCapture(e.pointerId);
     } catch {
@@ -1474,19 +1671,53 @@ export class ScrubberTimeline extends LitElement {
   private _openZoom = (): void => {
     if (this._zoomOpen) return;
     this._zoomOpen = true;
+    this._emitZoomPanel();
     // Safe to add during the opening tap's dispatch: its window CAPTURE phase
     // has already run, so this listener only sees the NEXT pointerdown.
     window.addEventListener('pointerdown', this._outsideZoomClose, true);
   };
 
+  /** Close the flyout: it shrinks back into the magnifier first (the reverse
+   *  of upc-zoom-open), then the magnifier comes back in its place. */
   private _closeZoom(): void {
-    this._zoomOpen = false;
+    if (!this._zoomOpen) return;
     window.removeEventListener('pointerdown', this._outsideZoomClose, true);
+    const token = ++this._zoomCloseToken;
+    const panel = this.renderRoot.querySelector<HTMLElement>('.zoom-panel');
+    const done = (): void => {
+      if (token !== this._zoomCloseToken) return;
+      this._zoomOpen = false;
+      this._zoomDragging = false;
+      this._emitZoomPanel();
+    };
+    if (!panel) return done();
+    panel.style.pointerEvents = 'none';
+    const g = this._zoomPanelGeom();
+    panel
+      .animate(
+        [
+          { opacity: 1, transform: 'none' },
+          { opacity: 0, transform: `scale(${g.fab / 52}, ${g.fab / g.h})` },
+        ],
+        { duration: ZOOM_CLOSE_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
+      )
+      .finished.catch(() => undefined)
+      .then(done);
+  }
+  private _zoomCloseToken = 0;
+
+  /** The zoom slider opened or closed (`zoom-panel`, {open}): the host keeps
+   *  what sits beside it out of its way (the phone's events chevron). */
+  private _emitZoomPanel(): void {
+    this.dispatchEvent(
+      new CustomEvent('zoom-panel', { detail: { open: this._zoomOpen }, bubbles: true, composed: true }),
+    );
   }
 
   // Vertical slider drag state (the flyout's custom slider — native vertical
-  // range inputs are unreliable on iOS Safari, so it's pointer-driven).
-  private _zoomDragging = false;
+  // range inputs are unreliable on iOS Safari, so it's pointer-driven). A
+  // state: the knob swells and keeps up with the finger while it is held.
+  @state() private _zoomDragging = false;
 
   /** Map a pointer y on the .zslider to a SPAN_STEPS index and apply it.
    *  Top = most zoomed in (narrowest span), bottom = most zoomed out.
@@ -1498,7 +1729,7 @@ export class ScrubberTimeline extends LitElement {
     const el = this.renderRoot.querySelector('.zslider');
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const inset = 8; // matches the track line's top/bottom inset
+    const inset = ZOOM_RAIL_INSET;
     const len = this.rotated ? r.width : r.height;
     const pos = this.rotated ? r.right - e.clientX : e.clientY - r.top;
     const usable = Math.max(1, len - inset * 2);
@@ -1885,17 +2116,36 @@ export class ScrubberTimeline extends LitElement {
     // Render the thumbnails FIRST: it refreshes _kept, which the pill's dodge
     // reads, so both agree on where the thumbnails are this frame.
     const thumbs = this._renderThumbs();
-    const pillRight =
+    let pillRight =
       this._evtAnchor +
       PILL_GAP +
       (this._pillDodge() ? this.thumbSizeActive + PILL_DODGE_GAP : 0);
+    // A narrow overlay (the upright phone fullscreen) can't always fit the pill
+    // beside a dodged thumbnail: never let it run off the strip's left edge.
+    // _pillW is the last frame's pill width, measured in updated() and only on
+    // a narrow overlay — a layout read here would run on every scrub frame.
+    if (this.mirror && this._pillW > 0 && this._width > 0) {
+      pillRight = Math.min(pillRight, this._width - this._pillW - PILL_EDGE_MARGIN);
+    }
+    // The foot slot centres under the pill's RESTING box: its spot before any
+    // dodge, sized by a clock reading even while it says LIVE, so the slotted
+    // date pill never moves (see .tl-foot).
+    const footClock =
+      this.mirror && this.domain
+        ? this._fmt(Math.min(playheadTimeOf(this.domain, this.playheadFrac), this.now), {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+        : '';
     return html`
       <div
         class="col"
         style="--upc-accent:${accent};${deepAccent
           ? `--upc-accent-deep:${deepAccent};`
           : ''}--upc-indent:${this.indent}px;--upc-pill-left:${this
-          .pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${pillRight}px;--upc-fab-right:${fabRight}px;--upc-ph-y:${this
+          .pillIndent}px;--upc-evt-right:${this._evtAnchor}px;--upc-pill-right:${pillRight}px;--upc-pill-base-right:${this
+          ._evtAnchor + PILL_GAP}px;--upc-fab-right:${fabRight}px;--upc-ph-y:${this
           ._height * this.playheadFrac}px;${thumbVars}"
       >
         <div class="scrub">
@@ -1919,9 +2169,15 @@ export class ScrubberTimeline extends LitElement {
               </div>`
             : nothing}
           ${this.zoomUi ? this._renderZoom(thumbF) : nothing}
+          ${this.mirror
+            ? html`<div class="tl-foot" @pointerdown=${(e: Event) => e.stopPropagation()}>
+                <span class="live-pill at-time">${footClock}</span>
+                <slot name="foot"></slot>
+              </div>`
+            : nothing}
           ${this.liveArrow && !this.live
             ? html`<button
-                class="live-arrow"
+                class="live-arrow ${this._zoomOpen && this._zoomPanelGeom().long ? 'under-zoom' : ''}"
                 title="Jump to live"
                 @pointerdown=${(e: Event) => e.stopPropagation()}
                 @click=${this._goLive}
@@ -1952,12 +2208,31 @@ export class ScrubberTimeline extends LitElement {
     return this._kept.some((k) => Math.abs(k.y - py) < reach);
   }
 
+  /** The zoom flyout's length and how it grows out of the magnifier: on the
+   *  phone's full-screen ruler (mirror + compact) longer than elsewhere (user,
+   *  2026-10-31: "substantially longer") - from the magnifier down to the
+   *  strip's foot on a short strip (sideways), half that on a tall one
+   *  (upright: the whole length was "a bit extreme"); elsewhere its fixed
+   *  length. `fab`: the magnifier's size (the panel's top lines up with its
+   *  top); `long`: it reaches the strip's foot, where the live arrow is. */
+  private _zoomPanelGeom(): { h: number; fab: number; long: boolean } {
+    const fab = this.compact && this.mirror ? 38 : 44;
+    const fixed = this.compact ? 206 : 236;
+    if (!(this.mirror && this.compact) || !this._height) return { h: fixed, fab, long: false };
+    const top = this._height * this.playheadFrac - fab / 2;
+    const full = Math.round(this._height - top - 12);
+    const h = Math.max(fixed, full > ZOOM_TALL_STRIP ? Math.round(full / 2) : full);
+    return { h, fab, long: top + h > this._height - 50 };
+  }
+
   /** The collapsible zoom control (magnifier fab -> vertical slider flyout).
    *  Dropped entirely in the fullscreen overlay, which has no zoom. */
   private _renderZoom(thumbF: number) {
+    const g = this._zoomPanelGeom();
+    const geom = `height:${g.h}px;--zoy:${g.fab / 2}px;--zsx:${(g.fab / 52).toFixed(3)};--zsy:${(g.fab / g.h).toFixed(3)}`;
     return html`
       ${this._zoomOpen
-        ? html`<div class="zoom-panel">
+        ? html`<div class="zoom-panel" style=${geom}>
             <button
               class="zpbtn"
               @pointerdown=${(e: Event) => e.stopPropagation()}
@@ -1967,13 +2242,15 @@ export class ScrubberTimeline extends LitElement {
               +
             </button>
             <div
-              class="zslider"
+              class="zslider ${this._zoomDragging ? 'drag' : ''}"
+              style="--zpos:${thumbF * 100}%;--zfill:${1 - thumbF}"
               @pointerdown=${this._onZoomSliderDown}
               @pointermove=${this._onZoomSliderMove}
               @pointerup=${this._onZoomSliderUp}
               @pointercancel=${this._onZoomSliderUp}
             >
-              <div class="zthumb" style="top:calc(8px + ${thumbF} * (100% - 16px))"></div>
+              <div class="zrail"><div class="zfill"></div></div>
+              <div class="zcarrier"><div class="zthumb"></div></div>
             </div>
             <button
               class="zpbtn"

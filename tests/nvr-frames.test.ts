@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NvrDeframer, initTimescale, moofKeyTimes, moofTime } from '../src/data/nvr-frames';
+import { NvrDeframer, initTimescale, moofKeyTimes, moofTime, moofVideo } from '../src/data/nvr-frames';
 
 const enc = new TextEncoder();
 
@@ -154,6 +154,15 @@ describe('moofKeyTimes', () => {
     const m = box('moof', box('traf', cat(box('tfhd', tfhd), box('tfdt', tfdt), box('trun', trun))));
     expect(moofKeyTimes(m, 90000, 0x10000)).toEqual([]); // default non-sync
     expect(moofKeyTimes(m, 90000, 0)).toEqual([50, 50 + 3000 / 90000]); // default sync
+  });
+});
+
+describe('moofVideo', () => {
+  it('ends after the last sample', () => {
+    const m = moofWithSamples(1000, 90000, [false, true, true, true]);
+    const v = moofVideo(m, 90000);
+    expect(v.keys).toEqual([1000]);
+    expect(v.end).toBeCloseTo(1000 + 4 * (3000 / 90000), 9);
   });
 });
 

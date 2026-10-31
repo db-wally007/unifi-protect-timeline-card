@@ -33,7 +33,9 @@ The layout the card already reads, so the card needs no change:
                                                     own <start>.f<k>.jpg, the
                                                     partial last one is
                                                     h<start>-<end>.f<k>.jpg
-    index.json                                      what exists + the head
+    index.json                                      what exists + the head +
+                                                    `gaps`: [start, end] ms spans
+                                                    the NVR holds no footage for
 The card maps a time linearly onto a unit: tile = floor(frac * count). Photos
 are therefore placed on a fixed SLOT_MS grid (slot i of a block shows the
 keyframe that fell in [start + i*SLOT_MS, start + (i+1)*SLOT_MS)), not packed
@@ -81,6 +83,7 @@ import aiohttp
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util import dt as dt_util
 
 from .nvr_stream import PLAYBACK_PATH, PlaybackRefused, command_packet, connect_nvr, read_playback_grant
 
@@ -105,7 +108,11 @@ SHEET_QUALITY = 60           # JPEG quality of the published sheets. Measured on
                              # and 60 saves slightly FASTER (5.2 vs 5.5 ms a sheet).
                              # The pyscript job's were ~11 KB but visibly softer
                              # (a crf 27 re-encode of the NVR's timelapse).
-RETENTION_MS = 168 * 3_600_000  # rolling window; == protect_thumbs LOOKBACK_HOURS
+RETENTION_MS = 168 * 3_600_000  # the photos' rolling window (the events cache keeps
+                                # 14 days, protect_thumbs LOOKBACK_HOURS; footage
+                                # older than this plays without photos)
+GONE_RECHECK_MS = 3_600_000     # see _confirm_gone: a recording start this far past
+                                # the last confirmed one is asked about again
 
 # Each pass asks for footage up to this far behind now. The NVR writes footage
 # ~13-20 s after it happens and simply delivers what it has; the cursor then
@@ -129,6 +136,22 @@ FFMPEG_TIMEOUT_S = 120
 MAX_FILL_MS = 60_000         # a slot with no keyframe repeats the previous photo
                              # for up to this long; beyond it (camera offline) it
                              # is black rather than a stale picture
+GAP_MIN_MS = 20_000          # no keyframe for longer than this - and than GAP_IV_FACTOR
+GAP_IV_FACTOR = 4            # x the camera's own keyframe interval - = nothing was
+                             # recorded: a gap (published in index.json `gaps`)
+MAX_GAPS = 500               # per camera, newest kept
+RESCAN_MAX_MS = 3_600_000    # scrub_rescan_gaps: at most an hour per call
+# Footage older than the photos' window (the gaps the job had not seen when its
+# record started) is mapped once, back to the NVR's oldest footage, from the
+# NVR's own record of it: GET cameras/<id>/playback-history - the call the
+# Protect web app draws its timeline's gaps from (start/end ms, resolution
+# 0 = full quality), metadata only. A day per camera per pass. From then on the
+# gaps are kept for as long as the NVR keeps the footage. (Sampling keyframes
+# instead - one per 15 min - was tried and dropped: the NVR delivers them a few
+# seconds apart, ~3 h of footage a minute, and a pause read as a gap.)
+HISTORY_PATH = "cameras/{camera}/playback-history"
+HISTORY_SPAN_MS = 86_400_000
+GAP_RECORD = 2               # state.json's gap record version (see _sync_camera)
 KEEP_HEADS = 12              # head generations kept for clients with a stale index
                              # (one per pass: 12 = the card's 60 s index TTL x 3)
 STARTUP_GRACE_S = 180        # unifiprotect not loaded yet = skipped, not failed
@@ -380,6 +403,146 @@ def fill_slots(tiles: dict[int, str], n: int) -> list[str | None]:
     return out
 
 
+# ---- recording gaps -----------------------------------------------------------
+#
+# The card's grey "no footage" strip. The NVR is the only authority on what it
+# recorded, and this job already receives EVERY keyframe it holds, so a stretch
+# with none is exactly a gap - unlike the camera entity's `unavailable` history
+# (Home Assistant losing sight of the NVR is not the NVR losing footage, and a
+# hung console kept the entities `recording` for minutes into a real gap), and
+# unlike asking the NVR for a still (it answers 200 with the nearest EARLIER
+# frame, so a still exists inside every gap). A pass the NVR fails never gets
+# here: the cursor does not move, so an error can never be published as a gap.
+
+def key_interval(keys: list[int], prev: int | None, current: int | None) -> int | None:
+    """The camera's keyframe interval (ms): median spacing of `keys` (after
+    `prev`) blended into `current`. Spacings past MAX_FILL_MS are outages, not
+    the camera's rhythm, and are left out."""
+    seq = ([prev] if prev is not None else []) + sorted(keys)
+    ivs = sorted(b - a for a, b in zip(seq, seq[1:]) if 0 < b - a < MAX_FILL_MS)
+    if not ivs:
+        return current
+    med = ivs[len(ivs) // 2]
+    return med if current is None else round(current * 0.8 + med * 0.2)
+
+
+def gap_threshold(iv: int | None) -> int:
+    return max(GAP_MIN_MS, GAP_IV_FACTOR * (iv or SLOT_MS))
+
+
+def detect_gaps(keys: list[int], prev: int | None, threshold: int, lead: int) -> list[list[int]]:
+    """[start, end] spans with no keyframe for longer than `threshold`, between
+    `prev` (the newest keyframe seen before these) and the `keys`. A span starts
+    `lead` (one keyframe interval: the footage that keyframe opens) after the
+    keyframe before it and ends at the next one."""
+    out: list[list[int]] = []
+    last = prev
+    for k in sorted(keys):
+        if last is not None and k - last > threshold:
+            out.append([last + lead, k])
+        last = k if last is None else max(last, k)
+    return out
+
+
+def merge_gaps(gaps: list[list[int]], since: int) -> list[list[int]]:
+    """Sorted, overlapping/touching spans joined, spans ended before `since`
+    dropped, the newest MAX_GAPS kept."""
+    out: list[list[int]] = []
+    for s, e in sorted((int(g[0]), int(g[1])) for g in gaps if len(g) == 2 and g[1] > g[0]):
+        if e < since:
+            continue
+        if out and s <= out[-1][1]:
+            out[-1][1] = max(out[-1][1], e)
+        else:
+            out.append([s, e])
+    return out[-MAX_GAPS:]
+
+
+def _note_keys(state: dict[str, Any], keys: list[int]) -> None:
+    """Fold a pass's keyframes into the camera's gap record (state.json)."""
+    prev = state.get("last_key") if isinstance(state.get("last_key"), int) else None
+    iv = key_interval(keys, prev, state.get("key_iv"))
+    found = detect_gaps(keys, prev, gap_threshold(iv), iv or SLOT_MS)
+    state["gaps"] = (state.get("gaps") or []) + found
+    state["key_iv"] = iv
+    state["last_key"] = max(keys) if prev is None else max(prev, *keys)
+
+
+def gaps_since(state: dict[str, Any], now: int) -> int:
+    """How far back a camera's gaps are kept: as long as the NVR keeps its
+    footage (its recording start), else the photos' window."""
+    start = state.get("recording_start")
+    return start if isinstance(start, int) else now - RETENTION_MS
+
+
+def published_gaps(state: dict[str, Any], cursor: int, now: int) -> list[list[int]]:
+    """The gaps for index.json: the recorded ones, plus an OPEN one while the
+    camera has had no keyframe for longer than the threshold - the cursor only
+    passes an empty stretch once the NVR has surely written it (EDGE_SURE_MS),
+    so everything up to it is confirmed empty."""
+    gaps = list(state.get("gaps") or [])
+    last = state.get("last_key")
+    iv = state.get("key_iv")
+    if isinstance(last, int) and cursor - last > gap_threshold(iv):
+        gaps.append([last + (iv or SLOT_MS), cursor])
+    return merge_gaps(gaps, gaps_since(state, now))
+
+
+def history_gaps(segments: Any, start: int, end: int) -> list[list[int]]:
+    """The gaps of [start, end) between the footage segments the NVR lists
+    (playback-history: [{"start": ms, "end": ms or null while recording}]) -
+    shorter than GAP_MIN_MS are joins between recording files, not gaps."""
+    spans = sorted(
+        (int(s["start"]), int(s["end"]) if s.get("end") else end)
+        for s in (segments if isinstance(segments, list) else [])
+        if isinstance(s, dict) and isinstance(s.get("start"), (int, float))
+    )
+    out: list[list[int]] = []
+    t = start
+    for s, e in spans:
+        if s - t > GAP_MIN_MS:
+            out.append([t, min(s, end)])
+        t = max(t, e)
+        if t >= end:
+            break
+    if end - t > GAP_MIN_MS:
+        out.append([t, end])
+    return out
+
+
+def footage_in(segments: Any, start: int, end: int) -> bool:
+    """Whether a footage segment the NVR lists (playback-history) covers any of
+    [start, end) - more than a join between recording files (GAP_MIN_MS), so
+    the first recording, starting right at `end`, does not count."""
+    for s in segments if isinstance(segments, list) else []:
+        if not isinstance(s, dict) or not isinstance(s.get("start"), (int, float)):
+            continue
+        lo = max(int(s["start"]), start)
+        hi = min(int(s["end"]) if s.get("end") else end, end)
+        if hi - lo > GAP_MIN_MS:
+            return True
+    return False
+
+
+def recording_start(api: Any, cam_id: str) -> int | None:
+    """Where the NVR's full-quality footage of a camera begins (its oldest
+    recording still on disk), ms - read from the bootstrap the integration
+    keeps current, so no NVR call. The card's calendar and timeline end there:
+    the photos here cover RETENTION_MS, the NVR's footage usually far more.
+    (The NVR's longer-kept low-quality copy is left out by choice: the user
+    decided against its few extra hours, 2026-10-30.)"""
+    try:
+        start = api.bootstrap.cameras[cam_id].stats.video.recording_start
+    except (AttributeError, KeyError, TypeError):
+        return None
+    return int(start.timestamp() * 1000) if start else None
+
+
+def _recording(state: dict[str, Any]) -> dict[str, Any]:
+    """The recording bounds a camera's state holds, for its index."""
+    return {"recording_start": state.get("recording_start")}
+
+
 # ---- the job ------------------------------------------------------------------
 
 class _Camera:
@@ -402,6 +565,7 @@ class ScrubJob:
         self.cams = [_Camera(cid, slug, os.path.join(base, slug), os.path.join(work, slug))
                      for cid, slug in cameras.items()]
         self._task: asyncio.Task[dict[str, Any]] | None = None
+        self._lock = asyncio.Lock()  # a pass and a gap rescan never write state at once
         self._loaded_at = time.time()
         self._failing_since: float | None = None
         self._error_logged = 0.0
@@ -432,7 +596,8 @@ class ScrubJob:
 
     async def _guarded(self) -> dict[str, Any]:
         try:
-            result = await self._sync()
+            async with self._lock:
+                result = await self._sync()
         except Exception as err:  # noqa: BLE001 - reported to the caller
             result = {"ok": False, "error": f"sync failed: {type(err).__name__}: {err}"}
         # Every 15 s a broken NVR link would otherwise write a warning: log the
@@ -495,6 +660,7 @@ class ScrubJob:
             keys = await self._pull(api, cam, cursor, end)
             photos = len(keys)
             if keys:
+                _note_keys(state, keys)
                 # Just after the last keyframe that arrived: whatever the NVR
                 # had not written yet (or a delivery cut short) comes next pass.
                 cursor = max(keys) + 1
@@ -503,22 +669,101 @@ class ScrubJob:
             # else: not written yet - the same range is asked again next pass
         state.pop("retry", None)  # written by the first version of this job
         state["cursor"] = cursor
+        if (rec_start := recording_start(api, cam.id)) is not None:
+            state["recording_start"] = rec_start
+        state.pop("recording_start_lq", None)  # written by a version that tried it
+        # Gaps are known from `gaps_from` on - a record kept before this
+        # version only for the photos' window (whose older part, from the first
+        # version of the mapping, was wrong: it is dropped and mapped again).
+        # _map_history extends the record back to the NVR's oldest footage.
+        if state.get("gap_record") != GAP_RECORD:
+            state["gaps"] = [g for g in state.get("gaps") or [] if g[1] > now - RETENTION_MS]
+            state["gaps_from"] = now - RETENTION_MS
+            state["gap_record"] = GAP_RECORD
+        await self._map_history(api, cam, state)
+        state["gaps"] = merge_gaps(state.get("gaps") or [], gaps_since(state, now))
         purge = time.monotonic() - self._purged.get(cam.slug, 0) >= PURGE_EVERY_S
         if purge:
             self._purged[cam.slug] = time.monotonic()
-        head = await self.hass.async_add_executor_job(_publish, cam, cursor, now, purge)
+            await self._confirm_gone(api, cam, state, now)
+        head = await self.hass.async_add_executor_job(
+            _publish, cam, cursor, now, purge, published_gaps(state, cursor, now), _recording(state),
+            state.get("gone_before"))
         state["head"] = head
         await self.hass.async_add_executor_job(_write_json, os.path.join(cam.work, "state.json"), state)
         return {"photos": photos, "behind_s": round((now - cursor) / 1000)}
 
-    async def _pull(self, api: Any, cam: _Camera, start: int, end: int) -> list[int]:
+    async def _confirm_gone(self, api: Any, cam: _Camera, state: dict[str, Any], now: int) -> None:
+        """Photos of footage the NVR no longer has - a format, a new disk, or
+        retention shorter than the photos' window put its recording start
+        inside the window (user, 2026-10-31: 18 GB of them after a format) -
+        are deleted by the sweep, up to `gone_before`. That is set only once
+        the NVR confirms there is no footage before the recording start, with
+        one playback-history request: the bootstrap's word alone could wipe
+        photos that can't be pulled again. Asked when the start passes the one
+        last asked about by GONE_RECHECK_MS - at once after a format, at most
+        hourly while retention creeps; a failed request is asked again by the
+        next sweep."""
+        rec = state.get("recording_start")
+        floor = now - RETENTION_MS
+        asked = state.get("gone_asked")
+        if not isinstance(rec, int) or not floor < rec <= now:
+            return
+        if isinstance(asked, int) and rec < asked + GONE_RECHECK_MS:
+            return
+        try:
+            segments = await api.api_request_list(
+                HISTORY_PATH.format(camera=cam.id),
+                params={"start": floor, "end": rec, "resolution": 0},
+            )
+        except Exception as err:  # noqa: BLE001 - asked again next sweep
+            _LOGGER.debug("protect scrub: %s playback-history (gone check) failed: %s", cam.slug, err)
+            return
+        state["gone_asked"] = rec
+        if footage_in(segments, floor, rec):
+            _LOGGER.debug("protect scrub: %s has footage before its recording start - kept", cam.slug)
+            return
+        state["gone_before"] = rec
+        _LOGGER.info("protect scrub: %s footage before %s is gone - its photos are deleted",
+                     cam.slug, time.strftime("%Y-%m-%d %H:%M", time.localtime(rec / 1000)))
+
+    async def _map_history(self, api: Any, cam: _Camera, state: dict[str, Any]) -> None:
+        """Map one more day of the footage older than the gap record (see
+        HISTORY_PATH), back towards the NVR's oldest - until it is reached. A
+        failed request maps nothing (an error is never a gap); the next pass
+        asks again."""
+        rec_start = state.get("recording_start")
+        known = state["gaps_from"]
+        if not isinstance(rec_start, int) or known <= rec_start:
+            return
+        start = max(rec_start, known - HISTORY_SPAN_MS)
+        try:
+            segments = await api.api_request_list(
+                HISTORY_PATH.format(camera=cam.id),
+                params={"start": start, "end": known, "resolution": 0},
+            )
+        except Exception as err:  # noqa: BLE001 - mapped again next pass
+            _LOGGER.debug("protect scrub: %s playback-history failed: %s", cam.slug, err)
+            return
+        found = history_gaps(segments, start, known)
+        state["gaps"] = (state.get("gaps") or []) + found
+        state["gaps_from"] = start
+        _LOGGER.debug("protect scrub: %s history %s-%s: %d segments, gaps %s",
+                      cam.slug, start, known, len(segments or []), found)
+
+    async def _pull(self, api: Any, cam: _Camera, start: int, end: int,
+                    decode: bool = True) -> list[int]:
         """Fetch the keyframes in [start, end) and file each as a tile. Returns
-        their wall-clock times (ms). A range the NVR declines yields []."""
+        their wall-clock times (ms). A range the NVR declines yields [].
+        `decode=False` only collects the times (the gap rescan): no ffmpeg, no
+        tiles."""
         params = {"format": "FMP4", "camera": cam.id, "channel": "0",
                   "start": str(start), "end": str(end),
                   "withIdrs": "true", "idrFrequency": str(IDR_FREQUENCY_MS)}
-        tmp = await self.hass.async_add_executor_job(
-            lambda: tempfile.mkdtemp(prefix="pull-", dir=cam.work))
+        tmp = None
+        if decode:
+            tmp = await self.hass.async_add_executor_job(
+                lambda: tempfile.mkdtemp(prefix="pull-", dir=cam.work))
         keys: list[int] = []
         proc: asyncio.subprocess.Process | None = None
         log_task: asyncio.Task[list[float]] | None = None
@@ -555,6 +800,9 @@ class ScrubJob:
                             # The NVR starts on the keyframe at or before
                             # `start` - the last pass already filed it.
                             continue
+                        if not decode:
+                            keys.extend(seg_keys)
+                            continue
                         if proc is None:
                             proc = await _start_decoder(tmp)
                             log_task = asyncio.create_task(_frame_times(proc))
@@ -562,6 +810,8 @@ class ScrubJob:
                         keys.extend(seg_keys)
                         proc.stdin.write(data)
                         await proc.stdin.drain()
+            if not decode:
+                return sorted({k for k in keys if start <= k < end})
             if proc is None:
                 return []  # nothing recorded in the range
             proc.stdin.close()
@@ -588,7 +838,59 @@ class ScrubJob:
             if upstream is not None and not upstream.closed:
                 with suppress(Exception):
                     await upstream.close()
-            await self.hass.async_add_executor_job(shutil.rmtree, tmp, True)
+            if tmp is not None:
+                await self.hass.async_add_executor_job(shutil.rmtree, tmp, True)
+
+    async def rescan_gaps(self, start: int, end: int) -> dict[str, Any]:
+        """Rebuild the recorded gaps of [start, end) for every camera from the
+        NVR's keyframe times, replacing whatever was recorded for that window -
+        for footage this job processed before it recorded gaps. One camera at a
+        time, keyframe times only (no decode), at most RESCAN_MAX_MS."""
+        now = int(time.time() * 1000)
+        start = max(start, now - RETENTION_MS)
+        end = min(end, now - EDGE_SURE_MS)  # only surely-written footage
+        if end - start > RESCAN_MAX_MS:
+            return {"ok": False, "error": f"window longer than {RESCAN_MAX_MS // 60_000} minutes"}
+        if end <= start:
+            return {"ok": False, "error": "empty window"}
+        async with self._lock:
+            api = self._api()
+            if api is None:
+                return {"ok": False, "error": "UniFi Protect integration not loaded"}
+            report: dict[str, Any] = {}
+            for cam in self.cams:
+                try:
+                    keys = await self._pull(api, cam, start, end, decode=False)
+                except Exception as err:  # noqa: BLE001 - per camera, reported
+                    report[cam.slug] = {"error": f"{type(err).__name__}: {err}"}
+                    continue
+                path = os.path.join(cam.work, "state.json")
+                state = await self.hass.async_add_executor_job(_read_json, path) or {}
+                iv = key_interval(keys, None, state.get("key_iv"))
+                lead, thr = iv or SLOT_MS, gap_threshold(iv)
+                if keys:
+                    found = detect_gaps(keys, None, thr, lead)
+                    if keys[0] - start > thr:
+                        found.insert(0, [start, keys[0]])
+                    if end - keys[-1] > thr:
+                        found.append([keys[-1] + lead, end])
+                else:
+                    found = [[start, end]]
+                kept: list[list[int]] = []  # recorded gaps, minus the window
+                for g in state.get("gaps") or []:
+                    if g[0] < start:
+                        kept.append([g[0], min(g[1], start)])
+                    if g[1] > end:
+                        kept.append([max(g[0], end), g[1]])
+                state["gaps"] = merge_gaps(kept + found, gaps_since(state, now))
+                await self.hass.async_add_executor_job(_write_json, path, state)
+                cursor = state.get("cursor")
+                if isinstance(cursor, int):
+                    await self.hass.async_add_executor_job(
+                        _publish, cam, cursor, now, False, published_gaps(state, cursor, now),
+                        _recording(state))
+                report[cam.slug] = {"keyframes": len(keys), "key_interval_ms": iv, "gaps": found}
+        return {"ok": True, "start": start, "end": end, "cameras": report}
 
 
 async def _start_decoder(out_dir: str) -> asyncio.subprocess.Process:
@@ -667,10 +969,13 @@ def _file_tiles(cam: _Camera, tmp: str, times: list[int], start: int, end: int) 
     return filed
 
 
-def _publish(cam: _Camera, cursor: int, now: int, purge: bool = True) -> dict[str, Any] | None:
+def _publish(cam: _Camera, cursor: int, now: int, purge: bool = True,
+             gaps: list[list[int]] | None = None, rec: dict[str, Any] | None = None,
+             gone_before: int | None = None) -> dict[str, Any] | None:
     """Pack sheets for every block/hour in progress up to `cursor`, write the
-    index and (when `purge`) sweep the rolling window. Returns the head
-    advertised in the index."""
+    index (with the recording `gaps`) and (when `purge`) sweep the rolling
+    window and the photos of footage gone before `gone_before`. Returns the
+    head advertised in the index."""
     head = None
     blocks = sorted(int(d) for d in os.listdir(cam.work) if d.isdigit())
     for block in blocks:
@@ -719,9 +1024,9 @@ def _publish(cam: _Camera, cursor: int, now: int, purge: bool = True) -> dict[st
     _publish_overviews(cam, cursor)
     names = os.listdir(cam.dir)
     if purge:
-        _purge(cam, names, now, head)
+        _purge(cam, names, now, head, gone_before)
         names = os.listdir(cam.dir)
-    _write_index(cam, names, head, now)
+    _write_index(cam, names, head, now, gaps or [], rec)
     return head
 
 
@@ -804,9 +1109,14 @@ def _fill_sparse(tiles: dict[int, str], n: int) -> list[str | None]:
     return [p if p is not None else first for p in out]
 
 
-def _purge(cam: _Camera, names: list[str], now: int, head: dict[str, Any] | None) -> None:
-    """Rolling window + superseded head generations + the retired tip tier."""
+def _purge(cam: _Camera, names: list[str], now: int, head: dict[str, Any] | None,
+           gone_before: int | None = None) -> None:
+    """Rolling window + photos of footage gone before `gone_before` (a
+    confirmed recording start, _confirm_gone - a block or hour ENDED by then;
+    the one it falls in holds the first new footage) + superseded head
+    generations + the retired tip tier."""
     cutoff = now - RETENTION_MS
+    gone = gone_before or 0
     live_stem = head["file"].rsplit(".", 1)[0] if head else None
     gens: dict[str, int] = {}
     doomed = []
@@ -814,7 +1124,9 @@ def _purge(cam: _Camera, names: list[str], now: int, head: dict[str, Any] | None
         stem = name.split(".")[0]
         if m := re.match(r"^o?(\d+)$", stem):
             # <start>.* and o<start>.* (sheets, sidecars, the old job's mp4s)
-            if int(m.group(1)) < cutoff:
+            start = int(m.group(1))
+            span = OVERVIEW_MS if stem.startswith("o") else BLOCK_MS
+            if start < cutoff or start + span <= gone:
                 doomed.append(name)
         elif m := re.match(r"^h(\d+)-(\d+)$", stem):
             gens[stem] = int(m.group(2))
@@ -834,7 +1146,8 @@ def _purge(cam: _Camera, names: list[str], now: int, head: dict[str, Any] | None
     for d in os.listdir(cam.work):
         path = os.path.join(cam.work, d)
         num = d[1:] if d.startswith("o") else d
-        if num.isdigit() and int(num) + OVERVIEW_MS < cutoff:
+        span = OVERVIEW_MS if d.startswith("o") else BLOCK_MS
+        if num.isdigit() and (int(num) + OVERVIEW_MS < cutoff or int(num) + span <= gone):
             shutil.rmtree(path, ignore_errors=True)
         elif d.startswith("pull-"):
             # A delivery's scratch dir, left behind only if HA died mid-pull.
@@ -843,7 +1156,8 @@ def _purge(cam: _Camera, names: list[str], now: int, head: dict[str, Any] | None
                     shutil.rmtree(path, ignore_errors=True)
 
 
-def _write_index(cam: _Camera, names: list[str], head: dict[str, Any] | None, now: int) -> None:
+def _write_index(cam: _Camera, names: list[str], head: dict[str, Any] | None, now: int,
+                 gaps: list[list[int]], rec: dict[str, Any] | None = None) -> None:
     def ints(pattern: str) -> set[int]:
         rx = re.compile(pattern)
         return {int(m.group(1)) for n in names if (m := rx.match(n))}
@@ -871,6 +1185,13 @@ def _write_index(cam: _Camera, names: list[str], head: dict[str, Any] | None, no
                              "suffix": FAST_SUFFIX},
         "fast_sprites": sorted(fast),
         "fast_osprites": sorted(fast_o),
+        # [start, end] ms spans the NVR holds no footage for - see "recording
+        # gaps" above. Absent on an older job: the card then draws no gaps.
+        "gaps": gaps,
+        # ms: the NVR's oldest full-quality footage of this camera (what
+        # playback serves), null while unknown. Absent on an older job: no
+        # lower bound.
+        "recording_start": (rec or {}).get("recording_start"),
     })
 
 
@@ -886,6 +1207,22 @@ async def async_setup_scrub(hass: HomeAssistant, config: ConfigType) -> None:
 
     hass.services.async_register(DOMAIN, "scrub_sync", _service,
                                  supports_response=SupportsResponse.OPTIONAL)
+
+    async def _rescan(call: ServiceCall) -> ServiceResponse:
+        def ms(value: Any) -> int:
+            parsed = dt_util.parse_datetime(str(value))
+            if parsed is None:
+                raise ValueError(f"not a date/time: {value}")
+            return int(dt_util.as_utc(parsed).timestamp() * 1000)
+
+        try:
+            start, end = ms(call.data["start"]), ms(call.data["end"])
+        except (KeyError, ValueError) as err:
+            return {"ok": False, "error": f"start/end: {err}"}
+        return await job.rescan_gaps(start, end)
+
+    hass.services.async_register(DOMAIN, "scrub_rescan_gaps", _rescan,
+                                 supports_response=SupportsResponse.ONLY)
     if not cameras:
         _LOGGER.warning("protect scrub: no cameras configured - set UNIFI_PROTECT_CAMERAS or "
                         "unifi_protect_cameras; scrub_sync will fail until then")

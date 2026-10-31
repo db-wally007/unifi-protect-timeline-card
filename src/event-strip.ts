@@ -16,12 +16,18 @@
 // the carousel scroller when collapsed, the viewport when expanded), so
 // off-screen events never hit the NVR.
 
-import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { MultiBand } from './data/multi-events';
 import type { ThumbnailLoader } from './data/thumbnail-loader';
 import { fmtTime } from './data/fmt'; // PERF-SCRUB-2026-08-03
+import { onScreen } from './data/motion';
+
+/** An item whose picture is still not in this long after it was asked for
+ *  shows anyway (its placeholder): a slow or failed thumbnail must not leave
+ *  a hole in the strip. */
+const REVEAL_LATE_MS = 1200;
 
 @customElement('upc-event-strip')
 export class EventStrip extends LitElement {
@@ -68,11 +74,24 @@ export class EventStrip extends LitElement {
   // Tablet grid GEOMETRY: small fixed-width auto-fill cells (vs mobile's 2×1fr
   // columns). Independent of `captions` — the tablet sets both.
   @property({ type: Boolean, reflect: true }) gridCaptions = false;
+  // The events have come in. Until then the strip holds the carousel's place
+  // with invisible items (no "No events", nothing below it jumping later).
+  @property({ type: Boolean }) loaded = true;
+  // The camera screen's events panel (a single column of this grid's items,
+  // user 2026-10-30): the full screen's palette - the playing item on the
+  // overlay's deep accent instead of the grid's white card.
+  @property({ type: Boolean, reflect: true, attribute: 'fs' }) fsPalette = false;
 
-  private _prevExpanded?: boolean; // animate only on actual toggles, not mount
+  // Phone: which items' pictures are in (an item shows once its picture has
+  // loaded or failed), and when each was first asked for - one that still has
+  // nothing after REVEAL_LATE_MS shows anyway, with its placeholder.
+  private _imgReady = new Set<string>();
+  private _askedAt = new Map<string, number>();
+  private _lateTimer?: ReturnType<typeof setTimeout>;
 
   @query('.strip') private _stripEl?: HTMLElement;
   private _io?: IntersectionObserver;
+  private _ioRoot: Element | null = null; // what _io was made against
   private _requested = new Set<string>(); // thumbs that entered view (fetch requested)
   private _bandByKey = new Map<string, MultiBand>();
 
@@ -178,6 +197,34 @@ export class EventStrip extends LitElement {
     .thumb .ph {
       background: var(--divider-color, rgba(255, 255, 255, 0.1));
     }
+    /* Phone (not the tablet's grid): an item waits invisible until its picture
+       has loaded, then fades in whole - no black boxes, no pictures popping
+       into them (see _shown). Its playing frame comes and goes softly too. */
+    :host(:not([gridcaptions])) .clip {
+      opacity: 0;
+      transition:
+        opacity 0.35s ease-out,
+        background-color 0.25s ease-out,
+        padding 0.25s ease-out;
+    }
+    :host(:not([gridcaptions])) .clip.shown {
+      opacity: 1;
+    }
+    :host([instant]) .clip {
+      transition: none;
+    }
+    :host(:not([gridcaptions])) .clip .thumb {
+      transition: border-radius 0.25s ease-out;
+    }
+    :host(:not([gridcaptions])) .clip .cam,
+    :host(:not([gridcaptions])) .clip .sub {
+      transition: color 0.25s ease-out;
+    }
+    /* Before the events are in (see loaded): the carousel's place, held by
+       items that never show - nothing below it moves when they arrive. */
+    .clip.hold {
+      visibility: hidden;
+    }
     /* Time overlay reads on any footage thanks to the text shadow (UniFi-style).
        Anchored to the IMAGE (.thumb is position:relative), not the whole clip
        button, so it stays on the footage above the caption. */
@@ -238,11 +285,14 @@ export class EventStrip extends LitElement {
     }
     /* Tablet grid: FIXED-width cells (not 1fr) so the thumb width is exactly
        --upc-egrid-w — matching the collapsed list thumbnails — instead of
-       stretching to fill (which ignored width changes). */
+       stretching to fill (which ignored width changes). The columns are
+       CENTRED in the pane (packed left, the width they don't fill was a dead
+       strip down the right; the day dividers span the columns, so they centre
+       with them). */
     :host([gridcaptions]) .gridlist {
       grid-template-columns: repeat(auto-fill, var(--upc-egrid-w, 132px));
-      justify-content: start;
-      gap: 14px 12px;
+      justify-content: center;
+      gap: 14px 20px;
     }
     /* Caption mode item texts BELOW the thumb: camera on line 1, time +
        duration on line 2 — same size across tablet grid and mobile. */
@@ -282,6 +332,23 @@ export class EventStrip extends LitElement {
     }
     :host([captions]) .clip.playing .sub {
       color: #444; /* line 2: dark-ish grey (was light grey) */
+    }
+    /* The camera screen's panel (fs): the same card in the overlay's colours,
+       and room under the last item. */
+    :host([fs][captions]) .clip.playing {
+      background: var(--upc-accent-deep, var(--upc-accent, #6a4266));
+    }
+    :host([fs][captions]) .clip.playing .cam {
+      color: #fff;
+    }
+    :host([fs][captions]) .clip.playing .sub {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    :host([fs]) .gridlist {
+      /* (Room the host's panel can set: what its edges' fades cover, or the
+         gap kept at the top of a list that scrolls on to the screen's edge.) */
+      padding-top: var(--upc-fs-list-pad-top, 0px);
+      padding-bottom: var(--upc-fs-list-pad-bottom, 16px);
     }
     /* Day separator between events from different days — same look as the
        timeline view's events list (accent rule, white centered date). */
@@ -324,34 +391,22 @@ export class EventStrip extends LitElement {
     // Observe thumbs/cells; preload a little on each side. Collapsed: root is
     // the horizontal scroller. Expanded: no .strip exists — root null (the
     // viewport) works for ANY ancestor scroller (page or .gridlist).
+    this._ioRoot = this._stripEl ?? null;
     this._io = new IntersectionObserver((entries) => this._onIntersect(entries), {
-      root: this._stripEl ?? null,
+      root: this._ioRoot,
       rootMargin: '300px 300px',
     });
     this._observeThumbs();
   }
 
-  updated(changed: PropertyValues): void {
-    // The scroll root changes between the two presentations — rebuild the
-    // observer against the right one (already-requested keys are remembered).
-    if (changed.has('expanded')) {
-      this._io?.disconnect();
+  updated(): void {
+    // The scroll root is replaced between the two presentations (and when the
+    // events come in, the placeholder's) — rebuild the observer against the
+    // one rendered now (already-requested keys are remembered). (The switch
+    // itself is animated by the page - see multi-view.)
+    if (this._io && (this._stripEl ?? null) !== this._ioRoot) {
+      this._io.disconnect();
       this._setupObserver();
-      // The OTHER of the two toggle animations — expand: the grid unfolds
-      // DOWNWARD from the carousel's position at the top (fade + slide down),
-      // iOS disclosure style. Collapse has no entry animation at all (the
-      // grid's exit in _toggle() is the whole transition). Never animates on
-      // first mount.
-      if (this._prevExpanded !== undefined && this._prevExpanded !== this.expanded && this.expanded) {
-        this.renderRoot.querySelector('.gridlist')?.animate(
-          [
-            { opacity: 0, transform: 'translateY(-10px)' },
-            { opacity: 1, transform: 'none' },
-          ],
-          { duration: 400, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
-        );
-      }
-      this._prevExpanded = this.expanded;
     }
     this._observeThumbs();
   }
@@ -360,6 +415,74 @@ export class EventStrip extends LitElement {
     super.disconnectedCallback();
     this._io?.disconnect();
     this._io = undefined;
+    clearTimeout(this._lateTimer);
+  }
+
+  /** Ask for a thumbnail (once): it loads, and the item shows when it is in. */
+  private _request(key: string): void {
+    if (this._requested.has(key)) return;
+    this._requested.add(key);
+    this._askedAt.set(key, performance.now());
+    const b = this._bandByKey.get(key);
+    if (b) this.loader?.get(b); // queues the NVR snapshot (concurrency-limited)
+    // Re-check once the late limit has passed (see _shown).
+    clearTimeout(this._lateTimer);
+    this._lateTimer = setTimeout(() => this.requestUpdate(), REVEAL_LATE_MS + 20);
+  }
+
+  /** Is an item's picture in (or has it waited long enough to show without)? */
+  private _shown(key: string): boolean {
+    if (this._imgReady.has(key)) return true;
+    const at = this._askedAt.get(key);
+    return at !== undefined && performance.now() - at >= REVEAL_LATE_MS;
+  }
+
+  private _onImg(key: string): void {
+    if (this._imgReady.has(key)) return;
+    this._imgReady.add(key);
+    this.requestUpdate();
+  }
+
+  /** Before the grid opens: ask for its first `n` pictures now, so they are
+   *  loading - and mostly in - by the time it shows. */
+  preload(n: number): void {
+    for (const b of this.bands.slice(0, n)) {
+      const key = `${b.type}@${b.start}`;
+      this._bandByKey.set(key, b);
+      this._request(key);
+    }
+  }
+
+  /** Resolves once every item in view has its picture in and decoded (or
+   *  `maxMs` passed): the page shows the grid then, rather than a grid of
+   *  pictures arriving. An item still waiting fades in on its own later. */
+  async firstScreenReady(maxMs: number): Promise<void> {
+    const until = performance.now() + maxMs;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    let inView: HTMLElement[] = [];
+    for (;;) {
+      await this.updateComplete;
+      inView = Array.from(this.renderRoot.querySelectorAll<HTMLElement>('.clip')).filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight;
+      });
+      const waiting = inView.some((el) => {
+        const key = el.querySelector<HTMLElement>('.thumb')?.dataset.key;
+        return !!key && !this._imgReady.has(key);
+      });
+      if (!waiting || performance.now() >= until) break;
+      await sleep(40);
+    }
+    // What came in while hidden shows at once (not fading in on its own,
+    // behind the grid's fade), and a new <img> of a picture already in still
+    // decodes before it paints.
+    this.toggleAttribute('instant', true);
+    this.requestUpdate();
+    await this.updateComplete;
+    const imgs = inView.flatMap((el) => Array.from(el.querySelectorAll('img')));
+    await Promise.race([Promise.all(imgs.map((img) => img.decode().catch(() => undefined))), sleep(150)]);
+    this.getBoundingClientRect(); // the change lands while transitions are off
+    this.toggleAttribute('instant', false);
   }
 
   /** A thumb scrolled into view -> request its thumbnail (once). */
@@ -369,9 +492,7 @@ export class EventStrip extends LitElement {
       if (!e.isIntersecting) continue;
       const key = (e.target as HTMLElement).dataset.key;
       if (!key || this._requested.has(key)) continue;
-      this._requested.add(key);
-      const b = this._bandByKey.get(key);
-      if (b) this.loader?.get(b); // queues the NVR snapshot (concurrency-limited)
+      this._request(key);
       this._io?.unobserve(e.target);
       changed = true;
     }
@@ -440,26 +561,9 @@ export class EventStrip extends LitElement {
     );
   }
 
-  private _toggle = async (): Promise<void> => {
-    // Exactly TWO toggle animations exist. Collapse is this one: the grid
-    // slides UP and fades OUT (mirror of its entry), then the parent flips
-    // the state and the carousel + cameras simply appear — no re-entry
-    // animation. Expand dispatches immediately (the grid animates its entry
-    // in updated()).
-    if (this.expanded) {
-      const pane = this.renderRoot.querySelector('.gridlist');
-      if (pane) {
-        await pane
-          .animate(
-            [
-              { opacity: 1, transform: 'none' },
-              { opacity: 0, transform: 'translateY(-10px)' },
-            ],
-            { duration: 400, easing: 'ease-in', fill: 'forwards' },
-          )
-          .finished.catch(() => undefined);
-      }
-    }
+  // The header chevron (when this strip shows its own header): the page
+  // switches - and animates - carousel <-> grid.
+  private _toggle = (): void => {
     this.dispatchEvent(new CustomEvent('toggle-expand', { bubbles: true, composed: true }));
   };
 
@@ -475,6 +579,15 @@ export class EventStrip extends LitElement {
     return true;
   }
 
+  /** One clip's thumbnail, when it is on screen (a zoom transition flies to
+   *  and from it). */
+  thumbOf(key: string): HTMLElement | null {
+    if (!key) return null;
+    const thumb = this.renderRoot.querySelector<HTMLElement>(`.thumb[data-key="${CSS.escape(key)}"]`);
+    const scroller = this.renderRoot.querySelector('.gridlist') ?? this.renderRoot.querySelector('.strip');
+    return thumb && onScreen(thumb, scroller) ? thumb : null;
+  }
+
   /** One event item — identical in both presentations (the expanded grid only
    *  changes the layout around it, never the item itself). */
   private _renderClip(b: MultiBand, key: string, url: string | undefined) {
@@ -483,14 +596,22 @@ export class EventStrip extends LitElement {
     const highlighted =
       this.playingKey === key ||
       ((this.expanded || this.keepLastPlayed) && this.lastPlayedKey === key);
+    // (The tablet's grid shows its items at once; the phone's wait for their
+    // pictures - see .clip.shown.)
+    const shown = this.gridCaptions || this._shown(key);
     return html`
       <button
-        class="clip ${highlighted ? 'playing' : ''}"
+        class="clip ${highlighted ? 'playing' : ''} ${shown ? 'shown' : ''}"
         @click=${() => this._select(b)}
       >
         <div class="thumb" data-key=${key}>
           ${url
-            ? html`<img src=${url} alt=${b.label} loading="lazy" />`
+            ? html`<img
+                src=${url}
+                alt=${b.label}
+                @load=${() => this._onImg(key)}
+                @error=${() => this._onImg(key)}
+              />`
             : html`<span class="ph"></span>`}
           <!-- Caption mode moves the time to the line below (with the
                duration); the compact mode overlays it on the footage. -->
@@ -515,6 +636,18 @@ export class EventStrip extends LitElement {
     // insets 12+12, gap 12 → 12 + w + 12 + w + 12 = W → w = (W - 36)/2;
     // % resolves against the content box (W - 24) → w = (100% - 12px)/2.
     const thumbW = this.thumbSize > 0 ? `${this.thumbSize}px` : 'calc((100% - 12px) / 2)';
+    const stripStyle =
+      `--upc-strip-thumb:${thumbW};--upc-strip-time:${this.timeSize}px;` +
+      `--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(1, this.itemTextSize - 1)}px`;
+    // Not loaded yet: two items that never show hold the carousel's place.
+    if (!this.loaded && !this.expanded) {
+      const hold = html`<button class="clip hold" tabindex="-1" aria-hidden="true">
+        <div class="thumb"></div>
+        <span class="cam">&nbsp;</span>
+        ${this.captions ? html`<span class="sub">&nbsp;</span>` : nothing}
+      </button>`;
+      return html`<div class="strip" style=${stripStyle}>${hold}${hold}</div>`;
+    }
     const items = repeat(
       this.bands,
       (b) => `${b.type}@${b.start}`,
@@ -566,16 +699,7 @@ export class EventStrip extends LitElement {
             >
               ${items}
             </div>`
-          : html`<div
-              class="strip"
-              style="--upc-strip-thumb:${thumbW};--upc-strip-time:${this
-                .timeSize}px;--upc-egrid-item:${this.itemTextSize}px;--upc-egrid-sub:${Math.max(
-                1,
-                this.itemTextSize - 1,
-              )}px"
-            >
-              ${items}
-            </div>`}
+          : html`<div class="strip" style=${stripStyle}>${items}</div>`}
       ${nothing}
     `;
   }

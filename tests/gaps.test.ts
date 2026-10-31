@@ -1,74 +1,103 @@
-import { describe, it, expect } from 'vitest';
-import { unavailableIntervals, inGap } from '../src/data/gaps';
-import type { RawHistoryState } from '../src/data/types';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { scrubIndexGaps, fetchFootageGaps, inGap, footageStart, nearestFootage } from '../src/data/gaps';
 
 const S = 1000;
 
-describe('unavailableIntervals', () => {
-  it('extracts an unavailable span between two recording states', () => {
-    const rows: RawHistoryState[] = [
-      { s: 'recording', lu: 0 },
-      { s: 'unavailable', lu: 100 },
-      { s: 'recording', lu: 160 },
-    ];
-    expect(unavailableIntervals(rows, 0, 1_000_000)).toEqual([{ start: 100_000, end: 160_000 }]);
-  });
-
-  it('matches the real garden-camera outage (07:59:11 → 08:00:31 local)', () => {
-    // The exact history rows observed during the console outage (UTC epochs).
-    const start = Date.parse('2026-07-04T05:50:00Z');
-    const until = Date.parse('2026-07-04T06:20:00Z');
-    const at = (iso: string) => Date.parse(iso) / 1000; // lu is epoch SECONDS
-    const rows: RawHistoryState[] = [
-      { s: 'recording', lu: at('2026-07-04T05:50:00Z') },
-      { s: 'unavailable', lu: at('2026-07-04T05:59:11.258Z') },
-      { s: 'recording', lu: at('2026-07-04T06:00:31.872Z') },
-      { s: 'unavailable', lu: at('2026-07-04T06:11:11.036Z') },
-      { s: 'recording', lu: at('2026-07-04T06:11:15.368Z') },
-      { s: 'unavailable', lu: at('2026-07-04T06:15:06.334Z') },
-      { s: 'recording', lu: at('2026-07-04T06:15:08.219Z') },
-    ];
-    const gaps = unavailableIntervals(rows, start, until);
-    // The main ~80s outage + the two short (4s, 2s) flaps — all above MIN_GAP_MS.
-    expect(gaps).toEqual([
-      { start: Date.parse('2026-07-04T05:59:11.258Z'), end: Date.parse('2026-07-04T06:00:31.872Z') },
-      { start: Date.parse('2026-07-04T06:11:11.036Z'), end: Date.parse('2026-07-04T06:11:15.368Z') },
-      { start: Date.parse('2026-07-04T06:15:06.334Z'), end: Date.parse('2026-07-04T06:15:08.219Z') },
+describe('scrubIndexGaps', () => {
+  it('reads the [start, end] spans the scrub job publishes, sorted', () => {
+    expect(
+      scrubIndexGaps({
+        gaps: [
+          [500 * S, 600 * S],
+          [100 * S, 200 * S],
+        ],
+      }),
+    ).toEqual([
+      { start: 100 * S, end: 200 * S },
+      { start: 500 * S, end: 600 * S },
     ]);
   });
 
-  it('drops sub-threshold blips (< 1.5s)', () => {
-    const rows: RawHistoryState[] = [
-      { s: 'recording', lu: 0 },
-      { s: 'unavailable', lu: 10 },
-      { s: 'recording', lu: 11 }, // 1s blip — dropped
-    ];
-    expect(unavailableIntervals(rows, 0, 1_000_000)).toEqual([]);
+  it('the 2026-10-20 console hang: Corner had no footage 22:43:11 → 22:49:46', () => {
+    const start = Date.parse('2026-10-20T22:43:11+02:00');
+    const end = Date.parse('2026-10-20T22:49:46+02:00');
+    const gaps = scrubIndexGaps({ gaps: [[start, end]] });
+    expect(inGap(gaps, Date.parse('2026-10-20T22:45:00+02:00'))).toBe(true);
+    expect(inGap(gaps, Date.parse('2026-10-20T22:48:30+02:00'))).toBe(true);
+    expect(inGap(gaps, Date.parse('2026-10-20T22:43:05+02:00'))).toBe(false);
+    expect(inGap(gaps, Date.parse('2026-10-20T22:49:50+02:00'))).toBe(false);
   });
 
-  it('clamps an interval already open at the window start to `since`', () => {
-    const rows: RawHistoryState[] = [
-      { s: 'unavailable', lu: 5 }, // before `since`
-      { s: 'recording', lu: 40 },
-    ];
-    expect(unavailableIntervals(rows, 10_000, 1_000_000)).toEqual([{ start: 10_000, end: 40_000 }]);
+  it('yields nothing for an index from an older job (no `gaps`) or no index', () => {
+    expect(scrubIndexGaps({})).toEqual([]);
+    expect(scrubIndexGaps(undefined)).toEqual([]);
   });
 
-  it('closes an interval still open at the end at `until`', () => {
-    const rows: RawHistoryState[] = [
-      { s: 'recording', lu: 0 },
-      { s: 'unavailable', lu: 10 },
-    ];
-    expect(unavailableIntervals(rows, 0, 100_000)).toEqual([{ start: 10_000, end: 100_000 }]);
+  it('drops malformed entries', () => {
+    expect(
+      scrubIndexGaps({ gaps: [[1, 2, 3], ['a', 5], [9, 4], null, [10 * S, 20 * S]] }),
+    ).toEqual([{ start: 10 * S, end: 20 * S }]);
   });
 
-  it('treats "unknown" as offline too', () => {
-    const rows: RawHistoryState[] = [
-      { s: 'recording', lu: 0 },
-      { s: 'unknown', lu: 10 },
-      { s: 'recording', lu: 20 },
-    ];
-    expect(unavailableIntervals(rows, 0, 1_000_000)).toEqual([{ start: 10_000, end: 20_000 }]);
+  it('everything before the NVR\'s oldest footage is a gap from 0', () => {
+    const gaps = scrubIndexGaps({ recording_start: 300 * S, gaps: [[500 * S, 600 * S]] });
+    expect(gaps).toEqual([
+      { start: 0, end: 300 * S },
+      { start: 500 * S, end: 600 * S },
+    ]);
+    expect(footageStart(gaps)).toBe(300 * S);
+    expect(footageStart(scrubIndexGaps({ gaps: [[500 * S, 600 * S]] }))).toBeUndefined();
+    expect(footageStart(scrubIndexGaps({ recording_start: null, gaps: [] }))).toBeUndefined();
+  });
+});
+
+describe('nearestFootage', () => {
+  // The doorbell, 2026-10: footage on Oct 3 afternoon, then none until it was
+  // mounted on Oct 20 at 19:50.
+  const at = (s: string) => Date.parse(`2026-10-${s}+02:00`);
+  const gaps = scrubIndexGaps({
+    recording_start: at('03T16:08:00'),
+    gaps: [[at('03T18:00:00'), at('20T19:50:00')]],
+  });
+  const day = (d: string) => [at(`${d}T00:00:00`), at(`${d}T00:00:00`) + 86_400_000] as const;
+
+  it('is the moment itself where there is footage', () => {
+    expect(nearestFootage(gaps, ...day('21'), at('21T12:00:00'))).toBe(at('21T12:00:00'));
+  });
+  it('is where footage resumes when the moment is in a gap', () => {
+    expect(nearestFootage(gaps, ...day('20'), at('20T12:00:00'))).toBe(at('20T19:50:00'));
+  });
+  it('else the last minute before the moment', () => {
+    // Oct 3: footage 16:08-18:00 only - a noon jump lands on its start.
+    expect(nearestFootage(gaps, ...day('03'), at('03T12:00:00'))).toBe(at('03T16:08:00'));
+    expect(nearestFootage(gaps, ...day('03'), at('03T20:00:00'))).toBe(at('03T17:59:00'));
+  });
+  it('is undefined for a day without footage', () => {
+    expect(nearestFootage(gaps, ...day('10'), at('10T12:00:00'))).toBeUndefined();
+    expect(nearestFootage(gaps, ...day('02'), at('02T12:00:00'))).toBeUndefined();
+  });
+});
+
+describe('fetchFootageGaps', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reads <scrubDir>/index.json and never asks the NVR anything', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ generated: Date.now(), gaps: [[100 * S, 200 * S]] }));
+    });
+    const gaps = await fetchFootageGaps('/protect_scrub/garden_camera_high_resolution_channel');
+    expect(gaps).toEqual([{ start: 100 * S, end: 200 * S }]);
+    expect(urls).toEqual(['/protect_scrub/garden_camera_high_resolution_channel/index.json']);
+  });
+
+  it('is empty (no band) when there is no scrub cache or it cannot be read', async () => {
+    vi.stubGlobal('fetch', async () => new Response('', { status: 404 }));
+    expect(await fetchFootageGaps('/protect_scrub/x')).toEqual([]);
+    expect(await fetchFootageGaps('')).toEqual([]);
   });
 });
 

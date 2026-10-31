@@ -4,6 +4,7 @@
 // camera). Pure fetch/parse; grouping and footage spans stay with the callers.
 
 import type { DetectionBand, ThumbnailManifest, ThumbnailManifestEntry } from './types';
+import { fetchCurrentJson } from './fresh-json';
 import { normalizeThumbUrl } from './ha-urls';
 
 // The sync job runs every minute; a manifest older than this means it isn't
@@ -55,9 +56,14 @@ export interface LoadedManifest {
  *  Legacy v1 (bare entry array) renders but reports stale to trigger a resync. */
 export async function loadManifest(dir: string): Promise<LoadedManifest | undefined> {
   try {
-    const res = await fetch(`${dir}/manifest.json`, { cache: 'no-cache' });
-    if (!res.ok) return undefined;
-    const data = (await res.json()) as ThumbnailManifest | ThumbnailManifestEntry[];
+    // Past HA's service worker, which answers an old cached copy first (see
+    // fresh-json.ts): a laptop tab left open overnight listed yesterday's events.
+    const data = await fetchCurrentJson<ThumbnailManifest | ThumbnailManifestEntry[]>(
+      `${dir}/manifest.json`,
+      (d) => (Array.isArray(d) ? undefined : d?.generated),
+      MANIFEST_STALE_MS,
+    );
+    if (!data) return undefined;
     if (Array.isArray(data)) {
       return { entries: data, preMs: 0, postMs: 0, stale: true };
     }

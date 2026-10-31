@@ -52,7 +52,7 @@ is identical to setting it to its default.
 |---|---|---|---|
 | `type` | string | — | `custom:unifi-protect-timeline-card` (required) |
 | `camera` | string | — | Camera entity the timeline, events and clips come from. **Required** in single mode; in multi mode it defaults to the first `cameras` entry |
-| `cameras` | list | `[]` | Single mode: a gallery strip you drag down to switch cameras. Multi mode: the grid's cameras (**required**, non-empty). See [camera entries](#camera-entries) |
+| `cameras` | list | `[]` | Single mode: the cameras you can switch between — a gallery strip you drag down (stacked), the picker under the top chevron (columns). Multi mode: the grid's cameras (**required**, non-empty). See [camera entries](#camera-entries) |
 | `card_version` | `single` \| `multi` | `single` | `multi` renders the [multi-camera page](#multi-camera-page) instead |
 | `nvr_id` | string | auto | UniFi Protect config-entry id; derived from the camera entity |
 | `height` | string | `80vh` / `100dvh` | Card height. Default depends on the resolved layout (columns / stacked) |
@@ -74,7 +74,7 @@ Each item of `cameras:` is either a plain entity id or a mapping:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `layout` | `auto` \| `columns` \| `stacked` | `auto` | `auto` picks by measured card width |
+| `layout` | `auto` \| `columns` \| `stacked` | `auto` | `auto` picks by measured card width. `columns` (tablet/desktop): the camera screen is the player itself, filling the card, with the [overlay timeline](#fullscreen-overlay) on its right edge — a chevron at the top centre slides down the camera picker, a chevron on the right edge slides in the events list (pushing the timeline left), and the date pill at the foot of the timeline opens the calendar; all of it shows and hides with the controls. Its exit button returns to the multi-camera page (or the `back_button` target). `stacked` (phone): video above a Timeline / Events column |
 | `layout_breakpoint` | number | `600` | Card width in px at which `auto` switches to `columns` |
 | `video_ratio` | number | `0.45` | Stacked layout: the video's share of the height. Values 15–85 are read as a percentage. Clamped to 15–85% |
 | `video_aspect` | string | `""` | Stacked layout: size the video by aspect ratio (e.g. `16/9`) instead of `video_ratio` |
@@ -106,7 +106,9 @@ Single mode unless noted.
 | `tick_size` | number \| `small` \| `medium` \| `large` | `8` | Tick length; the keywords are 4 / 8 / 14 |
 | `recorded_color` | string | `#6e476a` | The recorded track below the playhead |
 | `future_color` | string | `#7a7a84` | The empty future above it |
-| `show_footage_gaps` | boolean | `true` | Grey bands where the NVR has no footage. Also gates the gap probing itself |
+| `show_footage_gaps` | boolean | `true` | Grey bands where the NVR has no footage, as recorded by the [scrub preview job](#scrub-preview--protect_cachescrub_sync) |
+| `talk_button` | boolean | `true` | A Talk button on live view for cameras with a speaker (doorbells): your device's microphone to the camera, via `protect_cache`. Needs Home Assistant over https (browsers only allow the microphone there). Your voice plays ~0.8 s later (the doorbell's own buffer — the Protect app's is the same). While Talk is on, the live view switches to the camera's channel 1, like the Protect app: the G6 Entry only echo-cancels that channel's audio (on the others you hear your own words back), and it runs as close to real time as it safely can, so replies arrive sooner |
+| `debug` | boolean | `false` | Field telemetry for diagnosing a device: the player, Talk and the device report timings, states and levels (never footage or sound) to `protect_cache`, which keeps 7 days of them in `config/.cache/protect_debug/` |
 | `gap_color` | string | `#4a4a52` | Those bands |
 | `thumb_size` | number | `87` | Inline thumbnail width |
 | `thumb_size_active` | number | `105` | Width under the playhead / on hover |
@@ -142,6 +144,7 @@ Single mode unless noted.
 | `list_active_bg` | string | `#fff` | Playing-row background |
 | `list_divider_color` | string | = `accent_color` | Day-divider line (single mode) |
 | `tablet_events_thumbnail_size` | number | `145` | Event thumbnail width in the wide layout. Also sets the events column width and the gallery tile width, in **both** modes |
+| `tablet_events_grid_thumbnail_size` | number | `218` | Thumbnail width in the multi page's expanded events grid (wide layout); defaults to 1.5 × `tablet_events_thumbnail_size` |
 
 ### Thumbnails and cache
 
@@ -193,12 +196,13 @@ about 1% of a core per LIVE stream, about 3% for recorded footage at full NVR sp
 
 ### Fullscreen overlay
 
-The scrubber drawn on the right edge of the fullscreen player. Single mode only; the second value in
-each default is the phone (stacked) one.
+The scrubber drawn on the right edge of the fullscreen player — and, in the `columns` layout, of the
+camera screen, which is that player filling the card. Single mode only; the second value in each
+default is the phone (stacked) one.
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `fs_timeline` | boolean | `true` | Enable the overlay |
+| `fs_timeline` | boolean | `true` | Enable the overlay (phone fullscreen; the `columns` camera screen always has it — it is its only timeline) |
 | `fs_timeline_width` | number | `165` / `120` | Ruler width, px |
 | `fs_timeline_grab_width` | number | `0` | Width of the scrub-gesture band; `0` = the whole player |
 | `fs_timeline_padding` | number | `60` / `20` | Clearance from the top and bottom of the screen |
@@ -232,7 +236,7 @@ cameras:
 | `strip_title` | string | `Events` | Strip header; the merged event count is appended |
 | `mobile_events_thumbnail_size` | number | `0` | Strip thumbnail width in the narrow layout. `0` = auto-size so two thumbnails fit |
 | `strip_time_size` | number | `12` | Time label on strip thumbnails |
-| `grid_aspect` | string | `16/9` | Live tile aspect ratio |
+| `grid_aspect` | string | `16/9` | Live tile aspect ratio (narrow layout, and the wide layout's single-column view). The wide layout's two-column grid fills its whole pane instead, each feed zoomed to cover its tile |
 
 `accent_color`, `title*`, `back_button*`, `date_font_*`, `list_*`, `event_merge_gap_seconds`,
 `thumbnail_concurrency`, `page_background` and `height` all work here too.
@@ -279,9 +283,17 @@ footage is fetched once; the newest photo is ~20–30 s behind live (the NVR its
 ~13–20 s late). After an outage it catches up from where it stopped, up to 24 hours back. With three
 2688×1512 cameras it costs about 5% of one core in total (it replaced a job that cost 35–50%).
 
+Because it sees every keyframe the NVR holds, it also records the **gaps** — stretches with no
+keyframe for over 20 s (and over 4× the camera's own keyframe interval) — and publishes them in
+the index; the card draws them as the grey "no footage" bands. An NVR that does not answer is never
+recorded as a gap (the job just retries). For footage it processed before it recorded gaps, rebuild
+a window with `protect_cache.scrub_rescan_gaps` (`start`/`end`, at most an hour; keyframe times
+only, one camera at a time).
+
 Disk: about **4 GB per camera** for the 7-day window (`RETENTION_MS` in `scrub.py`), more for busy
 or detailed scenes. Lower `SHEET_QUALITY` to shrink it — it does not change the CPU cost, which is
-almost all decoding the keyframes.
+almost all decoding the keyframes. Photos of footage the NVR no longer has (its storage formatted,
+its disk replaced) are deleted as soon as the NVR confirms that footage is gone.
 
 ### Event cache — pyscript job
 
@@ -289,8 +301,11 @@ almost all decoding the keyframes.
 `manifest.json` plus the exact thumbnail the Protect app shows, under
 `/config/.cache/protect_thumbs/<slug>/`. The card renders its events list and timeline bars straight
 from that manifest, so no client ever hits the NVR per view. It syncs incrementally every minute
-from a persisted cursor and keeps a rolling 7-day window (`LOOKBACK_HOURS`), with thumbnail files
-kept for `RETENTION_DAYS` (90).
+from a persisted cursor and keeps a rolling 14-day window (`LOOKBACK_HOURS`). Events the NVR no
+longer has leave it too: every sync drops those that ended before the camera's oldest footage (so
+formatting the NVR's storage or replacing its disk clears them at once), and the first sync after
+each Home Assistant start re-reads the whole window, so events deleted in the UniFi Protect app go
+then. A thumbnail is deleted with its event.
 
 Needs [pyscript](https://github.com/custom-components/pyscript) with `allow_all_imports: true` and
 `hass_is_global: true` (one Home Assistant restart). Copy `pyscript/protect_thumbs.py` to

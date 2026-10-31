@@ -4,6 +4,7 @@
 export interface HassEntityRegistryEntry {
   config_entry_id?: string | null;
   device_id?: string | null;
+  platform?: string; // integration domain, e.g. "unifiprotect"
 }
 
 export interface HomeAssistant {
@@ -12,6 +13,8 @@ export interface HomeAssistant {
   // Authenticated HTTP fetch. Used for the clip-session endpoints, which are
   // POST/DELETE and so can't go through a signed path (those only sign GETs).
   fetchWithAuth?(url: string, init?: RequestInit): Promise<Response>;
+  // Authenticated REST call to /api/<path> (the debug telemetry POSTs).
+  callApi?<T>(method: string, path: string, data?: Record<string, unknown>): Promise<T>;
   // Fallback when fetchWithAuth is absent: raw bearer token.
   auth?: { accessToken?: string };
   // Entity registry, present in modern HA frontends. Used to auto-resolve nvr_id.
@@ -69,6 +72,10 @@ export interface CardConfig {
   // the size of the camera-gallery tiles).
   mobile_events_thumbnail_size?: number;
   tablet_events_thumbnail_size?: number;
+  // Thumbnail width in the multi page's EXPANDED events grid (wide layout).
+  // Default 1.5 x tablet_events_thumbnail_size (218 with the default 145): the
+  // grid is for browsing, the list beside the cameras for glancing.
+  tablet_events_grid_thumbnail_size?: number;
   // Time label overlaid on each strip thumbnail, in px (default 12).
   strip_time_size?: number;
   // Live tile aspect ratio (default "16/9").
@@ -155,6 +162,12 @@ export interface CardConfig {
   // calls. The card also stops probing the NVR for thumbnails/video inside these
   // spans. Default true.
   show_footage_gaps?: boolean;
+  // Talk button on live view for cameras with a speaker (the doorbell).
+  talk_button?: boolean;
+  // Field telemetry for diagnosing device problems: the player, Talk and the
+  // device report timings/states/levels to protect_cache, which keeps them in
+  // config/.cache/protect_debug/ (never footage or audio). Default false.
+  debug?: boolean;
   // Color of the unavailable-footage bands (any CSS color; default a neutral
   // dark grey that reads as "no data").
   gap_color?: string;

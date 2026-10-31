@@ -15,6 +15,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { DetectionBand } from './data/types';
 import type { ThumbnailLoader } from './data/thumbnail-loader';
 import { fmtTime } from './data/fmt'; // PERF-SCRUB-2026-08-03
+import { onScreen } from './data/motion';
 
 @customElement('upc-events-list')
 export class EventsList extends LitElement {
@@ -114,6 +115,7 @@ export class EventsList extends LitElement {
          --secondary-text-color ~#b0), matching the timeline's label color. */
       color: var(--list-color, #d0d0d0);
       font-family: inherit;
+      transition: background-color 0.2s ease-out; /* the playing highlight moves softly */
     }
     .row:hover {
       background: rgba(255, 255, 255, 0.06);
@@ -147,6 +149,7 @@ export class EventsList extends LitElement {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: color 0.2s ease-out;
     }
     .t2 {
       font-size: var(--list-dur-size, 12px);
@@ -154,6 +157,9 @@ export class EventsList extends LitElement {
       color: var(--list-dur-color, currentColor);
       opacity: var(--list-dur-op, 0.7);
       white-space: nowrap;
+      transition:
+        color 0.2s ease-out,
+        opacity 0.2s ease-out;
     }
     /* Prominent first line (multi list + timeline): line 1 white, line 2 full
        opacity — matching the expanded grid captions exactly. Only the inactive
@@ -298,6 +304,14 @@ export class EventsList extends LitElement {
     if (!row) return false;
     row.scrollIntoView({ block: 'center', inline: 'nearest' });
     return true;
+  }
+
+  /** One event's thumbnail, when it is on screen in this list (a zoom
+   *  transition flies to and from it). */
+  thumbOf(key: string): HTMLElement | null {
+    if (!key) return null;
+    const thumb = this.renderRoot.querySelector<HTMLElement>(`.thumb[data-key="${CSS.escape(key)}"]`);
+    return thumb && onScreen(thumb, this._listEl) ? thumb : null;
   }
 
   scrollToDay(dayStart: number): void {

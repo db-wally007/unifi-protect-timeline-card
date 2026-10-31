@@ -25,6 +25,7 @@
 // one. Immutability also means a small LRU of blobs makes revisited times
 // instant and the HTTP cache can be trusted (no no-store re-downloads).
 
+import { fetchCurrentJson } from './fresh-json';
 import type { HomeAssistant } from './types';
 
 // Re-read index.json at most this often (the job rewrites it every 15 s pass).
@@ -60,6 +61,9 @@ const TIP_POLL_TRIES = 15; // ~6s, then give up until the next request
 // index.json `generated` older than this means the sync job isn't running
 // (it rewrites the index every run as a heartbeat) -> ask it to run.
 const INDEX_STALE_MS = 25 * 60_000;
+// An index older than this was not just written: the job rewrites it every
+// 15 s, so this copy is probably the service worker's (see fresh-json.ts).
+const INDEX_CURRENT_MS = 2 * 60_000;
 const SYNC_THROTTLE_MS = 5 * 60_000;
 // Cached block blobs (the two on-screen slots + neighbours + recently visited).
 // Bounded so a long kiosk session can't grow it; evicted blobs are revoked to
@@ -490,9 +494,10 @@ export class ScrubPreviewLoader {
     let ok = false;
     let stale = true;
     try {
-      const res = await fetch(`${this._dir}/index.json`, { cache: 'no-cache' });
-      if (res.ok) {
-        const data = (await res.json()) as {
+      // Past HA's service worker, which would hand back an old cached copy
+      // first (see fresh-json.ts) — on a laptop, yesterday's index, whose head
+      // then painted yesterday's newest photo for every recent time.
+      const data = await fetchCurrentJson<{
           generated?: number;
           block_ms?: number;
           blocks?: number[];
@@ -512,7 +517,8 @@ export class ScrubPreviewLoader {
           osprites?: number[];
           fast_sprites?: number[];
           fast_osprites?: number[];
-        };
+        }>(`${this._dir}/index.json`, (d) => d.generated, INDEX_CURRENT_MS);
+      if (data) {
         if (Array.isArray(data.blocks)) {
           ok = true;
           this._blocks = new Set(data.blocks);

@@ -1,5 +1,36 @@
 # Changelog
 
+## [3.1.0] - 2026-10-31
+
+### Changed
+
+- **Two screens instead of three.** The single-camera page is merged into the camera screen: the
+  picture fills the card, round iOS-style controls (back / play-pause / forward, then speed,
+  sound, talk and exit) sit centred beside the timeline, a top chevron opens the camera picker
+  and a right chevron the camera's events. On a phone, landscape cameras turn sideways and
+  portrait ones stay upright. Every screen change is animated.
+- **Multi-camera page, tablet and phone:** the "Events (N)" heading opens the events grid, live
+  tiles fill their area, and a tapped event plays in place with round controls, a seek bar and
+  "View in Timeline".
+- The calendar opens centred over the dimmed screen and offers only the days the NVR has footage
+  for; the timeline greys everything before the oldest footage. Zoom has an iOS-style slider and
+  a two-finger pinch.
+- The events cache keeps 14 days (was 7). Events the NVR no longer has leave it: every sync drops
+  those older than the camera's oldest footage, and the first sync after each Home Assistant start
+  re-reads the whole list (events deleted in the UniFi Protect app). Thumbnails go with their
+  events, and scrub photos of footage the NVR has deleted are removed.
+- A clip's seek bar reads its full length when it ends (it stopped a second short).
+
+### Added
+
+- **Talk** on cameras with a speaker (the doorbell), live only.
+- `debug: true` writes field telemetry to `/config/.cache/protect_debug/`.
+
+### Fixed
+
+- Over HTTPS, Home Assistant's service worker served stale event and scrub index files; the card
+  now always reads fresh ones.
+
 ## [3.0.0] - 2026-10-14
 
 ### Changed
@@ -209,6 +240,9 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[3.1.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v3.0.0...v3.1.0
+[3.0.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.2...v3.0.0
+[2.3.2]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.1.1...v2.2.0
