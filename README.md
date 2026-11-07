@@ -92,6 +92,7 @@ Each item of `cameras:` is either a plain entity id or a mapping:
 | `back_button_size` | number | `38` | px |
 | `back_button_path` | string | `""` | Explicit destination; wins over browser history |
 | `back_fallback_path` | string | dashboard root | Used when there is no history to pop — e.g. a cold start straight onto the view |
+| `fs_close_button` | boolean | `false` | Camera screen (`columns`): its exit as a round close X in the top-right corner, always shown, instead of a button in the bottom control row |
 
 ### Timeline appearance
 

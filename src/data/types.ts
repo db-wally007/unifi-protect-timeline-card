@@ -281,6 +281,11 @@ export interface CardConfig {
   // here (no history involved — deterministic). Priority: this, else
   // history.back(), else back_fallback_path (see below). "" (default) = off.
   back_button_path?: string;
+  // The camera screen's exit (columns layout: a multi page's drilled-in
+  // camera, or back_button) as a round close X in its top-right corner,
+  // always on screen, instead of a button in the bottom control row that
+  // fades with the controls. Default false.
+  fs_close_button?: boolean;
   // Where the back button navigates when there is NO in-app history to pop —
   // a deep link or the companion app cold-starting straight onto this view
   // (history.back() would do nothing and strand the user on the page).

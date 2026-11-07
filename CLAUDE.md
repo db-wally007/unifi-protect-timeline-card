@@ -259,7 +259,13 @@ of each and editing either path edits this repo. Two consequences:
   `(i - (n-1)/2) * (57+28)px * k` around a 0-wide group) and a count change SLIDES them
   (transform transition). Talk keeps its slot off live (`.off`, i = 1.5: the very spot it
   holds in the row it leaves) and shrinks out / grows back there while the others make
-  room. Phone control sizes = the clip card's (`PHONE_CTRL_SCALE` =
+  room. Sideways on a phone the frame's LEFT edge is the screen's TOP - the status bar and
+  camera cutout (2026-10-31, real iPhone: skip-back sat under it; Chrome's simulator has no
+  inset): the card sets `--upc-fs-left` (env `safe-area-inset-top` turned, `-left` otherwise),
+  media-view reads it off `.vinset` (`_leftInset`, JS can't resolve env()) and centres both
+  rows in the free area right of it (`shift = (taken - inset) / 2`, the gap fit and `crowded`
+  without it). Test by setting `--upc-fs-left` on the ha-card + `_syncLeftInset()`.
+  Phone control sizes = the clip card's (`PHONE_CTRL_SCALE` =
   `PHONE_CLIP_CTRL_SCALE`). PHONE ONLY: the events list REPLACES the timeline while open
   (`_tlAside` -> `.fs-tl.aside`, faded and untappable; `taken` = the list alone) - sideways
   it pushed the ruler into the picture, upright off the left edge (its pill vanished);
@@ -332,7 +338,10 @@ of each and editing either path edits this repo. Two consequences:
   sound / talk / exit along the bottom
   (`.vctrl.card` > `.vctrl-group`, deeper/taller bottom shade; exit = `fs-exit` ->
   `_goBack`: drill out / back target, absent when `cardFsExit` is false, i.e. a standalone
-  popup, whose X closes it). Both groups are centred in the area the timeline leaves FREE —
+  popup, whose X closes it; with `fs_close_button` (`cardFsClose`, 2026-11-07, the user's
+  tablet Cameras view) the exit leaves the row and is a round glass X 24 px from the top-right
+  corner instead - `.fs-close` in `_renderCardChrome`, never fading with the controls, hidden
+  only by `chromeHidden` - the same X as the dashboard's pop-ups). Both groups are centred in the area the timeline leaves FREE —
   left of its resting time pill (the scrubber reports `timeline-reach` = ruler edge to that
   pill's left edge, measured only when its anchor moves), its gutter, and the events panel
   while open (`--upc-fs-shift` = half of that). The middle row's gap is `VC_GAP` 128px,

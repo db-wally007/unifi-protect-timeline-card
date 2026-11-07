@@ -118,7 +118,7 @@ const PHONE_SCREEN_MAX_H = 500;
 // The card calls the sync service itself when the manifest is stale (job not
 // running / not run yet), at most once per SYNC_THROTTLE_MS.
 const SYNC_THROTTLE_MS = 2 * 60_000;
-const VERSION = '3.1.0';
+const VERSION = '3.2.0';
 
 // A playback-time step at least this large is a SKIP, not playback advancing;
 // the ruler glides across it. Well above the sub-second cadence of normal
@@ -860,6 +860,17 @@ export class UnifiProtectTimelineCard extends LitElement {
       inset: auto;
       transform: rotate(90deg);
       transform-origin: 50% 50%;
+    }
+    /* The frame's left edge the system covers (media-view centres the play
+       controls right of it): the side cutout held in landscape - and turned
+       sideways, the screen's TOP, the status bar and camera cutout (user,
+       2026-10-31: skip-back sat under it on an iPhone; the simulator has no
+       inset). */
+    ha-card.panel.phone {
+      --upc-fs-left: env(safe-area-inset-left, 0px);
+    }
+    ha-card.panel.phone.turned {
+      --upc-fs-left: env(safe-area-inset-top, 0px);
     }
     /* Its chrome, sized for a phone: the picker's tiles and names, the
        chevrons, the events column's margins. */
@@ -1678,6 +1689,7 @@ export class UnifiProtectTimelineCard extends LitElement {
       back_button_size: 38,
       back_button_path: '',
       back_fallback_path: '',
+      fs_close_button: false,
       title: 'UniFi Protect Timeline',
       title_font_size: 24,
       title_font_color: '',
@@ -2927,6 +2939,7 @@ export class UnifiProtectTimelineCard extends LitElement {
           .liveAudioStart=${cfg.live_audio_start ?? 'muted'}
           .cardFs=${true}
           .cardFsExit=${!!this._drill || !!cfg.back_button}
+          .cardFsClose=${!!cfg.fs_close_button}
           .poster=${this._panelPoster}
           .chromeHidden=${this._panelChromeHidden}
           .chromeAside=${this._calOpen && !this._calClosing}

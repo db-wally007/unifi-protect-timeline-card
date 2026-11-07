@@ -228,6 +228,10 @@ export class MediaView extends LitElement {
   // date pill rides in the timeline's own `foot` slot.)
   @property({ type: Boolean, reflect: true, attribute: 'cardfs' }) cardFs = false;
   @property({ type: Boolean }) cardFsExit = false;
+  // `cardFsExit` as a round glass X in the top-right corner instead of the
+  // bottom row's exit button (config `fs_close_button`): always on screen,
+  // like the close button of a pop-up the card sits in.
+  @property({ type: Boolean }) cardFsClose = false;
   // The camera screen's controls without its timeline (the multi page's clip
   // players, wide layout): the same round buttons at CLIP_CTRL_SCALE, plus a
   // seek bar over the event, - with `fsHandoff` - a "View in Timeline" pill
@@ -271,6 +275,8 @@ export class MediaView extends LitElement {
   // Own width — cardFs fits its middle row's gap into the free area with it —
   // and height (the poster's box follows both).
   @state() private _hostW = 0;
+  // The left edge the system covers, px (_syncLeftInset).
+  @state() private _leftInset = 0;
   @state() private _hostH = 0;
   private _hostRo?: ResizeObserver;
 
@@ -551,6 +557,7 @@ export class MediaView extends LitElement {
     :host([chromehidden]) .fs-tl,
     :host([chromehidden]) .fs-top,
     :host([chromehidden]) .fs-side,
+    :host([chromehidden]) .fs-close,
     :host([chromehidden]) .vtalk-msg,
     :host([chromehidden]) .overlay,
     :host([chromehidden]) .tap-play {
@@ -767,6 +774,52 @@ export class MediaView extends LitElement {
       opacity: 1;
       visibility: visible;
       transition: opacity 0.2s ease;
+    }
+    /* cardFsClose: the close X, top-right, 24 px in - the round glass button of
+       the dashboard's pop-ups. It stays while the controls fade (only a screen
+       change hides it, with the rest of the chrome). */
+    .fs-close {
+      position: absolute;
+      top: calc(24px + env(safe-area-inset-top, 0px));
+      right: calc(24px + env(safe-area-inset-right, 0px));
+      z-index: 10;
+      width: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      box-shadow:
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.22),
+        0 4px 14px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        transform 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+        background-color 0.2s,
+        opacity 0.2s ease;
+    }
+    .fs-close:active {
+      transform: scale(0.9);
+    }
+    @media (hover: hover) {
+      .fs-close:hover {
+        background: rgba(255, 255, 255, 0.16);
+      }
+    }
+    .fs-close svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      stroke-linecap: round;
     }
     /* While the strip is up, keep every control clear of it: the bar's gradient
        still spans full width, only its contents move in. Both fullscreen
@@ -989,6 +1042,17 @@ export class MediaView extends LitElement {
     }
     .vcenter.show:not(.inert) button {
       pointer-events: auto;
+    }
+    /* Measures --upc-fs-left (the host's: the left edge the system covers,
+       an env() inset) for _leftInset - JS can't read env() itself. */
+    .vinset {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: var(--upc-fs-left, 0px);
+      height: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
     .vc-skip {
       width: calc(75px * var(--vc-k, 1));
@@ -1510,6 +1574,7 @@ export class MediaView extends LitElement {
       const h = Math.round(r.height);
       if (w && w !== this._hostW) this._hostW = w;
       if (h && h !== this._hostH) this._hostH = h;
+      this._syncLeftInset();
     });
     this._hostRo.observe(this);
     // Keep the controls alive while ANYTHING in here is being touched. Bound on
@@ -2038,6 +2103,7 @@ export class MediaView extends LitElement {
     // whether we CSS-rotated the player (the scrubber's drag axis rotates with
     // it — see its `rotated` property).
     this._syncUprightCtrl();
+    if (changed.has('cardFs') || changed.has('phone') || changed.has('upright')) this._syncLeftInset();
     if (changed.has('_isFs') || changed.has('_forceRotate')) {
       this.dispatchEvent(
         new CustomEvent('fs-change', {
@@ -2371,6 +2437,16 @@ export class MediaView extends LitElement {
    *  the bar's height is published as --upc-fs-ctrl-h on the dialog — watched,
    *  because it changes (live vs event playback, the seek row). Re-attached if
    *  a re-render replaced the bar; dropped outside upright fullscreen. */
+  /** The left edge of the screen the system covers (the host's --upc-fs-left,
+   *  an env() inset: turned sideways on a phone, the status bar and camera
+   *  cutout) - the play controls centre in what is left of the free area.
+   *  Read off .vinset: JS can't resolve env() itself. */
+  private _syncLeftInset(): void {
+    const probe = this.renderRoot?.querySelector<HTMLElement>('.vinset');
+    const inset = probe ? probe.offsetWidth : 0;
+    if (inset !== this._leftInset) this._leftInset = inset;
+  }
+
   private _ctrlRO?: ResizeObserver;
   private _ctrlObserved?: Element;
   private _syncUprightCtrl(): void {
@@ -3718,17 +3794,21 @@ export class MediaView extends LitElement {
       // can't hold that (the events panel open on a smaller tablet). Where it
       // can't hold the row at all (the phone's upright screen with the events
       // panel open) the row steps aside until there is room again.
-      const fit = this._hostW ? (this._hostW - taken - rowW - 48) / 2 : VC_GAP * k;
+      // The free area also ends short of the left edge where the system covers
+      // it (_leftInset: the status bar, sideways on a phone).
+      const free = this._hostW - taken - this._leftInset;
+      const fit = this._hostW ? (free - rowW - 48) / 2 : VC_GAP * k;
       const gap = Math.max(28 * k, Math.min(VC_GAP * k, Math.floor(fit)));
-      const crowded = !!this._hostW && this._hostW - taken < rowW + 2 * 28 * k + 8 ? 'crowded' : '';
+      const crowded = !!this._hostW && free < rowW + 2 * 28 * k + 8 ? 'crowded' : '';
+      const shift = (taken - this._leftInset) / 2;
       // The bar's own centre: in the free area too - except upright on a
       // phone, where it runs full width under the timeline.
-      const barShift = this.upright ? 0 : taken / 2;
+      const barShift = this.upright ? 0 : shift;
       // The phone's clip card holds its picture at the top (a landscape clip
       // has its control strip below): the middle row centres on the picture.
       const vcTop = this.stacked && this.roundCtrl && this._hostW ? `--upc-vc-top:${this._picCentreY()}px;` : '';
       const vars =
-        `--upc-fs-shift:${taken / 2}px;--upc-bar-shift:${barShift}px;--upc-vc-gap:${gap}px;` +
+        `--upc-fs-shift:${shift}px;--upc-bar-shift:${barShift}px;--upc-vc-gap:${gap}px;` +
         `--upc-vc-row:${rowW}px;--vc-k:${k};${vcTop}`;
       // The MDI skip glyph with its arrow nudged up and its number down (see
       // SKIP_DIGITS): ~3 units apart instead of ~1, still inside the grid. The
@@ -3779,6 +3859,7 @@ export class MediaView extends LitElement {
         </button>`;
       return html`
         ${talkMsg}
+        ${this.cardFs ? html`<i class="vinset" aria-hidden="true"></i>` : nothing}
         <div class="vshade ${show} ${seek ? 'seek' : ''}" style=${vars}></div>
         ${this.upright ? nothing : html`<div class="vcshade ${show} ${crowded}" style=${vars}></div>`}
         ${this.upright ? nothing : html`<div class="vcenter ${show} ${crowded}" style=${vars}>${centre}</div>`}
@@ -3832,7 +3913,7 @@ export class MediaView extends LitElement {
    *  by its index (.vg-slot). Talk keeps its slot while away, half a place
    *  past sound - right where it stands in the row it leaves or joins. */
   private _renderAxisGroup(speedBtn: unknown, muteBtn: unknown, talkBtn: unknown, talk: boolean) {
-    const exit = this.cardFsExit;
+    const exit = this.cardFsExit && !this.cardFsClose;
     const n = 2 + (talk ? 1 : 0) + (exit ? 1 : 0);
     return html`<div class="vctrl-group axis" style=${`--n:${n}`}>
       <span class="vg-slot" style="--i:0">${speedBtn}</span>
@@ -4086,12 +4167,18 @@ export class MediaView extends LitElement {
     </div>`;
   }
 
-  /** cardFs: the host's camera picker (top) and events panel (right). */
+  /** cardFs: the host's camera picker (top) and events panel (right), and the
+   *  close X when the exit is one (`cardFsClose`). */
   private _renderCardChrome() {
     if (!this.cardFs) return nothing;
     const show = this._followCtrl ? 'show' : '';
     return html`<div class="fs-top ${show}"><slot name="fs-top"></slot></div>
-      <div class="fs-side ${show}"><slot name="fs-side"></slot></div>`;
+      <div class="fs-side ${show}"><slot name="fs-side"></slot></div>
+      ${this.cardFsExit && this.cardFsClose
+        ? html`<button class="fs-close" @click=${this._exitCardFs} title="Close" aria-label="Close">
+            <svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"></path></svg>
+          </button>`
+        : nothing}`;
   }
 
   render() {

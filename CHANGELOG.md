@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.0] - 2026-11-07
+
+### Added
+
+- **`fs_close_button`** (default `false`): the camera screen's exit becomes a round glass close X
+  in the top-right corner, always on screen, instead of a button in the bottom control row that
+  fades with the controls - for dashboards whose pop-ups close with the same X.
+
+### Fixed
+
+- **Phone, camera turned sideways:** the play controls no longer sit under the status bar and
+  camera cutout - both rows centre in the area right of the screen's safe-area inset.
+
 ## [3.1.0] - 2026-10-31
 
 ### Changed
@@ -240,6 +253,7 @@ No configuration options were removed in this release. Existing 2.0 configuratio
 - Initial clean-slate 2.0 release with timeline, events, multi-camera views, scrub cache helpers,
   and range-capable clip sessions.
 
+[3.2.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.2...v3.0.0
 [2.3.2]: https://github.com/db-wally007/unifi-protect-timeline-card/compare/v2.3.1...v2.3.2
